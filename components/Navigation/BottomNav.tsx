@@ -16,6 +16,7 @@ export function BottomNav() {
   const navItems: NavItem[] = [
     { href: '/', icon: '🗺️', label: 'Map' },
     { href: '/nearby', icon: '📍', label: 'Nearby' },
+    { href: '/species', icon: '🐠', label: 'Species' },
     { href: '/observe', icon: '📷', label: 'Observe' },
     { href: '/profile', icon: '👤', label: 'Profile' },
   ];
