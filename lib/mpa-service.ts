@@ -25,26 +25,26 @@ export async function fetchMPAById(id: string): Promise<MPA | null> {
 }
 
 /**
- * Find nearest MPAs to a given location
+ * Find nearest MPAs to a given location (synchronous)
  * @param lat Latitude
  * @param lng Longitude
- * @param limit Maximum number of results
+ * @param maxDistanceKm Maximum distance in kilometers
  */
-export async function findNearestMPAs(
+export function findNearestMPAs(
   lat: number,
   lng: number,
-  limit: number = 5
-): Promise<(MPA & { distance: number })[]> {
-  const mpas = await fetchAllMPAs();
-
+  maxDistanceKm: number = 500
+): (MPA & { distance: number })[] {
   // Calculate distance for each MPA
-  const mpasWithDistance = mpas.map((mpa) => ({
+  const mpasWithDistance = sampleMPAs.map((mpa) => ({
     ...mpa,
     distance: calculateDistance(lat, lng, mpa.center[0], mpa.center[1]),
   }));
 
-  // Sort by distance and return top N
-  return mpasWithDistance.sort((a, b) => a.distance - b.distance).slice(0, limit);
+  // Filter by max distance and sort by distance
+  return mpasWithDistance
+    .filter((mpa) => mpa.distance <= maxDistanceKm)
+    .sort((a, b) => a.distance - b.distance);
 }
 
 /**

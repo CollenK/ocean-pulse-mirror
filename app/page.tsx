@@ -2,9 +2,10 @@
 
 import { Card, CardTitle, CardContent, Button, Badge, HealthBadge } from '@/components/ui';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { MPA } from '@/types';
 import { fetchAllMPAs } from '@/lib/mpa-service';
+import { usePullToRefresh, PullToRefreshIndicator } from '@/hooks/usePullToRefresh';
 import dynamic from 'next/dynamic';
 
 // Dynamically import map component (no SSR due to Leaflet)
@@ -18,12 +19,21 @@ export default function Home() {
   const [showMap, setShowMap] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchAllMPAs().then((data) => {
-      setMpas(data);
-      setLoading(false);
-    });
+  const loadMPAs = useCallback(async () => {
+    const data = await fetchAllMPAs();
+    setMpas(data);
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    loadMPAs();
+  }, [loadMPAs]);
+
+  // Pull to refresh
+  const { containerRef, pullDistance, refreshing, canRefresh } = usePullToRefresh({
+    onRefresh: loadMPAs,
+    enabled: !showMap, // Disable when map is showing
+  });
   if (showMap) {
     return (
       <main className="min-h-screen">
@@ -42,8 +52,14 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen p-6 pb-24">
-      <div className="max-w-screen-xl mx-auto">
+    <>
+      <PullToRefreshIndicator
+        pullDistance={pullDistance}
+        refreshing={refreshing}
+        canRefresh={canRefresh}
+      />
+      <main ref={containerRef} className="min-h-screen p-6 pb-24">
+        <div className="max-w-screen-xl mx-auto">
         {/* Hero Section */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-navy-600 mb-2">
@@ -175,5 +191,6 @@ export default function Home() {
         </div>
       </div>
     </main>
+    </>
   );
 }

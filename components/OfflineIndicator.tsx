@@ -7,6 +7,12 @@ export function OfflineIndicator() {
   const { isOnline, effectiveType } = useNetworkStatus();
   const [show, setShow] = useState(false);
   const [message, setMessage] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  // Only render on client side
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!isOnline) {
@@ -24,7 +30,8 @@ export function OfflineIndicator() {
     }
   }, [isOnline, effectiveType]);
 
-  if (!show) {
+  // Don't render during SSR
+  if (!mounted || !show) {
     return null;
   }
 
