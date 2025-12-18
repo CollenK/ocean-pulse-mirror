@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { BottomNav } from '@/components/Navigation/BottomNav'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -31,7 +32,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <meta name="theme-color" content="#002557" />
       </head>
-      <body className="antialiased bg-gray-50">{children}</body>
+      <body className="antialiased bg-gray-50">
+        {children}
+        <BottomNav />
+      </body>
     </html>
   )
 }
