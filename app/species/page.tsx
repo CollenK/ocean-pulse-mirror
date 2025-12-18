@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardTitle, CardContent, Input, Badge } from '@/components/ui';
 import { searchSpeciesCached, getPopularSpecies } from '@/lib/species-service';
 import { OBISSpecies, getCommonName } from '@/lib/obis-client';
+import { debounce } from '@/lib/performance';
+import { trackSpeciesSearch } from '@/lib/analytics';
 import Link from 'next/link';
 
 export default function SpeciesSearchPage() {
@@ -18,29 +20,37 @@ export default function SpeciesSearchPage() {
     getPopularSpecies(10).then(setPopularSpecies);
   }, []);
 
+  // Memoized debounced search function
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((searchQuery: string) => {
+        searchSpeciesCached(searchQuery)
+          .then((data) => {
+            setResults(data);
+            setSearchPerformed(true);
+            // Track search analytics
+            trackSpeciesSearch(searchQuery, data.length);
+          })
+          .finally(() => setLoading(false));
+      }, 500),
+    []
+  );
+
   // Debounced search
   useEffect(() => {
     if (query.length < 2) {
       setResults([]);
       setSearchPerformed(false);
+      setLoading(false);
       return;
     }
 
     setLoading(true);
-    const timer = setTimeout(() => {
-      searchSpeciesCached(query)
-        .then((data) => {
-          setResults(data);
-          setSearchPerformed(true);
-        })
-        .finally(() => setLoading(false));
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [query]);
+    debouncedSearch(query);
+  }, [query, debouncedSearch]);
 
   return (
-    <main className="min-h-screen p-6 pb-24 bg-gray-50">
+    <main id="main-content" className="min-h-screen p-6 pb-24 bg-gray-50">
       <div className="max-w-screen-xl mx-auto">
         <h1 className="text-3xl font-bold text-navy-600 mb-2">
           🐠 Species Database
@@ -59,10 +69,13 @@ export default function SpeciesSearchPage() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="pr-10"
+                aria-label="Search species by name"
+                autoComplete="off"
               />
               {loading && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="absolute right-3 top-1/2 -translate-y-1/2" aria-live="polite" aria-atomic="true">
                   <div className="w-5 h-5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="sr-only">Searching...</span>
                 </div>
               )}
             </div>
@@ -78,7 +91,7 @@ export default function SpeciesSearchPage() {
             <CardTitle>
               Search Results ({results.length})
             </CardTitle>
-            <CardContent>
+            <CardContent role="region" aria-live="polite" aria-atomic="false">
               {results.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="text-6xl mb-4">🔍</div>

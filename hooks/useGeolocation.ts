@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { trackPermissionRequest } from '@/lib/analytics';
 
 export interface GeolocationPosition {
   latitude: number;
@@ -91,6 +92,8 @@ export function useGeolocation(
     setError(null);
     setLoading(false);
     setPermission('granted');
+    // Track successful permission grant
+    trackPermissionRequest('location', true);
   }, []);
 
   // Error callback
@@ -101,6 +104,8 @@ export function useGeolocation(
       case err.PERMISSION_DENIED:
         setError('Location permission denied. Please enable location access in your device settings.');
         setPermission('denied');
+        // Track permission denial
+        trackPermissionRequest('location', false);
         break;
       case err.POSITION_UNAVAILABLE:
         setError('Location information unavailable. Please check your device settings.');

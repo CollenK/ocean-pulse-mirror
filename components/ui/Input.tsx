@@ -18,26 +18,33 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
     const widthStyles = fullWidth ? 'w-full' : '';
 
+    const inputId = props.id || `input-${Math.random().toString(36).substr(2, 9)}`;
+    const errorId = error ? `${inputId}-error` : undefined;
+    const helperId = helperText ? `${inputId}-helper` : undefined;
+
     return (
       <div className={`${widthStyles} ${className}`}>
         {label && (
-          <label className="block mb-2 text-sm font-semibold text-gray-700">
+          <label htmlFor={inputId} className="block mb-2 text-sm font-semibold text-gray-700">
             {label}
           </label>
         )}
         <input
           ref={ref}
+          id={inputId}
           className={`${baseStyles} ${errorStyles} touch-target`}
+          aria-invalid={error ? 'true' : 'false'}
+          aria-describedby={error ? errorId : helperId}
           {...props}
         />
         {error && (
-          <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-            <span>⚠</span>
+          <p id={errorId} className="mt-1 text-sm text-red-600 flex items-center gap-1" role="alert">
+            <span aria-hidden="true">⚠</span>
             {error}
           </p>
         )}
         {helperText && !error && (
-          <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+          <p id={helperId} className="mt-1 text-sm text-gray-500">{helperText}</p>
         )}
       </div>
     );
@@ -64,27 +71,34 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
 
     const widthStyles = fullWidth ? 'w-full' : '';
 
+    const textareaId = props.id || `textarea-${Math.random().toString(36).substr(2, 9)}`;
+    const errorId = error ? `${textareaId}-error` : undefined;
+    const helperId = helperText ? `${textareaId}-helper` : undefined;
+
     return (
       <div className={`${widthStyles} ${className}`}>
         {label && (
-          <label className="block mb-2 text-sm font-semibold text-gray-700">
+          <label htmlFor={textareaId} className="block mb-2 text-sm font-semibold text-gray-700">
             {label}
           </label>
         )}
         <textarea
           ref={ref}
+          id={textareaId}
           className={`${baseStyles} ${errorStyles}`}
           rows={4}
+          aria-invalid={error ? 'true' : 'false'}
+          aria-describedby={error ? errorId : helperId}
           {...props}
         />
         {error && (
-          <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-            <span>⚠</span>
+          <p id={errorId} className="mt-1 text-sm text-red-600 flex items-center gap-1" role="alert">
+            <span aria-hidden="true">⚠</span>
             {error}
           </p>
         )}
         {helperText && !error && (
-          <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+          <p id={helperId} className="mt-1 text-sm text-gray-500">{helperText}</p>
         )}
       </div>
     );

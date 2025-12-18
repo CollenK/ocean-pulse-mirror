@@ -36,7 +36,7 @@ export default function Home() {
   });
   if (showMap) {
     return (
-      <main className="min-h-screen">
+      <main id="main-content" className="min-h-screen">
         <div className="absolute top-4 left-4 z-[1001]">
           <Button
             onClick={() => setShowMap(false)}
@@ -58,7 +58,7 @@ export default function Home() {
         refreshing={refreshing}
         canRefresh={canRefresh}
       />
-      <main ref={containerRef} className="min-h-screen p-6 pb-24">
+      <main id="main-content" ref={containerRef} className="min-h-screen p-6 pb-24">
         <div className="max-w-screen-xl mx-auto">
         {/* Hero Section */}
         <div className="text-center mb-8">

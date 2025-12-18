@@ -41,6 +41,8 @@ export function Button({
     <button
       className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${width} ${className}`}
       disabled={disabled || loading}
+      aria-busy={loading}
+      aria-disabled={disabled || loading}
       {...props}
     >
       {loading ? (
@@ -50,6 +52,7 @@ export function Button({
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <circle
               className="opacity-25"
@@ -69,7 +72,7 @@ export function Button({
         </>
       ) : (
         <>
-          {icon && <span className="flex-shrink-0">{icon}</span>}
+          {icon && <span className="flex-shrink-0" aria-hidden="true">{icon}</span>}
           <span>{children}</span>
         </>
       )}
