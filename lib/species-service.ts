@@ -12,7 +12,6 @@ import {
   OBISSpecies,
   OBISOccurrence,
 } from './obis-client';
-import { sampleSpecies, getRandomSpeciesForMPA } from './sample-species-data';
 import { openDB } from 'idb';
 import type { OceanPulseDB } from './offline-storage';
 
@@ -33,7 +32,12 @@ export async function searchSpeciesCached(
   query: string,
   useCache: boolean = true
 ): Promise<OBISSpecies[]> {
-  if (!query || query.length < 2) return [];
+  if (!query || query.length < 2) {
+    console.log('[Species Search] Query too short:', query);
+    return [];
+  }
+
+  console.log('[Species Search] Searching for:', query);
 
   const cacheKey = `search:${query.toLowerCase()}`;
   const lowerQuery = query.toLowerCase();
@@ -45,6 +49,7 @@ export async function searchSpeciesCached(
       const cached = await db.get('species-data', cacheKey);
 
       if (cached && Date.now() - cached.lastUpdated < CACHE_DURATION) {
+        console.log('[Species Search] Cache hit:', cached.data);
         return cached.data as OBISSpecies[];
       }
     } catch (error) {
@@ -54,10 +59,13 @@ export async function searchSpeciesCached(
 
   try {
     // Fetch from API
+    console.log('[Species Search] Fetching from API with query:', query);
     const apiResults = await searchSpecies({
       scientificname: query,
       limit: 20,
     });
+
+    console.log('[Species Search] API returned:', apiResults.length, 'results');
 
     if (apiResults && apiResults.length > 0) {
       // Cache API results
@@ -69,26 +77,21 @@ export async function searchSpeciesCached(
           lastUpdated: Date.now(),
           cached: true,
         });
+        console.log('[Species Search] Results cached');
       } catch (error) {
         console.error('Cache write error:', error);
       }
 
       return apiResults;
     }
+
+    // No results from API
+    console.log('[Species Search] No results from API');
+    return [];
   } catch (error) {
     console.error('[Species Search] API error:', error);
+    return [];
   }
-
-  // Fallback: search sample data
-  const sampleResults = sampleSpecies.filter(
-    (sp) =>
-      sp.scientificName.toLowerCase().includes(lowerQuery) ||
-      sp.vernacularName?.toLowerCase().includes(lowerQuery) ||
-      sp.genus?.toLowerCase().includes(lowerQuery) ||
-      sp.family?.toLowerCase().includes(lowerQuery)
-  );
-
-  return sampleResults;
 }
 
 /**
@@ -145,28 +148,13 @@ export async function getSpeciesForMPA(
       return results;
     }
 
-    // No results from API, use sample data
-    console.log('[Species] No API results, using sample data');
-    const sampleData = getRandomSpeciesForMPA(8);
-
-    // Cache sample data
-    try {
-      const db = await getDB();
-      await db.put('species-data', {
-        id: cacheKey,
-        data: sampleData,
-        lastUpdated: Date.now(),
-        cached: true,
-      });
-    } catch (error) {
-      console.error('Cache write error:', error);
-    }
-
-    return sampleData;
+    // No results from API
+    console.log('[Species] No API results found');
+    return [];
   } catch (error) {
-    // API error, use sample data
-    console.error('[Species] API error, using sample data:', error);
-    return getRandomSpeciesForMPA(8);
+    // API error
+    console.error('[Species] API error:', error);
+    return [];
   }
 }
 
@@ -216,11 +204,86 @@ export async function getSpeciesDetailsCached(
 
 /**
  * Get popular species (most observed)
- * Returns sample species for immediate display
+ * Fetches real species data from OBIS for common marine species
  */
 export async function getPopularSpecies(limit: number = 10): Promise<OBISSpecies[]> {
-  // Return sample species directly for faster loading
-  return sampleSpecies.slice(0, limit);
+  const cacheKey = 'popular-species';
+
+  // Try cache first
+  try {
+    const db = await getDB();
+    const cached = await db.get('species-data', cacheKey);
+
+    if (cached && Date.now() - cached.lastUpdated < CACHE_DURATION) {
+      console.log('[Species] Cache hit for popular species');
+      return cached.data as OBISSpecies[];
+    }
+  } catch (error) {
+    console.error('Cache read error:', error);
+  }
+
+  console.log('[Species] Fetching popular species from API...');
+
+  // List of well-known marine species to search for
+  const popularSpeciesNames = [
+    'Tursiops truncatus',    // Bottlenose dolphin
+    'Caretta caretta',       // Loggerhead sea turtle
+    'Chelonia mydas',        // Green sea turtle
+    'Megaptera novaeangliae',// Humpback whale
+    'Orcinus orca',          // Orca
+    'Carcharodon carcharias',// Great white shark
+    'Thunnus albacares',     // Yellowfin tuna
+    'Manta birostris',       // Giant manta ray
+    'Physeter macrocephalus',// Sperm whale
+    'Octopus vulgaris',      // Common octopus
+  ];
+
+  try {
+    // Fetch details for each popular species
+    const results: OBISSpecies[] = [];
+
+    for (const name of popularSpeciesNames.slice(0, limit)) {
+      try {
+        const speciesResults = await searchSpecies({
+          scientificname: name,
+          limit: 1,
+        });
+
+        if (speciesResults && speciesResults.length > 0) {
+          results.push(speciesResults[0]);
+        }
+      } catch (error) {
+        console.error(`Error fetching ${name}:`, error);
+      }
+
+      // Small delay to avoid overwhelming the API
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
+    if (results.length > 0) {
+      console.log(`[Species] API returned ${results.length} popular species`);
+
+      // Cache results
+      try {
+        const db = await getDB();
+        await db.put('species-data', {
+          id: cacheKey,
+          data: results,
+          lastUpdated: Date.now(),
+          cached: true,
+        });
+      } catch (error) {
+        console.error('Cache write error:', error);
+      }
+
+      return results;
+    }
+
+    return [];
+  } catch (error) {
+    console.error('[Species] Error fetching popular species:', error);
+    return [];
+  }
 }
 
 /**

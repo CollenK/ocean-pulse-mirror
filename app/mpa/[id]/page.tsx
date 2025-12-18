@@ -21,6 +21,7 @@ export default function MPADetailPage() {
   const [cached, setCached] = useState(false);
   const [species, setSpecies] = useState<OBISSpecies[]>([]);
   const [speciesLoading, setSpeciesLoading] = useState(false);
+  const [showAllSpecies, setShowAllSpecies] = useState(false);
 
   useEffect(() => {
     const id = params.id as string;
@@ -319,7 +320,7 @@ export default function MPADetailPage() {
                   species documented in this area from the OBIS database.
                 </p>
                 <div className="space-y-3 mb-4">
-                  {species.slice(0, 5).map((sp) => (
+                  {species.slice(0, showAllSpecies ? species.length : 5).map((sp) => (
                     <Link
                       key={sp.id}
                       href={`/species/${encodeURIComponent(sp.scientificName)}`}
@@ -346,12 +347,14 @@ export default function MPADetailPage() {
                   ))}
                 </div>
                 {species.length > 5 && (
-                  <Link href="/species">
-                    <Button fullWidth variant="secondary">
-                      <Icon name="arrow-right" size="sm" />
-                      View All {species.length} Species
-                    </Button>
-                  </Link>
+                  <Button
+                    fullWidth
+                    variant="secondary"
+                    onClick={() => setShowAllSpecies(!showAllSpecies)}
+                  >
+                    <Icon name={showAllSpecies ? "angle-up" : "angle-down"} size="sm" />
+                    {showAllSpecies ? 'Show Less' : `View All ${species.length} Species`}
+                  </Button>
                 )}
               </>
             ) : (
