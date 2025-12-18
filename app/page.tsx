@@ -1,11 +1,17 @@
 'use client';
 
 import { Card, CardTitle, CardContent, Button, Badge, HealthBadge } from '@/components/ui';
-import { MobileMap } from '@/components/Map/MobileMap';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { MPA } from '@/types';
 import { fetchAllMPAs } from '@/lib/mpa-service';
+import dynamic from 'next/dynamic';
+
+// Dynamically import map component (no SSR due to Leaflet)
+const MobileMap = dynamic(
+  () => import('@/components/Map/MobileMap').then((mod) => mod.MobileMap),
+  { ssr: false, loading: () => <div className="flex items-center justify-center h-screen">Loading map...</div> }
+);
 
 export default function Home() {
   const [mpas, setMpas] = useState<MPA[]>([]);

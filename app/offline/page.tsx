@@ -1,0 +1,197 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Card, CardTitle, CardContent, Button, Badge, HealthBadge } from '@/components/ui';
+import {
+  getAllCachedMPAs,
+  getCachedMPACount,
+  getStorageInfo,
+  clearAllCache,
+  deleteCachedMPA,
+  formatBytes,
+} from '@/lib/offline-storage';
+import { MPA } from '@/types';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
+export default function OfflinePage() {
+  const router = useRouter();
+  const [mpas, setMpas] = useState<MPA[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [storage, setStorage] = useState({ usage: 0, quota: 0, percentUsed: 0 });
+
+  const loadData = async () => {
+    setLoading(true);
+    const [cachedMPAs, storageInfo] = await Promise.all([
+      getAllCachedMPAs(),
+      getStorageInfo(),
+    ]);
+    setMpas(cachedMPAs);
+    setStorage(storageInfo);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleClearAll = async () => {
+    if (confirm('Clear all cached data? This cannot be undone.')) {
+      await clearAllCache();
+      loadData();
+    }
+  };
+
+  const handleDeleteMPA = async (mpaId: string) => {
+    await deleteCachedMPA(mpaId);
+    loadData();
+  };
+
+  return (
+    <main className="min-h-screen p-6 pb-24 bg-gray-50">
+      <div className="max-w-screen-xl mx-auto">
+        <div className="mb-6">
+          <Button
+            onClick={() => router.back()}
+            variant="ghost"
+            size="sm"
+            className="mb-4"
+          >
+            ← Back
+          </Button>
+
+          <h1 className="text-3xl font-bold text-navy-600 mb-2">
+            💾 Offline Data
+          </h1>
+          <p className="text-gray-600">
+            Manage cached MPAs for offline access
+          </p>
+        </div>
+
+        {/* Storage Info */}
+        <Card className="mb-6">
+          <CardTitle>Storage Usage</CardTitle>
+          <CardContent>
+            <div className="mb-4">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-gray-600">Used:</span>
+                <span className="font-semibold">
+                  {formatBytes(storage.usage)} / {formatBytes(storage.quota)}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className={`h-3 rounded-full transition-all ${
+                    storage.percentUsed > 80
+                      ? 'bg-red-500'
+                      : storage.percentUsed > 50
+                      ? 'bg-yellow-500'
+                      : 'bg-cyan-500'
+                  }`}
+                  style={{ width: `${Math.min(storage.percentUsed, 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {storage.percentUsed.toFixed(1)}% used
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <p className="text-2xl font-bold text-cyan-600">{mpas.length}</p>
+                <p className="text-sm text-gray-600">Cached MPAs</p>
+              </div>
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <p className="text-2xl font-bold text-navy-600">
+                  {formatBytes(storage.usage)}
+                </p>
+                <p className="text-sm text-gray-600">Data Stored</p>
+              </div>
+            </div>
+
+            <Button
+              fullWidth
+              variant="danger"
+              onClick={handleClearAll}
+              disabled={mpas.length === 0}
+            >
+              Clear All Cache
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Cached MPAs List */}
+        <Card>
+          <CardTitle>Cached MPAs ({mpas.length})</CardTitle>
+          <CardContent>
+            {loading ? (
+              <p className="text-center text-gray-500 py-8">Loading...</p>
+            ) : mpas.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">
+                  No MPAs cached yet
+                </p>
+                <Link href="/">
+                  <Button>Browse MPAs</Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {mpas.map((mpa) => (
+                  <div
+                    key={mpa.id}
+                    className="p-4 bg-gray-50 rounded-lg flex items-start justify-between gap-4"
+                  >
+                    <div className="flex-1">
+                      <Link
+                        href={`/mpa/${mpa.id}`}
+                        className="font-semibold text-navy-600 hover:text-cyan-600 transition-colors"
+                      >
+                        {mpa.name}
+                      </Link>
+                      <p className="text-sm text-gray-600 mb-2">{mpa.country}</p>
+                      <div className="flex gap-2">
+                        <HealthBadge score={mpa.healthScore} size="sm" />
+                        <Badge variant="info" size="sm">
+                          {mpa.speciesCount} species
+                        </Badge>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDeleteMPA(mpa.id)}
+                    >
+                      🗑️
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Info Card */}
+        <Card className="mt-6">
+          <CardTitle>About Offline Data</CardTitle>
+          <CardContent>
+            <div className="space-y-2 text-sm text-gray-700">
+              <p>
+                ✓ MPAs are automatically cached when you view them
+              </p>
+              <p>
+                ✓ Cached data works without an internet connection
+              </p>
+              <p>
+                ✓ Data syncs automatically when you're back online
+              </p>
+              <p>
+                ✓ Observations made offline are saved and synced later
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </main>
+  );
+}

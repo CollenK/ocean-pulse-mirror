@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { BottomNav } from '@/components/Navigation/BottomNav'
+import { OfflineIndicator } from '@/components/OfflineIndicator'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -33,6 +34,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#002557" />
       </head>
       <body className="antialiased bg-gray-50">
+        <OfflineIndicator />
         {children}
         <BottomNav />
       </body>

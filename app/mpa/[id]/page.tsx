@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { MPA } from '@/types';
 import { fetchMPAById, formatArea } from '@/lib/mpa-service';
+import { cacheMPA, getCachedMPA, isMPACached } from '@/lib/offline-storage';
 import { Card, CardTitle, CardContent, Button, HealthBadge, Badge } from '@/components/ui';
 import { MPACardSkeleton } from '@/components/ui';
 import Link from 'next/link';
@@ -14,13 +15,32 @@ export default function MPADetailPage() {
   const [mpa, setMpa] = useState<MPA | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cached, setCached] = useState(false);
 
   useEffect(() => {
     const id = params.id as string;
+
+    // Try to load from cache first
+    getCachedMPA(id)
+      .then((cachedData) => {
+        if (cachedData) {
+          setMpa(cachedData);
+          setCached(true);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        // If cache fails, continue to fetch from network
+      });
+
+    // Fetch from network
     fetchMPAById(id)
-      .then((data) => {
+      .then(async (data) => {
         if (data) {
           setMpa(data);
+          // Automatically cache the MPA
+          await cacheMPA(data);
+          setCached(true);
         } else {
           setError('MPA not found');
         }
@@ -89,6 +109,11 @@ export default function MPADetailPage() {
             <Badge variant="info" size="md">
               {mpa.protectionLevel}
             </Badge>
+            {cached && (
+              <Badge variant="healthy" size="md">
+                💾 Cached
+              </Badge>
+            )}
           </div>
         </div>
       </div>
@@ -178,8 +203,8 @@ export default function MPADetailPage() {
                   📷 Add Observation
                 </Button>
               </Link>
-              <Button fullWidth variant="ghost">
-                💾 Save for Offline
+              <Button fullWidth variant="ghost" disabled={cached}>
+                {cached ? '✓ Saved for Offline' : '💾 Save for Offline'}
               </Button>
               <Button fullWidth variant="ghost">
                 📤 Share MPA

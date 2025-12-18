@@ -1,4 +1,5 @@
 import { Card, CardTitle, CardContent, Badge } from '@/components/ui';
+import Link from 'next/link';
 
 export default function ProfilePage() {
   return (
@@ -48,16 +49,16 @@ export default function ProfilePage() {
           <CardTitle>Settings</CardTitle>
           <CardContent>
             <div className="space-y-3">
-              <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                <span className="font-medium">Offline Data</span>
+              <Link href="/offline" className="block w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                <span className="font-medium">💾 Offline Data</span>
                 <span className="text-gray-500 text-sm block">Manage cached MPAs</span>
-              </button>
+              </Link>
               <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                <span className="font-medium">Notifications</span>
+                <span className="font-medium">🔔 Notifications</span>
                 <span className="text-gray-500 text-sm block">Alert preferences</span>
               </button>
               <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                <span className="font-medium">About</span>
+                <span className="font-medium">ℹ️ About</span>
                 <span className="text-gray-500 text-sm block">Version & info</span>
               </button>
             </div>
