@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Ocean Blue Background -->
+  <rect width="512" height="512" fill="#002557" rx="80"/>
+
+  <!-- Wave Pattern -->
+  <path d="M0 256C85.333 256 85.333 320 170.667 320C256 320 256 256 341.333 256C426.667 256 426.667 320 512 320V512H0V256Z" fill="#00BCD4" opacity="0.3"/>
+  <path d="M0 300C85.333 300 85.333 364 170.667 364C256 364 256 300 341.333 300C426.667 300 426.667 364 512 364V512H0V300Z" fill="#00BCD4" opacity="0.5"/>
+  <path d="M0 350C85.333 350 85.333 414 170.667 414C256 414 256 350 341.333 350C426.667 350 426.667 414 512 414V512H0V350Z" fill="#00BCD4"/>
+
+  <!-- Marine Life Icon - Fish -->
+  <ellipse cx="256" cy="180" rx="80" ry="50" fill="#0288D1"/>
+  <path d="M176 180L140 150L140 210L176 180Z" fill="#0288D1"/>
+  <circle cx="280" cy="170" r="8" fill="white"/>
+  <circle cx="280" cy="170" r="4" fill="#002557"/>
+
+  <!-- Pulse Line -->
+  <path d="M100 240L150 240L180 200L220 280L250 240L512 240" stroke="#00BCD4" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

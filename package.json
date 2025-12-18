@@ -1,0 +1,42 @@
+{
+  "name": "ocean-pulse",
+  "version": "1.0.0",
+  "description": "Ocean PULSE - Progressive Web App for Marine Protected Area monitoring and species tracking",
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@gitlab.com/balean1/ocean-pulse.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://gitlab.com/balean1/ocean-pulse/issues"
+  },
+  "homepage": "https://gitlab.com/balean1/ocean-pulse#readme",
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
+    "idb": "^8.0.3",
+    "next": "^16.0.10",
+    "next-pwa": "^5.6.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "workbox-window": "^7.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.23",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3"
+  }
+}
