@@ -1,7 +1,40 @@
+'use client';
+
 import { Card, CardTitle, CardContent, Button, Badge, HealthBadge } from '@/components/ui';
+import { MobileMap } from '@/components/Map/MobileMap';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { MPA } from '@/types';
+import { fetchAllMPAs } from '@/lib/mpa-service';
 
 export default function Home() {
+  const [mpas, setMpas] = useState<MPA[]>([]);
+  const [showMap, setShowMap] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAllMPAs().then((data) => {
+      setMpas(data);
+      setLoading(false);
+    });
+  }, []);
+  if (showMap) {
+    return (
+      <main className="min-h-screen">
+        <div className="absolute top-4 left-4 z-[1001]">
+          <Button
+            onClick={() => setShowMap(false)}
+            size="sm"
+            variant="secondary"
+          >
+            ← Back to Home
+          </Button>
+        </div>
+        <MobileMap mpas={mpas} />
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen p-6 pb-24">
       <div className="max-w-screen-xl mx-auto">
@@ -15,7 +48,8 @@ export default function Home() {
           </p>
           <div className="flex flex-wrap gap-2 justify-center">
             <Badge variant="info">PWA Enabled</Badge>
-            <Badge variant="healthy">Phase 2 Complete</Badge>
+            <Badge variant="healthy">Phase 3 Complete</Badge>
+            <Badge variant="info">{mpas.length} MPAs Loaded</Badge>
           </div>
         </div>
 
@@ -48,8 +82,13 @@ export default function Home() {
               <p className="text-gray-600 mb-3">
                 Explore marine protected areas worldwide with real-time health indicators
               </p>
-              <Button size="sm" fullWidth>
-                View Map
+              <Button
+                size="sm"
+                fullWidth
+                onClick={() => setShowMap(true)}
+                loading={loading}
+              >
+                {loading ? 'Loading...' : `View ${mpas.length} MPAs on Map`}
               </Button>
             </CardContent>
           </Card>
@@ -119,10 +158,13 @@ export default function Home() {
         {/* Development Status */}
         <div className="mt-8 text-center text-gray-500">
           <p className="text-sm mb-2">
-            🚀 Development Status: Phase 2 Complete
+            🚀 Development Status: Phase 3 Complete
           </p>
           <p className="text-xs">
-            Next: Phase 3 - Map Integration & MPA Display
+            Interactive map with {mpas.length} Marine Protected Areas
+          </p>
+          <p className="text-xs mt-1">
+            Next: Phase 4 - Offline Functionality
           </p>
         </div>
       </div>
