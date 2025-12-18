@@ -17,24 +17,28 @@ export function Card({
   className = '',
   ...props
 }: CardProps) {
-  const baseStyles = 'bg-white rounded-xl transition-all duration-200';
+  const baseStyles = 'bg-white rounded-xl transition-all duration-300 border border-gray-100';
 
   const paddings = {
     none: '',
-    sm: 'p-3',
-    md: 'p-4',
-    lg: 'p-6',
+    sm: 'p-4',
+    md: 'p-6',
+    lg: 'p-8',
   };
 
   const shadows = {
     none: '',
     sm: 'shadow-sm',
-    md: 'shadow-md',
-    lg: 'shadow-lg',
+    md: 'shadow-[0_2px_8px_rgba(15,23,42,0.06)]',
+    lg: 'shadow-[0_4px_12px_rgba(15,23,42,0.1)]',
   };
 
-  const hoverStyles = hover ? 'hover:shadow-xl hover:-translate-y-1' : '';
-  const interactiveStyles = interactive ? 'cursor-pointer active:scale-98' : '';
+  const hoverStyles = hover
+    ? 'hover:shadow-[0_8px_24px_rgba(15,23,42,0.12)] hover:-translate-y-1'
+    : '';
+  const interactiveStyles = interactive
+    ? 'cursor-pointer active:scale-[0.98]'
+    : '';
 
   return (
     <div
@@ -66,7 +70,7 @@ interface CardTitleProps {
 
 export function CardTitle({ children, className = '' }: CardTitleProps) {
   return (
-    <h3 className={`text-lg font-bold text-navy-600 ${className}`}>
+    <h3 className={`text-xl font-semibold text-ocean-deep ${className}`}>
       {children}
     </h3>
   );
@@ -79,7 +83,7 @@ interface CardContentProps {
 
 export function CardContent({ children, className = '' }: CardContentProps) {
   return (
-    <div className={`text-gray-700 ${className}`}>
+    <div className={`text-gray-600 ${className}`}>
       {children}
     </div>
   );
@@ -92,7 +96,7 @@ interface CardFooterProps {
 
 export function CardFooter({ children, className = '' }: CardFooterProps) {
   return (
-    <div className={`mt-4 pt-4 border-t border-gray-200 ${className}`}>
+    <div className={`mt-6 pt-6 border-t border-gray-100 ${className}`}>
       {children}
     </div>
   );

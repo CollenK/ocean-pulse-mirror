@@ -7,8 +7,9 @@ import { fetchMPAById, formatArea } from '@/lib/mpa-service';
 import { cacheMPA, getCachedMPA, isMPACached } from '@/lib/offline-storage';
 import { getSpeciesForMPA } from '@/lib/species-service';
 import { OBISSpecies, getCommonName } from '@/lib/obis-client';
-import { Card, CardTitle, CardContent, Button, HealthBadge, Badge } from '@/components/ui';
+import { Card, CardTitle, CardContent, Button, Badge, Icon, CircularProgress, getHealthColor } from '@/components/ui';
 import { MPACardSkeleton } from '@/components/ui';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 
 export default function MPADetailPage() {
@@ -100,66 +101,115 @@ export default function MPADetailPage() {
   }
 
   return (
-    <main className="min-h-screen pb-24 bg-gray-50">
-      {/* Hero Header with Gradient */}
-      <div className="bg-gradient-to-br from-cyan-500 to-navy-600 text-white p-6 pb-12">
+    <main className="min-h-screen pb-32">
+      {/* Modern Hero Header with Gradient */}
+      <div className="bg-gradient-to-br from-ocean-primary via-ocean-accent to-cyan-400 pt-8 pb-16 px-6">
         <div className="max-w-screen-xl mx-auto">
-          <Button
-            onClick={() => router.back()}
-            variant="ghost"
-            size="sm"
-            className="mb-4 text-white border-white hover:bg-white/20"
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
           >
-            ← Back
-          </Button>
+            <Button
+              onClick={() => router.back()}
+              variant="ghost"
+              size="sm"
+              className="mb-6 text-white/90 hover:text-white hover:bg-white/20 border-none"
+            >
+              <Icon name="angle-left" size="sm" />
+              Back
+            </Button>
 
-          <h1 className="text-3xl font-bold mb-2">{mpa.name}</h1>
-          <p className="text-lg opacity-90 mb-4">
-            {mpa.country} • Est. {mpa.establishedYear}
-          </p>
+            <div className="flex items-start justify-between gap-6 mb-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <Icon name="map-marker" className="text-white text-3xl" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold text-white mb-1">{mpa.name}</h1>
+                    <p className="text-white/80 flex items-center gap-2">
+                      <Icon name="marker" size="sm" />
+                      {mpa.country} • Est. {mpa.establishedYear}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-          <div className="flex flex-wrap gap-2">
-            <HealthBadge score={mpa.healthScore} size="md" />
-            <Badge variant="info" size="md">
-              {mpa.protectionLevel}
-            </Badge>
-            {cached && (
-              <Badge variant="healthy" size="md">
-                💾 Cached
+              <CircularProgress
+                value={mpa.healthScore}
+                size="xl"
+                color={getHealthColor(mpa.healthScore)}
+                className="flex-shrink-0"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="info" size="md" className="bg-white/20 text-white border-none">
+                <Icon name="shield-check" size="sm" />
+                {mpa.protectionLevel}
               </Badge>
-            )}
-          </div>
+              {cached && (
+                <Badge variant="healthy" size="md" className="bg-white/20 text-white border-none">
+                  <Icon name="download" size="sm" />
+                  Cached
+                </Badge>
+              )}
+            </div>
+          </motion.div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-screen-xl mx-auto px-6 -mt-6">
-        {/* Stats Card */}
-        <Card className="mb-6 shadow-lg">
-          <CardTitle>Key Statistics</CardTitle>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <p className="text-3xl font-bold text-cyan-600">{mpa.healthScore}</p>
-                <p className="text-sm text-gray-600">Health Score</p>
+      <div className="max-w-screen-xl mx-auto px-6 -mt-10">
+        {/* Stats Grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"
+        >
+          <Card className="text-center shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="py-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-ocean-primary to-ocean-accent mx-auto mb-2 flex items-center justify-center">
+                <Icon name="chart-line" className="text-white text-xl" />
               </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <p className="text-3xl font-bold text-navy-600">
-                  {mpa.speciesCount.toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-600">Species</p>
+              <p className="text-3xl font-bold text-ocean-deep">{mpa.healthScore}</p>
+              <p className="text-xs text-gray-500 mt-1">Health Score</p>
+            </CardContent>
+          </Card>
+
+          <Card className="text-center shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="py-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 mx-auto mb-2 flex items-center justify-center">
+                <Icon name="fish" className="text-white text-xl" />
               </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <p className="text-3xl font-bold text-ocean-500">{formatArea(mpa.area)}</p>
-                <p className="text-sm text-gray-600">Area</p>
+              <p className="text-3xl font-bold text-ocean-deep">
+                {mpa.speciesCount.toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Species</p>
+            </CardContent>
+          </Card>
+
+          <Card className="text-center shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="py-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 mx-auto mb-2 flex items-center justify-center">
+                <Icon name="map" className="text-white text-xl" />
               </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <p className="text-3xl font-bold text-gray-700">{mpa.establishedYear}</p>
-                <p className="text-sm text-gray-600">Established</p>
+              <p className="text-3xl font-bold text-ocean-deep">{formatArea(mpa.area)}</p>
+              <p className="text-xs text-gray-500 mt-1">Area</p>
+            </CardContent>
+          </Card>
+
+          <Card className="text-center shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="py-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 mx-auto mb-2 flex items-center justify-center">
+                <Icon name="calendar" className="text-white text-xl" />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <p className="text-3xl font-bold text-ocean-deep">{mpa.establishedYear}</p>
+              <p className="text-xs text-gray-500 mt-1">Established</p>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Description */}
         {mpa.description && (
@@ -207,25 +257,48 @@ export default function MPADetailPage() {
           </CardContent>
         </Card>
 
-        {/* Actions */}
-        <Card className="mb-6">
-          <CardTitle>Actions</CardTitle>
-          <CardContent>
-            <div className="space-y-3">
-              <Link href="/observe">
-                <Button fullWidth variant="secondary">
-                  📷 Add Observation
-                </Button>
-              </Link>
-              <Button fullWidth variant="ghost" disabled={cached}>
-                {cached ? '✓ Saved for Offline' : '💾 Save for Offline'}
-              </Button>
-              <Button fullWidth variant="ghost">
-                📤 Share MPA
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Quick Actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="grid grid-cols-3 gap-3 mb-6"
+        >
+          <Link href="/observe">
+            <Card hover interactive className="text-center">
+              <CardContent className="py-4">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 mx-auto mb-2 flex items-center justify-center">
+                  <Icon name="camera" className="text-white text-lg" />
+                </div>
+                <p className="text-xs font-medium text-ocean-deep">Add Photo</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Card hover interactive className="text-center cursor-pointer" onClick={() => {}}>
+            <CardContent className="py-4">
+              <div className={`w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center ${
+                cached
+                  ? 'bg-gradient-to-br from-green-400 to-emerald-500'
+                  : 'bg-gradient-to-br from-gray-300 to-gray-400'
+              }`}>
+                <Icon name={cached ? 'check' : 'download'} className="text-white text-lg" />
+              </div>
+              <p className="text-xs font-medium text-ocean-deep">
+                {cached ? 'Saved' : 'Save'}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card hover interactive className="text-center cursor-pointer">
+            <CardContent className="py-4">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 mx-auto mb-2 flex items-center justify-center">
+                <Icon name="share" className="text-white text-lg" />
+              </div>
+              <p className="text-xs font-medium text-ocean-deep">Share</p>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Species Preview */}
         <Card>
@@ -264,13 +337,8 @@ export default function MPADetailPage() {
                               </p>
                             )}
                           </div>
-                          <div className="text-xl">
-                            {sp.class === 'Mammalia' && '🐋'}
-                            {sp.class === 'Reptilia' && '🐢'}
-                            {sp.class === 'Actinopterygii' && '🐟'}
-                            {sp.class === 'Elasmobranchii' && '🦈'}
-                            {sp.order === 'Scleractinia' && '🪸'}
-                            {!['Mammalia', 'Reptilia', 'Actinopterygii', 'Elasmobranchii'].includes(sp.class || '') && sp.order !== 'Scleractinia' && '🐠'}
+                          <div className="w-10 h-10 rounded-full bg-ocean-primary/10 flex items-center justify-center">
+                            <Icon name="fish" className="text-ocean-primary" />
                           </div>
                         </div>
                       </div>
@@ -280,20 +348,24 @@ export default function MPADetailPage() {
                 {species.length > 5 && (
                   <Link href="/species">
                     <Button fullWidth variant="secondary">
-                      View All {species.length} Species →
+                      <Icon name="arrow-right" size="sm" />
+                      View All {species.length} Species
                     </Button>
                   </Link>
                 )}
               </>
             ) : (
               <div className="text-center py-8">
-                <div className="text-6xl mb-4">🔍</div>
-                <p className="text-gray-600 mb-2">No species data available</p>
+                <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
+                  <Icon name="search" className="text-gray-400 text-3xl" />
+                </div>
+                <p className="text-gray-600 mb-2 font-medium">No species data available</p>
                 <p className="text-sm text-gray-500 mb-4">
                   This MPA may not have documented observations in the OBIS database yet
                 </p>
                 <Link href="/species">
                   <Button variant="secondary">
+                    <Icon name="fish" size="sm" />
                     Browse Species Database
                   </Button>
                 </Link>
