@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { MPA } from '@/types';
 import { fetchMPAById, formatArea } from '@/lib/mpa-service';
 import { cacheMPA, getCachedMPA, isMPACached } from '@/lib/offline-storage';
-import { Card, CardTitle, CardContent, Button, Badge, Icon, CircularProgress, getHealthColor } from '@/components/ui';
+import { Card, CardTitle, CardContent, CollapsibleCard, Button, Badge, Icon, CircularProgress, getHealthColor } from '@/components/ui';
 import { MPACardSkeleton } from '@/components/ui';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -301,49 +301,58 @@ export default function MPADetailPage() {
 
         {/* Description */}
         {mpa.description && (
-          <Card className="mb-6">
-            <CardTitle>About this MPA</CardTitle>
-            <CardContent>
-              <p className="text-gray-700 leading-relaxed">{mpa.description}</p>
-            </CardContent>
-          </Card>
+          <CollapsibleCard
+            title="About this MPA"
+            icon="info-circle"
+            iconColor="text-ocean-primary"
+            defaultOpen={true}
+            className="mb-4"
+          >
+            <p className="text-gray-700 leading-relaxed">{mpa.description}</p>
+          </CollapsibleCard>
         )}
 
         {/* Regulations */}
         {mpa.regulations && (
-          <Card className="mb-6">
-            <CardTitle>Protection & Regulations</CardTitle>
-            <CardContent>
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                <p className="text-gray-700 leading-relaxed">{mpa.regulations}</p>
-              </div>
-            </CardContent>
-          </Card>
+          <CollapsibleCard
+            title="Protection & Regulations"
+            icon="shield-check"
+            iconColor="text-blue-600"
+            defaultOpen={false}
+            className="mb-4"
+          >
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+              <p className="text-gray-700 leading-relaxed">{mpa.regulations}</p>
+            </div>
+          </CollapsibleCard>
         )}
 
         {/* Location Card */}
-        <Card className="mb-6">
-          <CardTitle>Location</CardTitle>
-          <CardContent>
-            <div className="space-y-2">
-              <div>
-                <span className="font-semibold text-gray-700">Center: </span>
-                <span className="text-gray-600">
-                  {mpa.center[0].toFixed(4)}°, {mpa.center[1].toFixed(4)}°
-                </span>
-              </div>
-              <div>
-                <span className="font-semibold text-gray-700">Country: </span>
-                <span className="text-gray-600">{mpa.country}</span>
-              </div>
+        <CollapsibleCard
+          title="Location"
+          icon="map-marker"
+          iconColor="text-green-600"
+          defaultOpen={false}
+          className="mb-4"
+        >
+          <div className="space-y-2">
+            <div>
+              <span className="font-semibold text-gray-700">Center: </span>
+              <span className="text-gray-600">
+                {mpa.center[0].toFixed(4)}°, {mpa.center[1].toFixed(4)}°
+              </span>
             </div>
-            <div className="mt-4">
-              <Link href="/">
-                <Button fullWidth>View on Map</Button>
-              </Link>
+            <div>
+              <span className="font-semibold text-gray-700">Country: </span>
+              <span className="text-gray-600">{mpa.country}</span>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="mt-4">
+            <Link href="/">
+              <Button fullWidth>View on Map</Button>
+            </Link>
+          </div>
+        </CollapsibleCard>
 
         {/* Quick Actions */}
         <motion.div
@@ -389,118 +398,133 @@ export default function MPADetailPage() {
         </motion.div>
 
         {/* Indicator Species */}
-        <Card className="mb-6">
-          <CardTitle>Indicator Species</CardTitle>
-          <CardContent>
-            {speciesLoading ? (
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-emerald-500 mb-4" />
-                <p className="text-gray-600">Loading indicator species...</p>
-              </div>
-            ) : indicatorSpecies.length > 0 ? (
-              <>
-                <p className="text-gray-600 mb-4">
-                  <span className="font-bold text-emerald-600">
-                    {indicatorSpecies.length}
-                  </span>{' '}
-                  indicator species are relevant to this ecosystem. These species serve as
-                  key markers for assessing ecosystem health.
-                </p>
+        <CollapsibleCard
+          title="Indicator Species"
+          icon="leaf"
+          iconColor="text-emerald-600"
+          defaultOpen={false}
+          badge={
+            indicatorSpecies.length > 0 && (
+              <Badge variant="healthy" size="sm">{indicatorSpecies.length} species</Badge>
+            )
+          }
+          className="mb-4"
+        >
+          {speciesLoading ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-emerald-500 mb-4" />
+              <p className="text-gray-600">Loading indicator species...</p>
+            </div>
+          ) : indicatorSpecies.length > 0 ? (
+            <>
+              <p className="text-gray-600 mb-4">
+                These species serve as key markers for assessing ecosystem health.
+              </p>
 
-                {/* Category breakdown */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {Object.entries(
-                    indicatorSpecies.reduce((acc, sp) => {
-                      acc[sp.category] = (acc[sp.category] || 0) + 1;
-                      return acc;
-                    }, {} as Record<string, number>)
-                  ).map(([category, count]) => {
-                    const info = CATEGORY_INFO[category as keyof typeof CATEGORY_INFO];
-                    return (
-                      <Badge
-                        key={category}
-                        variant="secondary"
-                        size="sm"
-                        className="px-2 py-1"
-                        style={{ backgroundColor: `${info.color}15`, color: info.color }}
-                      >
-                        {info.name}: {count}
-                      </Badge>
-                    );
-                  })}
-                </div>
-
-                <div className="space-y-2 mb-4">
-                  {indicatorSpecies.slice(0, showAllSpecies ? indicatorSpecies.length : 5).map((sp) => (
-                    <Link
-                      key={sp.id}
-                      href={`/indicator-species/${sp.id}`}
-                      className="block"
+              {/* Category breakdown */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {Object.entries(
+                  indicatorSpecies.reduce((acc, sp) => {
+                    acc[sp.category] = (acc[sp.category] || 0) + 1;
+                    return acc;
+                  }, {} as Record<string, number>)
+                ).map(([category, count]) => {
+                  const info = CATEGORY_INFO[category as keyof typeof CATEGORY_INFO];
+                  return (
+                    <Badge
+                      key={category}
+                      variant="secondary"
+                      size="sm"
+                      className="px-2 py-1"
+                      style={{ backgroundColor: `${info.color}15`, color: info.color }}
                     >
-                      <SpeciesCard species={sp} compact />
-                    </Link>
-                  ))}
-                </div>
-                {indicatorSpecies.length > 5 && (
-                  <Button
-                    fullWidth
-                    variant="secondary"
-                    onClick={() => setShowAllSpecies(!showAllSpecies)}
-                  >
-                    <Icon name={showAllSpecies ? "angle-up" : "angle-down"} size="sm" />
-                    {showAllSpecies ? 'Show Less' : `View All ${indicatorSpecies.length} Species`}
-                  </Button>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
-                  <Icon name="leaf" className="text-gray-400 text-3xl" />
-                </div>
-                <p className="text-gray-600 mb-2 font-medium">No indicator species identified</p>
-                <p className="text-sm text-gray-500 mb-4">
-                  No indicator species match this MPA's ecosystem type
-                </p>
-                <Link href="/indicator-species">
-                  <Button variant="secondary">
-                    <Icon name="leaf" size="sm" />
-                    Browse Indicator Species
-                  </Button>
-                </Link>
+                      {info.name}: {count}
+                    </Badge>
+                  );
+                })}
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              <div className="space-y-2 mb-4">
+                {indicatorSpecies.slice(0, showAllSpecies ? indicatorSpecies.length : 5).map((sp) => (
+                  <Link
+                    key={sp.id}
+                    href={`/indicator-species/${sp.id}`}
+                    className="block"
+                  >
+                    <SpeciesCard species={sp} compact />
+                  </Link>
+                ))}
+              </div>
+              {indicatorSpecies.length > 5 && (
+                <Button
+                  fullWidth
+                  variant="secondary"
+                  onClick={() => setShowAllSpecies(!showAllSpecies)}
+                >
+                  <Icon name={showAllSpecies ? "angle-up" : "angle-down"} size="sm" />
+                  {showAllSpecies ? 'Show Less' : `View All ${indicatorSpecies.length} Species`}
+                </Button>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
+                <Icon name="leaf" className="text-gray-400 text-3xl" />
+              </div>
+              <p className="text-gray-600 mb-2 font-medium">No indicator species identified</p>
+              <p className="text-sm text-gray-500 mb-4">
+                No indicator species match this MPA's ecosystem type
+              </p>
+              <Link href="/indicator-species">
+                <Button variant="secondary">
+                  <Icon name="leaf" size="sm" />
+                  Browse Indicator Species
+                </Button>
+              </Link>
+            </div>
+          )}
+        </CollapsibleCard>
 
         {/* Indicator Species Population Trends (10-Year Analysis) */}
-        {abundanceLoading ? (
-          <Card className="mb-6">
-            <CardTitle>Indicator Species Trends (10-Year Analysis)</CardTitle>
-            <CardContent>
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
-                <p className="text-gray-600 mb-2">Analyzing indicator species abundance data...</p>
-                <p className="text-sm text-gray-500 mb-4">
-                  Filtering for ecosystem-relevant indicator species
-                </p>
-                <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
-                  <motion.div
-                    className="bg-gradient-to-r from-ocean-primary to-ocean-accent h-2 rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${abundanceProgress}%` }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </div>
+        <CollapsibleCard
+          title="Population Trends"
+          icon="chart-line"
+          iconColor="text-purple-600"
+          defaultOpen={false}
+          badge={
+            abundanceSummary && abundanceSummary.speciesTrends.length > 0 && (
+              <Badge
+                variant={abundanceSummary.overallBiodiversity.trendDirection === 'increasing' ? 'healthy' :
+                         abundanceSummary.overallBiodiversity.trendDirection === 'stable' ? 'info' : 'warning'}
+                size="sm"
+              >
+                {abundanceSummary.overallBiodiversity.trendDirection}
+              </Badge>
+            )
+          }
+          className="mb-4"
+        >
+          {abundanceLoading ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
+              <p className="text-gray-600 mb-2">Analyzing indicator species abundance data...</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Filtering for ecosystem-relevant indicator species
+              </p>
+              <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
+                <motion.div
+                  className="bg-gradient-to-r from-ocean-primary to-ocean-accent h-2 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${abundanceProgress}%` }}
+                  transition={{ duration: 0.3 }}
+                />
               </div>
-            </CardContent>
-          </Card>
-        ) : abundanceSummary && abundanceSummary.speciesTrends.length > 0 ? (
-          <Card className="mb-6">
-            <CardTitle>Indicator Species Trends (10-Year Analysis)</CardTitle>
-            <CardContent>
+            </div>
+          ) : abundanceSummary && abundanceSummary.speciesTrends.length > 0 ? (
+            <>
               {/* Overall indicator species health summary */}
               <div className="mb-6 p-4 bg-gradient-to-br from-ocean-primary/10 to-ocean-accent/10 rounded-xl">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Indicator Species Health</p>
                     <p className="text-3xl font-bold text-ocean-deep">
@@ -566,54 +590,60 @@ export default function MPADetailPage() {
                   {showAllTrends ? 'Show Less' : `View All ${abundanceSummary.speciesTrends.length} Trends`}
                 </Button>
               )}
-            </CardContent>
-          </Card>
-        ) : abundanceSummary ? (
-          <Card className="mb-6">
-            <CardTitle>Indicator Species Trends (10-Year Analysis)</CardTitle>
-            <CardContent>
-              <div className="text-center py-8">
-                <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
-                  <Icon name="chart-line" className="text-gray-400 text-3xl" />
-                </div>
-                <p className="text-gray-600 mb-2 font-medium">No indicator species abundance data</p>
-                <p className="text-sm text-gray-500">
-                  No abundance records found for indicator species in this MPA
-                </p>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
+                <Icon name="chart-line" className="text-gray-400 text-3xl" />
               </div>
-            </CardContent>
-          </Card>
-        ) : null}
+              <p className="text-gray-600 mb-2 font-medium">No indicator species abundance data</p>
+              <p className="text-sm text-gray-500">
+                No abundance records found for indicator species in this MPA
+              </p>
+            </div>
+          )}
+        </CollapsibleCard>
 
         {/* Habitat Quality (Environmental Data) */}
-        {environmentalLoading ? (
-          <Card className="mb-6">
-            <CardTitle>Habitat Quality & Environmental Conditions</CardTitle>
-            <CardContent>
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
-                <p className="text-gray-600 mb-2">Analyzing environmental conditions...</p>
-                <p className="text-sm text-gray-500 mb-4">
-                  Temperature, salinity, pH, and more
-                </p>
-                <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
-                  <motion.div
-                    className="bg-gradient-to-r from-ocean-primary to-ocean-accent h-2 rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${environmentalProgress}%` }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </div>
+        <CollapsibleCard
+          title="Habitat Quality"
+          icon="flask"
+          iconColor="text-cyan-600"
+          defaultOpen={false}
+          badge={
+            environmentalSummary && environmentalSummary.parameters.length > 0 && (
+              <Badge
+                variant={environmentalSummary.habitatQualityScore >= 80 ? 'healthy' :
+                         environmentalSummary.habitatQualityScore >= 60 ? 'info' : 'warning'}
+                size="sm"
+              >
+                {environmentalSummary.habitatQualityScore}/100
+              </Badge>
+            )
+          }
+          className="mb-4"
+        >
+          {environmentalLoading ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
+              <p className="text-gray-600 mb-2">Analyzing environmental conditions...</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Temperature, salinity, pH, and more
+              </p>
+              <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
+                <motion.div
+                  className="bg-gradient-to-r from-ocean-primary to-ocean-accent h-2 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${environmentalProgress}%` }}
+                  transition={{ duration: 0.3 }}
+                />
               </div>
-            </CardContent>
-          </Card>
-        ) : environmentalSummary && environmentalSummary.parameters.length > 0 ? (
-          <Card className="mb-6">
-            <CardTitle>Habitat Quality & Environmental Conditions</CardTitle>
-            <CardContent>
+            </div>
+          ) : environmentalSummary && environmentalSummary.parameters.length > 0 ? (
+            <>
               {/* Habitat quality score */}
               <div className="mb-6 p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Habitat Quality Score</p>
                     <p className="text-3xl font-bold text-ocean-deep">
@@ -657,94 +687,90 @@ export default function MPADetailPage() {
 
               {/* Environmental dashboard */}
               <EnvironmentalDashboard summary={environmentalSummary} />
-            </CardContent>
-          </Card>
-        ) : environmentalSummary ? (
-          <Card className="mb-6">
-            <CardTitle>Habitat Quality & Environmental Conditions</CardTitle>
-            <CardContent>
-              <div className="text-center py-8">
-                <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
-                  <Icon name="flask" className="text-gray-400 text-3xl" />
-                </div>
-                <p className="text-gray-600 mb-2 font-medium">No environmental data available</p>
-                <p className="text-sm text-gray-500">
-                  This MPA may not have environmental measurements in the OBIS database yet
-                </p>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
+                <Icon name="flask" className="text-gray-400 text-3xl" />
               </div>
-            </CardContent>
-          </Card>
-        ) : null}
+              <p className="text-gray-600 mb-2 font-medium">No environmental data available</p>
+              <p className="text-sm text-gray-500">
+                This MPA may not have environmental measurements in the OBIS database yet
+              </p>
+            </div>
+          )}
+        </CollapsibleCard>
 
         {/* Satellite Tracking Data from Movebank */}
-        {trackingLoading ? (
-          <Card className="mb-6">
-            <CardTitle>Satellite Tracking Data</CardTitle>
-            <CardContent>
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
-                <p className="text-gray-600 mb-2">Searching Movebank for tracking data...</p>
-                <p className="text-sm text-gray-500 mb-4">
-                  Finding GPS/satellite telemetry studies near this MPA
-                </p>
-                <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
-                  <motion.div
-                    className="bg-gradient-to-r from-ocean-primary to-ocean-accent h-2 rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${trackingProgress}%` }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </div>
+        <CollapsibleCard
+          title="Satellite Tracking"
+          icon="satellite"
+          iconColor="text-indigo-600"
+          defaultOpen={false}
+          badge={
+            trackingSummary && trackingSummary.trackedIndividuals > 0 && (
+              <Badge variant="info" size="sm">
+                {trackingSummary.trackedIndividuals} tagged
+              </Badge>
+            )
+          }
+          className="mb-4"
+        >
+          {trackingLoading ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
+              <p className="text-gray-600 mb-2">Searching Movebank for tracking data...</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Finding GPS/satellite telemetry studies near this MPA
+              </p>
+              <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
+                <motion.div
+                  className="bg-gradient-to-r from-ocean-primary to-ocean-accent h-2 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${trackingProgress}%` }}
+                  transition={{ duration: 0.3 }}
+                />
               </div>
-            </CardContent>
-          </Card>
-        ) : trackingSummary && trackingSummary.trackedIndividuals > 0 ? (
-          <>
-            {/* Tracking Stats Card */}
-            <div className="mb-6">
-              <TrackingStatsCard summary={trackingSummary} />
             </div>
+          ) : trackingSummary && trackingSummary.trackedIndividuals > 0 ? (
+            <>
+              {/* Tracking Stats */}
+              <div className="mb-6">
+                <TrackingStatsCard summary={trackingSummary} />
+              </div>
 
-            {/* Tracking Heatmap */}
-            <Card className="mb-6">
-              <CardTitle>Movement Patterns & Spatial Distribution</CardTitle>
-              <CardContent>
-                {/* Data source attribution */}
-                <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
-                  <div className="flex items-start gap-2">
-                    <Icon name="satellite" size="sm" className="text-blue-600 mt-0.5" />
-                    <div className="text-sm text-gray-700">
-                      <p className="font-medium mb-1">Real Telemetry Data from Movebank</p>
-                      <p className="text-xs text-gray-600">
-                        GPS/satellite tracking data from tagged animals in scientific studies
-                      </p>
-                    </div>
+              {/* Data source attribution */}
+              <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+                <div className="flex items-start gap-2">
+                  <Icon name="satellite" size="sm" className="text-blue-600 mt-0.5" />
+                  <div className="text-sm text-gray-700">
+                    <p className="font-medium mb-1">Real Telemetry Data from Movebank</p>
+                    <p className="text-xs text-gray-600">
+                      GPS/satellite tracking data from tagged animals in scientific studies
+                    </p>
                   </div>
                 </div>
-                <TrackingHeatmap
-                  summary={trackingSummary}
-                  center={mpa.center}
-                  zoom={6}
-                />
-              </CardContent>
-            </Card>
-          </>
-        ) : (
-          <Card className="mb-6">
-            <CardTitle>Satellite Tracking Data</CardTitle>
-            <CardContent>
-              <div className="text-center py-8">
-                <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
-                  <Icon name="satellite" className="text-gray-400 text-3xl" />
-                </div>
-                <p className="text-gray-600 mb-2 font-medium">No satellite tracking data available</p>
-                <p className="text-sm text-gray-500">
-                  No GPS/satellite telemetry studies found for marine species in this area on Movebank
-                </p>
               </div>
-            </CardContent>
-          </Card>
-        )}
+
+              {/* Tracking Heatmap */}
+              <TrackingHeatmap
+                summary={trackingSummary}
+                center={mpa.center}
+                zoom={6}
+              />
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
+                <Icon name="satellite" className="text-gray-400 text-3xl" />
+              </div>
+              <p className="text-gray-600 mb-2 font-medium">No satellite tracking data available</p>
+              <p className="text-sm text-gray-500">
+                No GPS/satellite telemetry studies found for marine species in this area on Movebank
+              </p>
+            </div>
+          )}
+        </CollapsibleCard>
       </div>
     </main>
   );
