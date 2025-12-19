@@ -9,23 +9,12 @@ import {
   HeatmapPoint,
   MPATrackingSummary,
   TrackingCache,
-  TRACKING_BASIS_OF_RECORD,
   TRACKED_SPECIES_GROUPS
 } from '@/types/obis-tracking';
-import { openDB } from 'idb';
-import type { OceanPulseDB } from './offline-storage';
+import { initDB } from './offline-storage';
 
 const OBIS_API_BASE = 'https://api.obis.org/v3';
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
-const REQUEST_DELAY = 1000; // 1 second between requests
-
-// Helper to delay between requests
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Get IndexedDB instance
-async function getDB() {
-  return openDB<OceanPulseDB>('ocean-pulse-db', 4);
-}
 
 /**
  * Calculate distance between two points using Haversine formula
@@ -72,14 +61,67 @@ function distanceToMPA(lat: number, lon: number, boundary: [number, number][]): 
 }
 
 /**
- * Get all tracked species genera for filtering
+ * Create empty summary for cases with no data
  */
-function getTrackedGenera(): string[] {
-  return Object.values(TRACKED_SPECIES_GROUPS).flat();
+function createEmptySummary(mpaId: string): MPATrackingSummary {
+  return {
+    mpaId,
+    trackedIndividuals: 0,
+    species: [],
+    paths: [],
+    heatmapData: [],
+    speciesBreakdown: [],
+    dataQuality: {
+      trackingRecords: 0,
+      dateRange: { start: new Date().toISOString(), end: new Date().toISOString() },
+    },
+    lastUpdated: Date.now(),
+  };
+}
+
+/**
+ * Validate if WKT polygon has at least 4 unique points (minimum for valid polygon)
+ */
+function isValidWKT(wkt: string): boolean {
+  if (!wkt || !wkt.includes('POLYGON')) return false;
+
+  // Extract coordinates from WKT
+  const match = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/i);
+  if (!match) return false;
+
+  const coords = match[1].split(',').map(c => c.trim());
+  // A valid polygon needs at least 4 points (3 unique + closing point)
+  return coords.length >= 4;
+}
+
+/**
+ * Create bounding box WKT from MPA boundary points
+ * Calculates the bounding box from all boundary points
+ */
+function createBoundingBoxWKT(boundary: [number, number][]): string {
+  if (boundary.length < 2) return '';
+
+  // Calculate bounding box from all boundary points
+  let minLat = Infinity, maxLat = -Infinity;
+  let minLon = Infinity, maxLon = -Infinity;
+
+  for (const point of boundary) {
+    const lat = point[0];
+    const lon = point[1];
+    minLat = Math.min(minLat, lat);
+    maxLat = Math.max(maxLat, lat);
+    minLon = Math.min(minLon, lon);
+    maxLon = Math.max(maxLon, lon);
+  }
+
+  // WKT POLYGON format: lng lat pairs, 5 points to close the rectangle
+  // Order: SW -> SE -> NE -> NW -> SW (clockwise, closing back to start)
+  return `POLYGON((${minLon} ${minLat}, ${maxLon} ${minLat}, ${maxLon} ${maxLat}, ${minLon} ${maxLat}, ${minLon} ${minLat}))`;
 }
 
 /**
  * Fetch tracking data from OBIS API
+ * Uses a simplified approach: fetch key megafauna taxa in batches
  */
 export async function fetchTrackingData(
   mpaId: string,
@@ -88,64 +130,76 @@ export async function fetchTrackingData(
   onProgress?: (progress: number) => void
 ): Promise<MPATrackingSummary> {
   try {
-    console.log('[Tracking] Starting fetch for MPA:', mpaId);
-    console.log('[Tracking] WKT:', wkt);
-    console.log('[Tracking] Boundary points:', mpaBoundary.length);
-
     onProgress?.(10);
 
-    // Build query for tracking data
-    const trackedGenera = getTrackedGenera();
-    const basisOfRecord = TRACKING_BASIS_OF_RECORD.join(',');
+    // Use proper bounding box WKT if the provided one is invalid
+    // A valid WKT polygon needs at least 4 points
+    const queryWkt = isValidWKT(wkt) ? wkt : createBoundingBoxWKT(mpaBoundary);
 
-    console.log('[Tracking] Tracked genera:', trackedGenera);
-    console.log('[Tracking] Basis of record:', basisOfRecord);
+    if (!queryWkt) {
+      return createEmptySummary(mpaId);
+    }
 
-    // Fetch data in batches by species group
+    // Query key megafauna groups more efficiently (fewer, broader queries)
+    const megafaunaQueries = [
+      { name: 'Cetacea', taxon: 'Cetacea' },      // All whales & dolphins
+      { name: 'Testudines', taxon: 'Cheloniidae' }, // Sea turtles
+      { name: 'Sharks', taxon: 'Selachimorpha' },  // Sharks
+    ];
+
     const allRecords: any[] = [];
     let processed = 0;
-    const totalGroups = Object.keys(TRACKED_SPECIES_GROUPS).length;
 
     onProgress?.(20);
 
-    for (const [groupName, genera] of Object.entries(TRACKED_SPECIES_GROUPS)) {
-      console.log(`[Tracking] Fetching ${groupName}...`);
+    for (const query of megafaunaQueries) {
+      try {
+        const url = `${OBIS_API_BASE}/occurrence?geometry=${encodeURIComponent(queryWkt)}&taxonid=${query.taxon}&size=500`;
 
-      for (const genus of genera) {
-        try {
-          const url = `${OBIS_API_BASE}/occurrence?geometry=${encodeURIComponent(wkt)}&scientificname=${genus}&basisofrecord=${basisOfRecord}&size=1000`;
-
-          console.log(`[Tracking] Querying ${genus}:`, url);
-
-          const response = await fetch(url);
-          if (!response.ok) {
-            console.warn(`[Tracking] Failed to fetch tracking data for ${genus}:`, response.statusText);
-            continue;
-          }
-
+        const response = await fetch(url);
+        if (response.ok) {
           const data = await response.json();
-          console.log(`[Tracking] ${genus} returned ${data.results?.length || 0} records`);
-
           if (data.results && Array.isArray(data.results)) {
             allRecords.push(...data.results);
           }
-
-          await delay(REQUEST_DELAY);
-        } catch (error) {
-          console.warn(`[Tracking] Error fetching tracking data for ${genus}:`, error);
         }
+      } catch {
+        // Silently continue on error
       }
 
       processed++;
-      onProgress?.(20 + (processed / totalGroups) * 60);
+      onProgress?.(20 + (processed / megafaunaQueries.length) * 40);
     }
 
-    console.log(`[Tracking] Total records fetched: ${allRecords.length}`);
+    // Also try a general query for tagged animals (individualID present)
+    try {
+      const taggedUrl = `${OBIS_API_BASE}/occurrence?geometry=${encodeURIComponent(queryWkt)}&size=1000`;
+      const response = await fetch(taggedUrl);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.results && Array.isArray(data.results)) {
+          // Filter for records that have tracking-like data
+          const trackingRecords = data.results.filter((r: any) =>
+            r.individualID || r.organismID || r.catalogNumber
+          );
+          allRecords.push(...trackingRecords);
+        }
+      }
+    } catch {
+      // Silently continue
+    }
+
+    onProgress?.(70);
+
+    // Deduplicate by occurrence ID
+    const uniqueRecords = Array.from(
+      new Map(allRecords.map(r => [r.id || r.occurrenceID, r])).values()
+    );
 
     onProgress?.(80);
 
     // Process tracking points
-    const trackingPoints = processTrackingPoints(allRecords, mpaBoundary);
+    const trackingPoints = processTrackingPoints(uniqueRecords, mpaBoundary);
 
     onProgress?.(85);
 
@@ -424,7 +478,7 @@ function getCommonName(scientificName: string): string {
 
 export async function getCachedTrackingSummary(mpaId: string): Promise<MPATrackingSummary | null> {
   try {
-    const db = await getDB();
+    const db = await initDB();
     const cached = await db.get('tracking-cache', mpaId);
 
     if (!cached) return null;
@@ -444,7 +498,7 @@ export async function getCachedTrackingSummary(mpaId: string): Promise<MPATracki
 
 export async function cacheTrackingSummary(summary: MPATrackingSummary): Promise<void> {
   try {
-    const db = await getDB();
+    const db = await initDB();
     const cache: TrackingCache = {
       id: summary.mpaId,
       mpaId: summary.mpaId,

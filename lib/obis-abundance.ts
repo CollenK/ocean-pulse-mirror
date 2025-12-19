@@ -11,8 +11,7 @@ import {
   AbundanceCache,
 } from '@/types/obis-abundance';
 import { createBoundingBox, getCommonName } from './obis-client';
-import { openDB } from 'idb';
-import type { OceanPulseDB } from './offline-storage';
+import { initDB } from './offline-storage';
 
 const OBIS_API_BASE = 'https://api.obis.org/v3';
 const REQUEST_DELAY = 1000; // 1 second between requests
@@ -32,13 +31,6 @@ async function rateLimit() {
   }
 
   lastRequestTime = Date.now();
-}
-
-/**
- * Get database connection
- */
-async function getDB() {
-  return openDB<OceanPulseDB>('ocean-pulse-db', 4);
 }
 
 /**
@@ -77,9 +69,6 @@ export async function fetchAbundanceData(
   const startDate = getDateYearsAgo(10); // 10-year lookback
   const endDate = new Date().toISOString().split('T')[0];
 
-  console.log(`[Abundance] Fetching data for MPA ${mpaId}`);
-  console.log(`[Abundance] Date range: ${startDate} to ${endDate}`);
-  console.log(`[Abundance] Bounds:`, bounds);
 
   const params = new URLSearchParams({
     geometry: wkt,
@@ -99,7 +88,6 @@ export async function fetchAbundanceData(
     params.set('offset', offset.toString());
     const url = `${OBIS_API_BASE}/occurrence?${params}`;
 
-    console.log(`[Abundance] Fetching: ${url}`);
 
     try {
       const response = await fetch(url, {
@@ -116,7 +104,6 @@ export async function fetchAbundanceData(
       const data = await response.json();
       const results = data.results || [];
 
-      console.log(`[Abundance] Fetched ${results.length} records (offset: ${offset})`);
 
       // Filter for records with abundance data
       const withAbundance = results.filter((r: any) =>
@@ -142,8 +129,6 @@ export async function fetchAbundanceData(
 
       allRecords.push(...withAbundance);
 
-      console.log(`[Abundance] Found ${withAbundance.length} records with abundance data`);
-      console.log(`[Abundance] Total so far: ${allRecords.length}`);
 
       offset += results.length;
       hasMore = results.length === 1000; // Continue if we got max results
@@ -155,7 +140,6 @@ export async function fetchAbundanceData(
     }
   }
 
-  console.log(`[Abundance] Final count: ${allRecords.length} records with abundance data`);
   return allRecords;
 }
 
@@ -264,7 +248,6 @@ export function processSpeciesTrends(records: OBISAbundanceRecord[]): AbundanceT
     speciesGroups.get(scientificName)!.push(record);
   }
 
-  console.log(`[Abundance] Processing ${speciesGroups.size} unique species`);
 
   // Calculate trends for each species
   const trends: AbundanceTrend[] = [];
@@ -305,7 +288,6 @@ export function processSpeciesTrends(records: OBISAbundanceRecord[]): AbundanceT
     return b.dataPoints.length - a.dataPoints.length;
   });
 
-  console.log(`[Abundance] Generated ${trends.length} species trends`);
   return trends;
 }
 
@@ -363,23 +345,19 @@ export async function getCachedAbundanceSummary(
   mpaId: string
 ): Promise<MPAAbundanceSummary | null> {
   try {
-    const db = await getDB();
+    const db = await initDB();
     const cached = await db.get('abundance-cache', mpaId) as AbundanceCache | undefined;
 
     if (!cached) {
-      console.log(`[Abundance] No cache found for MPA ${mpaId}`);
       return null;
     }
 
     const now = Date.now();
     if (now > cached.expiresAt) {
-      // Expired - delete and return null
-      console.log(`[Abundance] Cache expired for MPA ${mpaId}`);
       await db.delete('abundance-cache', mpaId);
       return null;
     }
 
-    console.log(`[Abundance] Cache hit for MPA ${mpaId}`);
     return cached.summary;
   } catch (error) {
     console.error('[Abundance] Cache read error:', error);
@@ -395,7 +373,7 @@ export async function cacheAbundanceSummary(
   summary: MPAAbundanceSummary
 ): Promise<void> {
   try {
-    const db = await getDB();
+    const db = await initDB();
     const cache: AbundanceCache = {
       id: mpaId,
       mpaId,
@@ -405,7 +383,6 @@ export async function cacheAbundanceSummary(
     };
 
     await db.put('abundance-cache', cache);
-    console.log(`[Abundance] Cached summary for MPA ${mpaId}`);
   } catch (error) {
     console.error('[Abundance] Cache write error:', error);
   }

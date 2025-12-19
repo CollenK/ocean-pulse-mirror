@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { MPA } from '@/types';
 import { fetchMPAById, formatArea } from '@/lib/mpa-service';
 import { cacheMPA, getCachedMPA, isMPACached } from '@/lib/offline-storage';
@@ -16,8 +17,23 @@ import { AbundanceTrendCard } from '@/components/AbundanceTrendCard';
 import { useEnvironmentalData } from '@/hooks/useEnvironmentalData';
 import { EnvironmentalDashboard } from '@/components/EnvironmentalDashboard';
 import { useTrackingData } from '@/hooks/useTrackingData';
-import { TrackingHeatmap } from '@/components/TrackingHeatmap';
 import { TrackingStatsCard } from '@/components/TrackingStatsCard';
+
+// Dynamically import TrackingHeatmap with SSR disabled (Leaflet requires window)
+const TrackingHeatmap = dynamic(
+  () => import('@/components/TrackingHeatmap').then(mod => mod.TrackingHeatmap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[500px] rounded-xl bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-ocean-primary mb-2" />
+          <p className="text-sm text-gray-500">Loading map...</p>
+        </div>
+      </div>
+    )
+  }
+);
 
 export default function MPADetailPage() {
   const params = useParams();

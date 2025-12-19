@@ -46,7 +46,6 @@ export function useEnvironmentalData(
 
     async function loadEnvironmentalData() {
       try {
-        console.log('[useEnvironmentalData] Starting load for MPA:', mpaId);
         setLoading(true);
         setError(null);
         setProgress(10);
@@ -54,7 +53,6 @@ export function useEnvironmentalData(
         // Try cache first
         const cached = await getCachedEnvironmentalSummary(mpaId);
         if (cached && isMounted) {
-          console.log('[useEnvironmentalData] Using cached data');
           setSummary(cached);
           setLoading(false);
           setProgress(100);
@@ -64,17 +62,13 @@ export function useEnvironmentalData(
         setProgress(20);
 
         // Fetch from OBIS
-        console.log('[useEnvironmentalData] Fetching from OBIS API...');
         const measurements = await fetchEnvironmentalData(mpaId, center, radiusKm);
 
         if (!isMounted) return;
-
-        console.log(`[useEnvironmentalData] Fetched ${measurements.length} measurements`);
         setProgress(60);
 
         // Check if we have any data
         if (measurements.length === 0) {
-          console.log('[useEnvironmentalData] No environmental data available');
           const emptySummary: MPAEnvironmentalSummary = {
             mpaId,
             parameters: [],
@@ -95,7 +89,6 @@ export function useEnvironmentalData(
         }
 
         // Process measurements into parameters
-        console.log('[useEnvironmentalData] Processing environmental parameters...');
         const parameters = processEnvironmentalParameters(measurements);
 
         if (!isMounted) return;
@@ -103,7 +96,6 @@ export function useEnvironmentalData(
         setProgress(80);
 
         // Detect anomalies
-        console.log('[useEnvironmentalData] Detecting anomalies...');
         const allAnomalies: any[] = [];
         for (const param of parameters) {
           const paramAnomalies = detectAnomalies(param.dataPoints, param.threshold);
@@ -111,7 +103,6 @@ export function useEnvironmentalData(
         }
 
         // Calculate habitat quality score
-        console.log('[useEnvironmentalData] Calculating habitat quality score...');
         const habitatQualityScore = calculateHabitatQualityScore(parameters);
 
         const environmentalSummary: MPAEnvironmentalSummary = {
@@ -130,13 +121,11 @@ export function useEnvironmentalData(
         setProgress(90);
 
         // Cache the result
-        console.log('[useEnvironmentalData] Caching results...');
         await cacheEnvironmentalSummary(mpaId, environmentalSummary);
 
         if (isMounted) {
           setSummary(environmentalSummary);
           setProgress(100);
-          console.log('[useEnvironmentalData] Load complete');
         }
       } catch (err) {
         console.error('[useEnvironmentalData] Error:', err);

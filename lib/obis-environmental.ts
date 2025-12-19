@@ -15,8 +15,7 @@ import {
   ENVIRONMENTAL_THRESHOLDS,
 } from '@/types/obis-environmental';
 import { createBoundingBox } from './obis-client';
-import { openDB } from 'idb';
-import type { OceanPulseDB } from './offline-storage';
+import { initDB } from './offline-storage';
 
 const OBIS_API_BASE = 'https://api.obis.org/v3';
 const REQUEST_DELAY = 1000; // 1 second between requests
@@ -36,13 +35,6 @@ async function rateLimit() {
   }
 
   lastRequestTime = Date.now();
-}
-
-/**
- * Get database connection
- */
-async function getDB() {
-  return openDB<OceanPulseDB>('ocean-pulse-db', 4);
 }
 
 /**
@@ -108,8 +100,6 @@ export async function fetchEnvironmentalData(
   const startDate = getDateYearsAgo(10); // 10-year lookback
   const endDate = new Date().toISOString().split('T')[0];
 
-  console.log(`[Environmental] Fetching data for MPA ${mpaId}`);
-  console.log(`[Environmental] Date range: ${startDate} to ${endDate}`);
 
   const params = new URLSearchParams({
     geometry: wkt,
@@ -130,7 +120,6 @@ export async function fetchEnvironmentalData(
     params.set('offset', offset.toString());
     const url = `${OBIS_API_BASE}/occurrence?${params}`;
 
-    console.log(`[Environmental] Fetching: ${url}`);
 
     try {
       const response = await fetch(url, {
@@ -147,7 +136,6 @@ export async function fetchEnvironmentalData(
       const data = await response.json();
       const results = data.results || [];
 
-      console.log(`[Environmental] Fetched ${results.length} records (offset: ${offset})`);
 
       // Extract environmental data from occurrences
       for (const record of results) {
@@ -234,7 +222,6 @@ export async function fetchEnvironmentalData(
         }
       }
 
-      console.log(`[Environmental] Total measurements so far: ${allMeasurements.length}`);
 
       offset += results.length;
       hasMore = results.length === 1000;
@@ -246,7 +233,6 @@ export async function fetchEnvironmentalData(
     }
   }
 
-  console.log(`[Environmental] Final count: ${allMeasurements.length} measurements`);
   return allMeasurements;
 }
 
@@ -269,7 +255,6 @@ export function processEnvironmentalParameters(
     measurementsByType.get(type)!.push(measurement);
   }
 
-  console.log(`[Environmental] Processing ${measurementsByType.size} parameter types`);
 
   const parameters: EnvironmentalParameter[] = [];
 
@@ -325,7 +310,6 @@ export function processEnvironmentalParameters(
     });
   }
 
-  console.log(`[Environmental] Generated ${parameters.length} parameters`);
   return parameters;
 }
 
@@ -534,22 +518,19 @@ export async function getCachedEnvironmentalSummary(
   mpaId: string
 ): Promise<MPAEnvironmentalSummary | null> {
   try {
-    const db = await getDB();
+    const db = await initDB();
     const cached = await db.get('environmental-cache', mpaId) as EnvironmentalCache | undefined;
 
     if (!cached) {
-      console.log(`[Environmental] No cache found for MPA ${mpaId}`);
       return null;
     }
 
     const now = Date.now();
     if (now > cached.expiresAt) {
-      console.log(`[Environmental] Cache expired for MPA ${mpaId}`);
       await db.delete('environmental-cache', mpaId);
       return null;
     }
 
-    console.log(`[Environmental] Cache hit for MPA ${mpaId}`);
     return cached.summary;
   } catch (error) {
     console.error('[Environmental] Cache read error:', error);
@@ -565,7 +546,7 @@ export async function cacheEnvironmentalSummary(
   summary: MPAEnvironmentalSummary
 ): Promise<void> {
   try {
-    const db = await getDB();
+    const db = await initDB();
     const cache: EnvironmentalCache = {
       id: mpaId,
       mpaId,
@@ -575,7 +556,6 @@ export async function cacheEnvironmentalSummary(
     };
 
     await db.put('environmental-cache', cache);
-    console.log(`[Environmental] Cached summary for MPA ${mpaId}`);
   } catch (error) {
     console.error('[Environmental] Cache write error:', error);
   }

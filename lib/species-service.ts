@@ -12,17 +12,9 @@ import {
   OBISSpecies,
   OBISOccurrence,
 } from './obis-client';
-import { openDB } from 'idb';
-import type { OceanPulseDB } from './offline-storage';
+import { initDB } from './offline-storage';
 
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-/**
- * Get or initialize database
- */
-async function getDB() {
-  return openDB<OceanPulseDB>('ocean-pulse-db', 1);
-}
 
 /**
  * Search for species with caching
@@ -33,11 +25,8 @@ export async function searchSpeciesCached(
   useCache: boolean = true
 ): Promise<OBISSpecies[]> {
   if (!query || query.length < 2) {
-    console.log('[Species Search] Query too short:', query);
     return [];
   }
-
-  console.log('[Species Search] Searching for:', query);
 
   const cacheKey = `search:${query.toLowerCase()}`;
   const lowerQuery = query.toLowerCase();
@@ -45,11 +34,10 @@ export async function searchSpeciesCached(
   // Try cache first
   if (useCache) {
     try {
-      const db = await getDB();
+      const db = await initDB();
       const cached = await db.get('species-data', cacheKey);
 
       if (cached && Date.now() - cached.lastUpdated < CACHE_DURATION) {
-        console.log('[Species Search] Cache hit:', cached.data);
         return cached.data as OBISSpecies[];
       }
     } catch (error) {
@@ -59,25 +47,21 @@ export async function searchSpeciesCached(
 
   try {
     // Fetch from API
-    console.log('[Species Search] Fetching from API with query:', query);
     const apiResults = await searchSpecies({
       scientificname: query,
       limit: 20,
     });
 
-    console.log('[Species Search] API returned:', apiResults.length, 'results');
-
     if (apiResults && apiResults.length > 0) {
       // Cache API results
       try {
-        const db = await getDB();
+        const db = await initDB();
         await db.put('species-data', {
           id: cacheKey,
           data: apiResults,
           lastUpdated: Date.now(),
           cached: true,
         });
-        console.log('[Species Search] Results cached');
       } catch (error) {
         console.error('Cache write error:', error);
       }
@@ -85,8 +69,6 @@ export async function searchSpeciesCached(
       return apiResults;
     }
 
-    // No results from API
-    console.log('[Species Search] No results from API');
     return [];
   } catch (error) {
     console.error('[Species Search] API error:', error);
@@ -109,11 +91,10 @@ export async function getSpeciesForMPA(
   // Try cache first
   if (useCache) {
     try {
-      const db = await getDB();
+      const db = await initDB();
       const cached = await db.get('species-data', cacheKey);
 
       if (cached && Date.now() - cached.lastUpdated < CACHE_DURATION) {
-        console.log(`[Species] Cache hit for MPA ${mpaId}`);
         return cached.data as OBISSpecies[];
       }
     } catch (error) {
@@ -121,7 +102,6 @@ export async function getSpeciesForMPA(
     }
   }
 
-  console.log(`[Species] Fetching from API for MPA ${mpaId}...`);
 
   try {
     // Fetch from API
@@ -130,11 +110,10 @@ export async function getSpeciesForMPA(
 
     // If API returns results, cache and return them
     if (results && results.length > 0) {
-      console.log(`[Species] API returned ${results.length} species`);
 
       // Cache results
       try {
-        const db = await getDB();
+        const db = await initDB();
         await db.put('species-data', {
           id: cacheKey,
           data: results,
@@ -148,11 +127,8 @@ export async function getSpeciesForMPA(
       return results;
     }
 
-    // No results from API
-    console.log('[Species] No API results found');
     return [];
   } catch (error) {
-    // API error
     console.error('[Species] API error:', error);
     return [];
   }
@@ -170,7 +146,7 @@ export async function getSpeciesDetailsCached(
   // Try cache first
   if (useCache) {
     try {
-      const db = await getDB();
+      const db = await initDB();
       const cached = await db.get('species-data', cacheKey);
 
       if (cached && Date.now() - cached.lastUpdated < CACHE_DURATION) {
@@ -215,14 +191,12 @@ export async function getPopularSpecies(limit: number = 10): Promise<OBISSpecies
     const cached = await db.get('species-data', cacheKey);
 
     if (cached && Date.now() - cached.lastUpdated < CACHE_DURATION) {
-      console.log('[Species] Cache hit for popular species');
       return cached.data as OBISSpecies[];
     }
   } catch (error) {
     console.error('Cache read error:', error);
   }
 
-  console.log('[Species] Fetching popular species from API...');
 
   // List of well-known marine species to search for
   const popularSpeciesNames = [
@@ -261,11 +235,10 @@ export async function getPopularSpecies(limit: number = 10): Promise<OBISSpecies
     }
 
     if (results.length > 0) {
-      console.log(`[Species] API returned ${results.length} popular species`);
 
       // Cache results
       try {
-        const db = await getDB();
+        const db = await initDB();
         await db.put('species-data', {
           id: cacheKey,
           data: results,

@@ -114,20 +114,12 @@ function trackWithPlausible(event: AnalyticsEvent) {
  */
 export function trackEvent(event: AnalyticsEvent) {
   if (!isAnalyticsEnabled()) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Analytics]', event);
-    }
     return;
   }
 
   // Track with all available providers
   trackWithGoogleAnalytics(event);
   trackWithPlausible(event);
-
-  // Development logging
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[Analytics]', event);
-  }
 }
 
 /**
@@ -299,7 +291,4 @@ export function initializeAnalytics() {
     }
   });
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[Analytics] Initialized');
-  }
 }

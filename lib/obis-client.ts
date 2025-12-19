@@ -94,7 +94,6 @@ async function rateLimit() {
  */
 async function fetchTaxonComplete(name: string): Promise<OBISSpecies[]> {
   const url = `${OBIS_API_BASE}/taxon/complete/${encodeURIComponent(name)}`;
-  console.log('[OBIS] Fetching from:', url);
 
   const response = await fetch(url, {
     headers: {
@@ -102,7 +101,6 @@ async function fetchTaxonComplete(name: string): Promise<OBISSpecies[]> {
     },
   });
 
-  console.log('[OBIS] Response status:', response.status);
 
   if (!response.ok) {
     console.error(`OBIS API error: ${response.status}`);
@@ -149,7 +147,6 @@ export async function searchSpecies(
   // If searching by name, use the taxon/complete endpoint
   if (params.scientificname && !params.geometry) {
     const query = params.scientificname.toLowerCase().trim();
-    console.log('[OBIS] Searching for:', query);
 
     // First, try searching directly with the query
     let allResults: OBISSpecies[] = [];
@@ -157,21 +154,18 @@ export async function searchSpecies(
     try {
       const directResults = await fetchTaxonComplete(params.scientificname);
       allResults = allResults.concat(directResults);
-      console.log('[OBIS] Direct search returned:', directResults.length, 'results');
     } catch (error) {
       console.error('[OBIS] Direct search error:', error);
     }
 
     // If no results and query matches a common name, search for scientific names
     if (allResults.length === 0 && COMMON_NAME_MAPPINGS[query]) {
-      console.log('[OBIS] Found common name mapping for:', query);
       const scientificNames = COMMON_NAME_MAPPINGS[query];
 
       for (const scientificName of scientificNames) {
         try {
           const results = await fetchTaxonComplete(scientificName);
           allResults = allResults.concat(results);
-          console.log(`[OBIS] Search for ${scientificName} returned:`, results.length, 'results');
         } catch (error) {
           console.error(`[OBIS] Error searching for ${scientificName}:`, error);
         }
@@ -183,12 +177,10 @@ export async function searchSpecies(
       index === self.findIndex((r) => r.scientificName === result.scientificName)
     );
 
-    console.log('[OBIS] Total unique results:', uniqueResults.length);
     return uniqueResults.slice(0, params.limit || 20);
   }
 
   // For geometry-based searches, use getSpeciesInArea instead
-  console.log('[OBIS] Geometry-based search not supported in searchSpecies, use getSpeciesInArea instead');
   return [];
 }
 
@@ -246,8 +238,6 @@ export async function getSpeciesInArea(
   // Create WKT POLYGON from bounds
   const wkt = `POLYGON((${bounds.west} ${bounds.south}, ${bounds.east} ${bounds.south}, ${bounds.east} ${bounds.north}, ${bounds.west} ${bounds.north}, ${bounds.west} ${bounds.south}))`;
 
-  console.log('[OBIS] Searching area with bounds:', bounds);
-  console.log('[OBIS] WKT:', wkt);
 
   try {
     const response = await fetch(
@@ -259,7 +249,6 @@ export async function getSpeciesInArea(
       }
     );
 
-    console.log('[OBIS] Occurrence response status:', response.status);
 
     if (!response.ok) {
       console.error(`OBIS API error: ${response.status}`);
@@ -267,7 +256,6 @@ export async function getSpeciesInArea(
     }
 
     const data = await response.json();
-    console.log('[OBIS] Occurrence data:', data);
 
     // Extract unique species from occurrences
     const occurrences = data.results || [];
@@ -296,7 +284,6 @@ export async function getSpeciesInArea(
     }
 
     const species = Array.from(speciesMap.values());
-    console.log('[OBIS] Found', species.length, 'unique species in area');
     return species;
   } catch (error) {
     console.error('Error fetching species in area:', error);

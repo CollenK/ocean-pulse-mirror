@@ -45,7 +45,6 @@ export function useAbundanceData(
 
     async function loadAbundanceData() {
       try {
-        console.log('[useAbundanceData] Starting load for MPA:', mpaId);
         setLoading(true);
         setError(null);
         setProgress(10);
@@ -53,7 +52,6 @@ export function useAbundanceData(
         // Try cache first
         const cached = await getCachedAbundanceSummary(mpaId);
         if (cached && isMounted) {
-          console.log('[useAbundanceData] Using cached data');
           setSummary(cached);
           setLoading(false);
           setProgress(100);
@@ -63,17 +61,13 @@ export function useAbundanceData(
         setProgress(20);
 
         // Fetch from OBIS
-        console.log('[useAbundanceData] Fetching from OBIS API...');
         const records = await fetchAbundanceData(mpaId, center, radiusKm);
 
         if (!isMounted) return;
-
-        console.log(`[useAbundanceData] Fetched ${records.length} records`);
         setProgress(60);
 
         // Check if we have any data
         if (records.length === 0) {
-          console.log('[useAbundanceData] No abundance data available');
           const emptyummary: MPAAbundanceSummary = {
             mpaId,
             speciesTrends: [],
@@ -97,7 +91,6 @@ export function useAbundanceData(
         }
 
         // Process and aggregate data
-        console.log('[useAbundanceData] Processing species trends...');
         const speciesTrends = processSpeciesTrends(records);
 
         if (!isMounted) return;
@@ -105,7 +98,6 @@ export function useAbundanceData(
         setProgress(80);
 
         // Calculate overall biodiversity metrics
-        console.log('[useAbundanceData] Calculating biodiversity metrics...');
         const overallBiodiversity = calculateOverallBiodiversity(speciesTrends);
 
         const abundanceSummary: MPAAbundanceSummary = {
@@ -123,13 +115,11 @@ export function useAbundanceData(
         setProgress(90);
 
         // Cache the result
-        console.log('[useAbundanceData] Caching results...');
         await cacheAbundanceSummary(mpaId, abundanceSummary);
 
         if (isMounted) {
           setSummary(abundanceSummary);
           setProgress(100);
-          console.log('[useAbundanceData] Load complete');
         }
       } catch (err) {
         console.error('[useAbundanceData] Error:', err);
