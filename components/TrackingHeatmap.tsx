@@ -1,14 +1,14 @@
 /**
  * TrackingHeatmap Component
- * Displays marine megafauna tracking data as heatmap and paths on Leaflet map
+ * Displays marine megafauna tracking data as heatmap and paths using MapLibre GL
  */
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet.heat';
+import { useState, useMemo } from 'react';
+import Map, { Source, Layer, Marker, Popup } from 'react-map-gl/maplibre';
+import type { LayerProps } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import type { MPATrackingSummary, TrackingPath } from '@/types/obis-tracking';
 import { Icon } from './ui';
 
@@ -16,50 +16,6 @@ interface TrackingHeatmapProps {
   summary: MPATrackingSummary;
   center: [number, number];
   zoom?: number;
-}
-
-// Heatmap layer component
-function HeatmapLayer({ summary }: { summary: MPATrackingSummary }) {
-  const map = useMap();
-  const heatLayerRef = useRef<L.HeatLayer | null>(null);
-
-  useEffect(() => {
-    if (!map || !summary.heatmapData.length) return;
-
-    // Remove existing heat layer
-    if (heatLayerRef.current) {
-      map.removeLayer(heatLayerRef.current);
-    }
-
-    // Create heat layer data
-    const heatData: [number, number, number][] = summary.heatmapData.map(point => [
-      point.lat,
-      point.lng,
-      point.intensity,
-    ]);
-
-    // Create and add heat layer
-    heatLayerRef.current = L.heatLayer(heatData, {
-      radius: 25,
-      blur: 15,
-      maxZoom: 17,
-      max: 1.0,
-      gradient: {
-        0.0: 'blue',
-        0.5: 'lime',
-        0.7: 'yellow',
-        1.0: 'red',
-      },
-    }).addTo(map);
-
-    return () => {
-      if (heatLayerRef.current) {
-        map.removeLayer(heatLayerRef.current);
-      }
-    };
-  }, [map, summary]);
-
-  return null;
 }
 
 // Path colors for different species
@@ -74,15 +30,73 @@ const SPECIES_COLORS = [
   '#F97316', // orange
 ];
 
+// Heatmap layer style
+const heatmapLayer: LayerProps = {
+  id: 'heatmap-layer',
+  type: 'heatmap',
+  paint: {
+    'heatmap-weight': ['get', 'intensity'],
+    'heatmap-intensity': 1,
+    'heatmap-radius': 30,
+    'heatmap-opacity': 0.8,
+    'heatmap-color': [
+      'interpolate',
+      ['linear'],
+      ['heatmap-density'],
+      0, 'rgba(0, 0, 255, 0)',
+      0.2, 'rgba(0, 0, 255, 0.5)',
+      0.4, 'rgba(0, 255, 0, 0.6)',
+      0.6, 'rgba(255, 255, 0, 0.7)',
+      0.8, 'rgba(255, 128, 0, 0.8)',
+      1, 'rgba(255, 0, 0, 0.9)',
+    ],
+  },
+};
+
 export function TrackingHeatmap({ summary, center, zoom = 6 }: TrackingHeatmapProps) {
   const [viewMode, setViewMode] = useState<'heatmap' | 'paths'>('heatmap');
   const [selectedPath, setSelectedPath] = useState<TrackingPath | null>(null);
   const [speciesFilter, setSpeciesFilter] = useState<string[]>(summary.species);
+  const [popupInfo, setPopupInfo] = useState<{
+    lat: number;
+    lng: number;
+    path: TrackingPath;
+    isStart: boolean;
+  } | null>(null);
 
   // Filter paths by selected species
   const filteredPaths = summary.paths.filter(path =>
     speciesFilter.includes(path.scientificName)
   );
+
+  // Convert heatmap data to GeoJSON
+  const heatmapGeoJSON = useMemo(() => ({
+    type: 'FeatureCollection' as const,
+    features: summary.heatmapData.map((point, i) => ({
+      type: 'Feature' as const,
+      properties: { intensity: point.intensity },
+      geometry: {
+        type: 'Point' as const,
+        coordinates: [point.lng, point.lat],
+      },
+    })),
+  }), [summary.heatmapData]);
+
+  // Convert paths to GeoJSON for line layer
+  const pathsGeoJSON = useMemo(() => ({
+    type: 'FeatureCollection' as const,
+    features: filteredPaths.map((path, pathIndex) => ({
+      type: 'Feature' as const,
+      properties: {
+        color: SPECIES_COLORS[summary.species.indexOf(path.scientificName) % SPECIES_COLORS.length],
+        individualID: path.individualID,
+      },
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: path.points.map(p => [p.longitude, p.latitude]),
+      },
+    })),
+  }), [filteredPaths, summary.species]);
 
   const toggleSpecies = (species: string) => {
     setSpeciesFilter(prev =>
@@ -168,105 +182,124 @@ export function TrackingHeatmap({ summary, center, zoom = 6 }: TrackingHeatmapPr
 
       {/* Map */}
       <div className="h-[500px] rounded-xl overflow-hidden shadow-card border border-gray-200">
-        <MapContainer
-          center={center}
-          zoom={zoom}
-          style={{ height: '100%', width: '100%' }}
-          className="z-0"
+        <Map
+          initialViewState={{
+            latitude: center[0],
+            longitude: center[1],
+            zoom: zoom,
+          }}
+          style={{ width: '100%', height: '100%' }}
+          mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
         >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-
           {/* Heatmap View */}
           {viewMode === 'heatmap' && summary.heatmapData.length > 0 && (
-            <HeatmapLayer summary={summary} />
+            <Source id="heatmap-source" type="geojson" data={heatmapGeoJSON}>
+              <Layer {...heatmapLayer} />
+            </Source>
           )}
 
           {/* Paths View */}
-          {viewMode === 'paths' && filteredPaths.map((path, pathIndex) => {
-            const color = SPECIES_COLORS[
-              summary.species.indexOf(path.scientificName) % SPECIES_COLORS.length
-            ];
-
-            // Extract path coordinates
-            const pathCoords: [number, number][] = path.points.map(p => [
-              p.latitude,
-              p.longitude,
-            ]);
-
-            return (
-              <div key={path.individualID}>
-                {/* Path polyline */}
-                <Polyline
-                  positions={pathCoords}
-                  pathOptions={{
-                    color,
-                    weight: 3,
-                    opacity: 0.7,
-                  }}
-                  eventHandlers={{
-                    click: () => setSelectedPath(path),
+          {viewMode === 'paths' && (
+            <>
+              {/* Path lines */}
+              <Source id="paths-source" type="geojson" data={pathsGeoJSON}>
+                <Layer
+                  id="paths-layer"
+                  type="line"
+                  paint={{
+                    'line-color': ['get', 'color'],
+                    'line-width': 3,
+                    'line-opacity': 0.7,
                   }}
                 />
+              </Source>
 
-                {/* Start point */}
-                {path.points.length > 0 && (
-                  <CircleMarker
-                    center={[path.points[0].latitude, path.points[0].longitude]}
-                    radius={6}
-                    pathOptions={{
-                      color: 'white',
-                      fillColor: color,
-                      fillOpacity: 1,
-                      weight: 2,
-                    }}
-                  >
-                    <Popup>
-                      <div className="text-sm">
-                        <p className="font-semibold">{path.commonName}</p>
-                        <p className="text-xs text-gray-600">{path.scientificName}</p>
-                        <p className="text-xs mt-1">
-                          <span className="font-medium">Start:</span>{' '}
-                          {new Date(path.points[0].timestamp).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </Popup>
-                  </CircleMarker>
-                )}
+              {/* Start/End markers */}
+              {filteredPaths.map((path, pathIndex) => {
+                const color = SPECIES_COLORS[
+                  summary.species.indexOf(path.scientificName) % SPECIES_COLORS.length
+                ];
 
-                {/* End point */}
-                {path.points.length > 1 && (
-                  <CircleMarker
-                    center={[
-                      path.points[path.points.length - 1].latitude,
-                      path.points[path.points.length - 1].longitude,
-                    ]}
-                    radius={6}
-                    pathOptions={{
-                      color: 'white',
-                      fillColor: color,
-                      fillOpacity: 0.7,
-                      weight: 2,
-                    }}
-                  >
-                    <Popup>
-                      <div className="text-sm">
-                        <p className="font-semibold">{path.commonName}</p>
-                        <p className="text-xs text-gray-600">{path.scientificName}</p>
-                        <p className="text-xs mt-1">
-                          <span className="font-medium">End:</span>{' '}
-                          {new Date(path.points[path.points.length - 1].timestamp).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </Popup>
-                  </CircleMarker>
-                )}
-              </div>
-            );
-          })}
-        </MapContainer>
+                return (
+                  <div key={path.individualID}>
+                    {/* Start marker */}
+                    {path.points.length > 0 && (
+                      <Marker
+                        latitude={path.points[0].latitude}
+                        longitude={path.points[0].longitude}
+                        anchor="center"
+                        onClick={(e) => {
+                          e.originalEvent.stopPropagation();
+                          setPopupInfo({
+                            lat: path.points[0].latitude,
+                            lng: path.points[0].longitude,
+                            path,
+                            isStart: true,
+                          });
+                          setSelectedPath(path);
+                        }}
+                      >
+                        <div
+                          className="w-4 h-4 rounded-full border-2 border-white cursor-pointer shadow-md"
+                          style={{ backgroundColor: color }}
+                        />
+                      </Marker>
+                    )}
+
+                    {/* End marker */}
+                    {path.points.length > 1 && (
+                      <Marker
+                        latitude={path.points[path.points.length - 1].latitude}
+                        longitude={path.points[path.points.length - 1].longitude}
+                        anchor="center"
+                        onClick={(e) => {
+                          e.originalEvent.stopPropagation();
+                          setPopupInfo({
+                            lat: path.points[path.points.length - 1].latitude,
+                            lng: path.points[path.points.length - 1].longitude,
+                            path,
+                            isStart: false,
+                          });
+                          setSelectedPath(path);
+                        }}
+                      >
+                        <div
+                          className="w-4 h-4 rounded-full border-2 border-white cursor-pointer shadow-md opacity-70"
+                          style={{ backgroundColor: color }}
+                        />
+                      </Marker>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Popup */}
+              {popupInfo && (
+                <Popup
+                  latitude={popupInfo.lat}
+                  longitude={popupInfo.lng}
+                  anchor="bottom"
+                  onClose={() => setPopupInfo(null)}
+                  closeButton={true}
+                  closeOnClick={false}
+                >
+                  <div className="text-sm p-1">
+                    <p className="font-semibold">{popupInfo.path.commonName}</p>
+                    <p className="text-xs text-gray-600 italic">{popupInfo.path.scientificName}</p>
+                    <p className="text-xs mt-1">
+                      <span className="font-medium">{popupInfo.isStart ? 'Start' : 'End'}:</span>{' '}
+                      {new Date(
+                        popupInfo.isStart
+                          ? popupInfo.path.points[0].timestamp
+                          : popupInfo.path.points[popupInfo.path.points.length - 1].timestamp
+                      ).toLocaleDateString()}
+                    </p>
+                  </div>
+                </Popup>
+              )}
+            </>
+          )}
+        </Map>
       </div>
 
       {/* Selected Path Info */}
@@ -278,7 +311,10 @@ export function TrackingHeatmap({ summary, center, zoom = 6 }: TrackingHeatmapPr
               <p className="text-sm text-gray-600 italic">{selectedPath.scientificName}</p>
             </div>
             <button
-              onClick={() => setSelectedPath(null)}
+              onClick={() => {
+                setSelectedPath(null);
+                setPopupInfo(null);
+              }}
               className="text-gray-400 hover:text-gray-600"
             >
               <Icon name="xmark" size="sm" />

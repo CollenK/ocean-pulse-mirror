@@ -6,8 +6,6 @@ import dynamic from 'next/dynamic';
 import { MPA } from '@/types';
 import { fetchMPAById, formatArea } from '@/lib/mpa-service';
 import { cacheMPA, getCachedMPA, isMPACached } from '@/lib/offline-storage';
-import { getSpeciesForMPA } from '@/lib/species-service';
-import { OBISSpecies, getCommonName } from '@/lib/obis-client';
 import { Card, CardTitle, CardContent, Button, Badge, Icon, CircularProgress, getHealthColor } from '@/components/ui';
 import { MPACardSkeleton } from '@/components/ui';
 import { motion } from 'framer-motion';
@@ -18,6 +16,10 @@ import { useEnvironmentalData } from '@/hooks/useEnvironmentalData';
 import { EnvironmentalDashboard } from '@/components/EnvironmentalDashboard';
 import { useTrackingData } from '@/hooks/useTrackingData';
 import { TrackingStatsCard } from '@/components/TrackingStatsCard';
+import { SpeciesCard } from '@/components/SpeciesCard';
+import { getIndicatorSpeciesForMPA } from '@/lib/indicator-species';
+import type { IndicatorSpecies } from '@/types/indicator-species';
+import { CATEGORY_INFO } from '@/types/indicator-species';
 
 // Dynamically import TrackingHeatmap with SSR disabled (Leaflet requires window)
 const TrackingHeatmap = dynamic(
@@ -42,12 +44,12 @@ export default function MPADetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cached, setCached] = useState(false);
-  const [species, setSpecies] = useState<OBISSpecies[]>([]);
+  const [indicatorSpecies, setIndicatorSpecies] = useState<IndicatorSpecies[]>([]);
   const [speciesLoading, setSpeciesLoading] = useState(false);
   const [showAllSpecies, setShowAllSpecies] = useState(false);
   const [showAllTrends, setShowAllTrends] = useState(false);
 
-  // Load abundance data
+  // Load abundance data (filtered by indicator species)
   const {
     summary: abundanceSummary,
     loading: abundanceLoading,
@@ -55,7 +57,13 @@ export default function MPADetailPage() {
   } = useAbundanceData(
     mpa?.id || '',
     mpa?.center || [0, 0],
-    50
+    50,
+    mpa ? {
+      latitude: mpa.center[0],
+      longitude: mpa.center[1],
+      name: mpa.name,
+      description: mpa.description,
+    } : undefined
   );
 
   // Load environmental data
@@ -69,30 +77,32 @@ export default function MPADetailPage() {
     50
   );
 
-  // Generate WKT and boundary from MPA bounds (memoized to prevent infinite loops)
+  // Generate boundary from MPA bounds (memoized to prevent infinite loops)
   const mpaBoundary = useMemo(() => {
     return mpa?.bounds?.map(([lat, lng]) => [lat, lng] as [number, number]) || [];
   }, [mpa?.bounds]);
 
-  const mpaWKT = useMemo(() => {
-    if (!mpa?.bounds || mpa.bounds.length === 0) return '';
-    // Convert bounds to WKT POLYGON format
-    const coords = mpa.bounds.map(([lat, lng]) => `${lng} ${lat}`).join(', ');
-    // Close the polygon by repeating the first point
-    const firstPoint = mpa.bounds[0];
-    return `POLYGON((${coords}, ${firstPoint[1]} ${firstPoint[0]}))`;
-  }, [mpa?.bounds]);
+  // MPA info for indicator species filtering
+  const mpaInfo = useMemo(() => {
+    if (!mpa) return undefined;
+    return {
+      latitude: mpa.center[0],
+      longitude: mpa.center[1],
+      name: mpa.name,
+      description: mpa.description,
+    };
+  }, [mpa]);
 
-  // Load tracking data
+  // Load tracking data (filtered by indicator species relevant to this MPA's ecosystem)
   const {
     summary: trackingSummary,
     loading: trackingLoading,
     progress: trackingProgress
   } = useTrackingData({
     mpaId: mpa?.id || '',
-    wkt: mpaWKT,
     mpaBoundary: mpaBoundary,
-    enabled: !!mpa && mpaBoundary.length > 0
+    enabled: !!mpa && mpaBoundary.length > 0,
+    mpaInfo: mpaInfo,
   });
 
   useEffect(() => {
@@ -127,12 +137,17 @@ export default function MPADetailPage() {
       .finally(() => setLoading(false));
   }, [params.id]);
 
-  // Load species data for MPA
+  // Load indicator species for MPA
   useEffect(() => {
     if (mpa) {
       setSpeciesLoading(true);
-      getSpeciesForMPA(mpa.id, mpa.center, 50)
-        .then(setSpecies)
+      getIndicatorSpeciesForMPA({
+        latitude: mpa.center[0],
+        longitude: mpa.center[1],
+        name: mpa.name,
+        description: mpa.description,
+      })
+        .then(setIndicatorSpecies)
         .finally(() => setSpeciesLoading(false));
     }
   }, [mpa]);
@@ -373,75 +388,83 @@ export default function MPADetailPage() {
           </Card>
         </motion.div>
 
-        {/* Species Preview */}
+        {/* Indicator Species */}
         <Card className="mb-6">
-          <CardTitle>Species Diversity</CardTitle>
+          <CardTitle>Indicator Species</CardTitle>
           <CardContent>
             {speciesLoading ? (
               <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-cyan-500 mb-4" />
-                <p className="text-gray-600">Loading species data from OBIS...</p>
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-emerald-500 mb-4" />
+                <p className="text-gray-600">Loading indicator species...</p>
               </div>
-            ) : species.length > 0 ? (
+            ) : indicatorSpecies.length > 0 ? (
               <>
                 <p className="text-gray-600 mb-4">
-                  Found{' '}
-                  <span className="font-bold text-navy-600">
-                    {species.length}
+                  <span className="font-bold text-emerald-600">
+                    {indicatorSpecies.length}
                   </span>{' '}
-                  species documented in this area from the OBIS database.
+                  indicator species are relevant to this ecosystem. These species serve as
+                  key markers for assessing ecosystem health.
                 </p>
-                <div className="space-y-3 mb-4">
-                  {species.slice(0, showAllSpecies ? species.length : 5).map((sp) => (
+
+                {/* Category breakdown */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {Object.entries(
+                    indicatorSpecies.reduce((acc, sp) => {
+                      acc[sp.category] = (acc[sp.category] || 0) + 1;
+                      return acc;
+                    }, {} as Record<string, number>)
+                  ).map(([category, count]) => {
+                    const info = CATEGORY_INFO[category as keyof typeof CATEGORY_INFO];
+                    return (
+                      <Badge
+                        key={category}
+                        variant="secondary"
+                        size="sm"
+                        className="px-2 py-1"
+                        style={{ backgroundColor: `${info.color}15`, color: info.color }}
+                      >
+                        {info.name}: {count}
+                      </Badge>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-2 mb-4">
+                  {indicatorSpecies.slice(0, showAllSpecies ? indicatorSpecies.length : 5).map((sp) => (
                     <Link
                       key={sp.id}
-                      href={`/species/${encodeURIComponent(sp.scientificName)}`}
+                      href={`/indicator-species/${sp.id}`}
                       className="block"
                     >
-                      <div className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 hover:border-cyan-300">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <p className="font-semibold text-navy-600 text-sm">
-                              {getCommonName(sp)}
-                            </p>
-                            {sp.vernacularName && (
-                              <p className="text-xs text-gray-500 italic">
-                                {sp.scientificName}
-                              </p>
-                            )}
-                          </div>
-                          <div className="w-10 h-10 rounded-full bg-ocean-primary/10 flex items-center justify-center">
-                            <Icon name="fish" className="text-ocean-primary" />
-                          </div>
-                        </div>
-                      </div>
+                      <SpeciesCard species={sp} compact />
                     </Link>
                   ))}
                 </div>
-                {species.length > 5 && (
+                {indicatorSpecies.length > 5 && (
                   <Button
                     fullWidth
                     variant="secondary"
                     onClick={() => setShowAllSpecies(!showAllSpecies)}
                   >
                     <Icon name={showAllSpecies ? "angle-up" : "angle-down"} size="sm" />
-                    {showAllSpecies ? 'Show Less' : `View All ${species.length} Species`}
+                    {showAllSpecies ? 'Show Less' : `View All ${indicatorSpecies.length} Species`}
                   </Button>
                 )}
               </>
             ) : (
               <div className="text-center py-8">
                 <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
-                  <Icon name="search" className="text-gray-400 text-3xl" />
+                  <Icon name="leaf" className="text-gray-400 text-3xl" />
                 </div>
-                <p className="text-gray-600 mb-2 font-medium">No species data available</p>
+                <p className="text-gray-600 mb-2 font-medium">No indicator species identified</p>
                 <p className="text-sm text-gray-500 mb-4">
-                  This MPA may not have documented observations in the OBIS database yet
+                  No indicator species match this MPA's ecosystem type
                 </p>
-                <Link href="/species">
+                <Link href="/indicator-species">
                   <Button variant="secondary">
-                    <Icon name="fish" size="sm" />
-                    Browse Species Database
+                    <Icon name="leaf" size="sm" />
+                    Browse Indicator Species
                   </Button>
                 </Link>
               </div>
@@ -449,16 +472,16 @@ export default function MPADetailPage() {
           </CardContent>
         </Card>
 
-        {/* Population Trends (10-Year Analysis) */}
+        {/* Indicator Species Population Trends (10-Year Analysis) */}
         {abundanceLoading ? (
           <Card className="mb-6">
-            <CardTitle>Population Trends (10-Year Analysis)</CardTitle>
+            <CardTitle>Indicator Species Trends (10-Year Analysis)</CardTitle>
             <CardContent>
               <div className="text-center py-8">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
-                <p className="text-gray-600 mb-2">Analyzing 10 years of abundance data...</p>
+                <p className="text-gray-600 mb-2">Analyzing indicator species abundance data...</p>
                 <p className="text-sm text-gray-500 mb-4">
-                  This may take up to 30 seconds
+                  Filtering for ecosystem-relevant indicator species
                 </p>
                 <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
                   <motion.div
@@ -473,19 +496,19 @@ export default function MPADetailPage() {
           </Card>
         ) : abundanceSummary && abundanceSummary.speciesTrends.length > 0 ? (
           <Card className="mb-6">
-            <CardTitle>Population Trends (10-Year Analysis)</CardTitle>
+            <CardTitle>Indicator Species Trends (10-Year Analysis)</CardTitle>
             <CardContent>
-              {/* Overall biodiversity summary */}
+              {/* Overall indicator species health summary */}
               <div className="mb-6 p-4 bg-gradient-to-br from-ocean-primary/10 to-ocean-accent/10 rounded-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Overall Biodiversity Health</p>
+                    <p className="text-sm text-gray-600 mb-1">Indicator Species Health</p>
                     <p className="text-3xl font-bold text-ocean-deep">
                       {abundanceSummary.overallBiodiversity.healthScore}
                       <span className="text-lg text-gray-500">/100</span>
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Based on {abundanceSummary.speciesTrends.length} species trends
+                      Based on {abundanceSummary.speciesTrends.length} indicator species
                     </p>
                   </div>
                   <div className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
@@ -510,14 +533,14 @@ export default function MPADetailPage() {
               </div>
 
               {/* Data quality indicator */}
-              <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+              <div className="mb-4 p-3 bg-emerald-50 border-l-4 border-emerald-500 rounded">
                 <div className="flex items-start gap-2">
-                  <Icon name="info" size="sm" className="text-blue-600 mt-0.5" />
+                  <Icon name="leaf" size="sm" className="text-emerald-600 mt-0.5" />
                   <div className="text-sm text-gray-700">
-                    <p className="font-medium mb-1">Data Coverage</p>
+                    <p className="font-medium mb-1">Indicator Species Data</p>
                     <p className="text-xs text-gray-600">
                       {abundanceSummary.dataQuality.recordsWithAbundance.toLocaleString()} occurrence records
-                      with abundance data from the OBIS database
+                      for indicator species from OBIS (10-year analysis)
                     </p>
                   </div>
                 </div>
@@ -547,15 +570,15 @@ export default function MPADetailPage() {
           </Card>
         ) : abundanceSummary ? (
           <Card className="mb-6">
-            <CardTitle>Population Trends (10-Year Analysis)</CardTitle>
+            <CardTitle>Indicator Species Trends (10-Year Analysis)</CardTitle>
             <CardContent>
               <div className="text-center py-8">
                 <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
                   <Icon name="chart-line" className="text-gray-400 text-3xl" />
                 </div>
-                <p className="text-gray-600 mb-2 font-medium">No abundance data available</p>
+                <p className="text-gray-600 mb-2 font-medium">No indicator species abundance data</p>
                 <p className="text-sm text-gray-500">
-                  This MPA may not have historical abundance records in the OBIS database yet
+                  No abundance records found for indicator species in this MPA
                 </p>
               </div>
             </CardContent>
@@ -653,16 +676,16 @@ export default function MPADetailPage() {
           </Card>
         ) : null}
 
-        {/* Tracking & Movement Data */}
+        {/* Satellite Tracking Data from Movebank */}
         {trackingLoading ? (
           <Card className="mb-6">
-            <CardTitle>Marine Megafauna Tracking</CardTitle>
+            <CardTitle>Satellite Tracking Data</CardTitle>
             <CardContent>
               <div className="text-center py-8">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
-                <p className="text-gray-600 mb-2">Loading tracking data...</p>
+                <p className="text-gray-600 mb-2">Searching Movebank for tracking data...</p>
                 <p className="text-sm text-gray-500 mb-4">
-                  Analyzing satellite and acoustic tracking data
+                  Finding GPS/satellite telemetry studies near this MPA
                 </p>
                 <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
                   <motion.div
@@ -686,6 +709,18 @@ export default function MPADetailPage() {
             <Card className="mb-6">
               <CardTitle>Movement Patterns & Spatial Distribution</CardTitle>
               <CardContent>
+                {/* Data source attribution */}
+                <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+                  <div className="flex items-start gap-2">
+                    <Icon name="satellite" size="sm" className="text-blue-600 mt-0.5" />
+                    <div className="text-sm text-gray-700">
+                      <p className="font-medium mb-1">Real Telemetry Data from Movebank</p>
+                      <p className="text-xs text-gray-600">
+                        GPS/satellite tracking data from tagged animals in scientific studies
+                      </p>
+                    </div>
+                  </div>
+                </div>
                 <TrackingHeatmap
                   summary={trackingSummary}
                   center={mpa.center}
@@ -694,22 +729,22 @@ export default function MPADetailPage() {
               </CardContent>
             </Card>
           </>
-        ) : trackingSummary ? (
+        ) : (
           <Card className="mb-6">
-            <CardTitle>Marine Megafauna Tracking</CardTitle>
+            <CardTitle>Satellite Tracking Data</CardTitle>
             <CardContent>
               <div className="text-center py-8">
                 <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
-                  <Icon name="location-dot" className="text-gray-400 text-3xl" />
+                  <Icon name="satellite" className="text-gray-400 text-3xl" />
                 </div>
-                <p className="text-gray-600 mb-2 font-medium">No tracking data available</p>
+                <p className="text-gray-600 mb-2 font-medium">No satellite tracking data available</p>
                 <p className="text-sm text-gray-500">
-                  This MPA may not have satellite or acoustic tracking records in the OBIS database yet
+                  No GPS/satellite telemetry studies found for marine species in this area on Movebank
                 </p>
               </div>
             </CardContent>
           </Card>
-        ) : null}
+        )}
       </div>
     </main>
   );

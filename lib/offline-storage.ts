@@ -3,6 +3,7 @@ import { MPA, Species, Observation } from '@/types';
 import type { AbundanceCache, AbundanceRecord } from '@/types/obis-abundance';
 import type { EnvironmentalCache } from '@/types/obis-environmental';
 import type { TrackingCache } from '@/types/obis-tracking';
+import type { IndicatorSpecies, IndicatorSpeciesCache } from '@/types/indicator-species';
 
 /**
  * IndexedDB Schema for Ocean PULSE
@@ -69,10 +70,24 @@ export interface OceanPulseDB extends DBSchema {
     value: TrackingCache;
     indexes: { 'by-last-fetched': 'lastFetched' };
   };
+  'indicator-species': {
+    key: string; // species id
+    value: IndicatorSpecies;
+    indexes: {
+      'by-category': 'category';
+      'by-scientific-name': 'scientificName';
+      'by-taxon-id': 'obisTaxonId';
+    };
+  };
+  'indicator-cache': {
+    key: string; // mpaId
+    value: IndicatorSpeciesCache;
+    indexes: { 'by-last-fetched': 'lastFetched' };
+  };
 }
 
 const DB_NAME = 'ocean-pulse-db';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 /**
  * Initialize the IndexedDB database
@@ -131,6 +146,20 @@ export async function initDB(): Promise<IDBPDatabase<OceanPulseDB>> {
       if (!db.objectStoreNames.contains('tracking-cache')) {
         const trackingCacheStore = db.createObjectStore('tracking-cache', { keyPath: 'id' });
         trackingCacheStore.createIndex('by-last-fetched', 'lastFetched');
+      }
+
+      // Indicator species store (added in v5)
+      if (!db.objectStoreNames.contains('indicator-species')) {
+        const indicatorSpeciesStore = db.createObjectStore('indicator-species', { keyPath: 'id' });
+        indicatorSpeciesStore.createIndex('by-category', 'category');
+        indicatorSpeciesStore.createIndex('by-scientific-name', 'scientificName');
+        indicatorSpeciesStore.createIndex('by-taxon-id', 'obisTaxonId');
+      }
+
+      // Indicator species cache store (added in v5)
+      if (!db.objectStoreNames.contains('indicator-cache')) {
+        const indicatorCacheStore = db.createObjectStore('indicator-cache', { keyPath: 'id' });
+        indicatorCacheStore.createIndex('by-last-fetched', 'lastFetched');
       }
     },
   });

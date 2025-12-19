@@ -1,6 +1,6 @@
 /**
  * OBIS Abundance Data Service
- * Fetches and processes temporal abundance data for species in MPAs
+ * Fetches and processes temporal abundance data for indicator species in MPAs
  */
 
 import {
@@ -12,10 +12,13 @@ import {
 } from '@/types/obis-abundance';
 import { createBoundingBox, getCommonName } from './obis-client';
 import { initDB } from './offline-storage';
+import { getIndicatorSpeciesForMPA } from './indicator-species';
+import { INDICATOR_SPECIES, findByScientificName } from '@/data/indicator-species';
 
 const OBIS_API_BASE = 'https://api.obis.org/v3';
 const REQUEST_DELAY = 1000; // 1 second between requests
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+const CACHE_VERSION = 'v3-indicator-presence'; // Version to invalidate old caches
 
 // Simple rate limiter
 let lastRequestTime = 0;
@@ -54,14 +57,36 @@ function createWKTPolygon(bounds: {
   return `POLYGON((${bounds.west} ${bounds.south}, ${bounds.east} ${bounds.south}, ${bounds.east} ${bounds.north}, ${bounds.west} ${bounds.north}, ${bounds.west} ${bounds.south}))`;
 }
 
+// Set of indicator species scientific names for quick lookup
+const INDICATOR_SPECIES_NAMES = new Set(
+  INDICATOR_SPECIES.map(s => s.scientificName.toLowerCase())
+);
+
+// Map of taxon IDs to indicator species for lookup
+const INDICATOR_BY_TAXON = new Map(
+  INDICATOR_SPECIES.map(s => [s.obisTaxonId, s])
+);
+
+/**
+ * Check if a species is an indicator species
+ */
+function isIndicatorSpecies(scientificName: string, taxonId?: number): boolean {
+  if (taxonId && INDICATOR_BY_TAXON.has(taxonId)) {
+    return true;
+  }
+  return INDICATOR_SPECIES_NAMES.has(scientificName.toLowerCase());
+}
+
 /**
  * Fetch abundance data from OBIS for an MPA
  * Retrieves 10 years of occurrence records with abundance information
+ * Filters to only include indicator species relevant to this MPA's ecosystem
  */
 export async function fetchAbundanceData(
   mpaId: string,
   center: [number, number],
-  radiusKm: number = 50
+  radiusKm: number = 50,
+  mpaInfo?: { latitude: number; longitude: number; name: string; description?: string }
 ): Promise<OBISAbundanceRecord[]> {
   const bounds = createBoundingBox(center, radiusKm);
   const wkt = createWKTPolygon(bounds);
@@ -69,6 +94,19 @@ export async function fetchAbundanceData(
   const startDate = getDateYearsAgo(10); // 10-year lookback
   const endDate = new Date().toISOString().split('T')[0];
 
+  // Get indicator species relevant to this MPA
+  let relevantIndicatorSpecies = INDICATOR_SPECIES;
+  if (mpaInfo) {
+    try {
+      relevantIndicatorSpecies = await getIndicatorSpeciesForMPA(mpaInfo);
+    } catch (error) {
+      console.warn('[Abundance] Could not get MPA-specific indicators, using all:', error);
+    }
+  }
+
+  // Create lookup set for relevant indicator species
+  const relevantNames = new Set(relevantIndicatorSpecies.map(s => s.scientificName.toLowerCase()));
+  const relevantTaxonIds = new Set(relevantIndicatorSpecies.map(s => s.obisTaxonId));
 
   const params = new URLSearchParams({
     geometry: wkt,
@@ -88,7 +126,6 @@ export async function fetchAbundanceData(
     params.set('offset', offset.toString());
     const url = `${OBIS_API_BASE}/occurrence?${params}`;
 
-
     try {
       const response = await fetch(url, {
         headers: {
@@ -104,12 +141,21 @@ export async function fetchAbundanceData(
       const data = await response.json();
       const results = data.results || [];
 
+      // Filter for indicator species records
+      // Include all presence records - use occurrence count as proxy when abundance data unavailable
+      const indicatorRecords = results.filter((r: any) => {
+        // Check if this is an indicator species
+        const scientificName = (r.scientificName || r.scientificname || '').toLowerCase();
+        const taxonId = r.taxonID || r.aphiaID;
 
-      // Filter for records with abundance data
-      const withAbundance = results.filter((r: any) =>
-        r.occurrenceStatus === 'present' &&
-        (r.individualCount || r.organismQuantity)
-      ).map((r: any) => ({
+        const isIndicator = relevantNames.has(scientificName) ||
+          (taxonId && relevantTaxonIds.has(taxonId));
+
+        if (!isIndicator) return false;
+
+        // Include presence records (most OBIS data is presence-only)
+        return r.occurrenceStatus === 'present' || r.occurrenceStatus === undefined;
+      }).map((r: any) => ({
         occurrenceID: r.occurrenceID || r.id,
         scientificName: r.scientificName || r.scientificname,
         genus: r.genus,
@@ -118,7 +164,8 @@ export async function fetchAbundanceData(
         eventID: r.eventID,
         decimalLatitude: r.decimalLatitude,
         decimalLongitude: r.decimalLongitude,
-        individualCount: r.individualCount,
+        // Use individualCount if available, otherwise default to 1 for presence records
+        individualCount: r.individualCount || 1,
         organismQuantity: r.organismQuantity,
         organismQuantityType: r.organismQuantityType,
         occurrenceStatus: r.occurrenceStatus || 'present',
@@ -127,8 +174,7 @@ export async function fetchAbundanceData(
         institutionCode: r.institutionCode,
       }));
 
-      allRecords.push(...withAbundance);
-
+      allRecords.push(...indicatorRecords);
 
       offset += results.length;
       hasMore = results.length === 1000; // Continue if we got max results
@@ -339,6 +385,13 @@ export function calculateOverallBiodiversity(speciesTrends: AbundanceTrend[]): {
 }
 
 /**
+ * Generate versioned cache key to invalidate old caches
+ */
+function getCacheKey(mpaId: string): string {
+  return `${mpaId}-${CACHE_VERSION}`;
+}
+
+/**
  * Get cached abundance summary
  */
 export async function getCachedAbundanceSummary(
@@ -346,7 +399,8 @@ export async function getCachedAbundanceSummary(
 ): Promise<MPAAbundanceSummary | null> {
   try {
     const db = await initDB();
-    const cached = await db.get('abundance-cache', mpaId) as AbundanceCache | undefined;
+    const cacheKey = getCacheKey(mpaId);
+    const cached = await db.get('abundance-cache', cacheKey) as AbundanceCache | undefined;
 
     if (!cached) {
       return null;
@@ -354,7 +408,7 @@ export async function getCachedAbundanceSummary(
 
     const now = Date.now();
     if (now > cached.expiresAt) {
-      await db.delete('abundance-cache', mpaId);
+      await db.delete('abundance-cache', cacheKey);
       return null;
     }
 
@@ -374,8 +428,9 @@ export async function cacheAbundanceSummary(
 ): Promise<void> {
   try {
     const db = await initDB();
+    const cacheKey = getCacheKey(mpaId);
     const cache: AbundanceCache = {
-      id: mpaId,
+      id: cacheKey,
       mpaId,
       summary,
       lastFetched: Date.now(),

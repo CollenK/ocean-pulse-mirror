@@ -1,6 +1,6 @@
 /**
  * OBIS Tracking Data Service
- * Fetches and processes satellite tracking data for marine megafauna
+ * Fetches and processes satellite tracking data for indicator species only
  */
 
 import {
@@ -9,12 +9,25 @@ import {
   HeatmapPoint,
   MPATrackingSummary,
   TrackingCache,
-  TRACKED_SPECIES_GROUPS
 } from '@/types/obis-tracking';
 import { initDB } from './offline-storage';
+import { INDICATOR_SPECIES, findByScientificName } from '@/data/indicator-species';
+import { getIndicatorSpeciesForMPA, determineEcosystemTypes } from './indicator-species';
+import type { EcosystemType } from '@/types/indicator-species';
 
 const OBIS_API_BASE = 'https://api.obis.org/v3';
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+const CACHE_VERSION = 'v2-indicator'; // Version to invalidate old caches
+
+// Set of indicator species scientific names for fast lookup
+const INDICATOR_SPECIES_NAMES = new Set(
+  INDICATOR_SPECIES.map(s => s.scientificName.toLowerCase())
+);
+
+// Map of indicator species by OBIS taxon ID
+const INDICATOR_BY_TAXON = new Map(
+  INDICATOR_SPECIES.map(s => [s.obisTaxonId, s])
+);
 
 /**
  * Calculate distance between two points using Haversine formula
@@ -121,46 +134,62 @@ function createBoundingBoxWKT(boundary: [number, number][]): string {
 
 /**
  * Fetch tracking data from OBIS API
- * Uses a simplified approach: fetch key megafauna taxa in batches
+ * Queries only for indicator species relevant to the MPA's ecosystem
  */
 export async function fetchTrackingData(
   mpaId: string,
   wkt: string,
   mpaBoundary: [number, number][],
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  mpaInfo?: { latitude: number; longitude: number; name: string; description?: string }
 ): Promise<MPATrackingSummary> {
   try {
     onProgress?.(10);
 
     // Use proper bounding box WKT if the provided one is invalid
-    // A valid WKT polygon needs at least 4 points
     const queryWkt = isValidWKT(wkt) ? wkt : createBoundingBoxWKT(mpaBoundary);
 
     if (!queryWkt) {
       return createEmptySummary(mpaId);
     }
 
-    // Query key megafauna groups more efficiently (fewer, broader queries)
-    const megafaunaQueries = [
-      { name: 'Cetacea', taxon: 'Cetacea' },      // All whales & dolphins
-      { name: 'Testudines', taxon: 'Cheloniidae' }, // Sea turtles
-      { name: 'Sharks', taxon: 'Selachimorpha' },  // Sharks
-    ];
+    // Get indicator species relevant to this MPA's ecosystem
+    let relevantTaxonIds: number[];
+    if (mpaInfo) {
+      const relevantSpecies = await getIndicatorSpeciesForMPA(mpaInfo);
+      relevantTaxonIds = relevantSpecies.map(s => s.obisTaxonId);
+    } else {
+      // Fall back to all indicator species if no MPA info provided
+      relevantTaxonIds = INDICATOR_SPECIES.map(s => s.obisTaxonId);
+    }
 
     const allRecords: any[] = [];
-    let processed = 0;
-
     onProgress?.(20);
 
-    for (const query of megafaunaQueries) {
+    // Query in batches of taxon IDs to avoid URL length limits
+    const batchSize = 10;
+    const batches = [];
+    for (let i = 0; i < relevantTaxonIds.length; i += batchSize) {
+      batches.push(relevantTaxonIds.slice(i, i + batchSize));
+    }
+
+    let processed = 0;
+    for (const batch of batches) {
       try {
-        const url = `${OBIS_API_BASE}/occurrence?geometry=${encodeURIComponent(queryWkt)}&taxonid=${query.taxon}&size=500`;
+        // Query by taxon IDs (comma-separated)
+        const taxonParam = batch.join(',');
+        const url = `${OBIS_API_BASE}/occurrence?geometry=${encodeURIComponent(queryWkt)}&taxonid=${taxonParam}&size=500`;
 
         const response = await fetch(url);
         if (response.ok) {
           const data = await response.json();
           if (data.results && Array.isArray(data.results)) {
-            allRecords.push(...data.results);
+            // Since we queried by taxon IDs, all results are indicator species
+            // Just filter for records with valid coordinates
+            const validRecords = data.results.filter((r: any) =>
+              r.decimalLatitude && r.decimalLongitude && r.scientificName
+            );
+            allRecords.push(...validRecords);
           }
         }
       } catch {
@@ -168,25 +197,7 @@ export async function fetchTrackingData(
       }
 
       processed++;
-      onProgress?.(20 + (processed / megafaunaQueries.length) * 40);
-    }
-
-    // Also try a general query for tagged animals (individualID present)
-    try {
-      const taggedUrl = `${OBIS_API_BASE}/occurrence?geometry=${encodeURIComponent(queryWkt)}&size=1000`;
-      const response = await fetch(taggedUrl);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.results && Array.isArray(data.results)) {
-          // Filter for records that have tracking-like data
-          const trackingRecords = data.results.filter((r: any) =>
-            r.individualID || r.organismID || r.catalogNumber
-          );
-          allRecords.push(...trackingRecords);
-        }
-      }
-    } catch {
-      // Silently continue
+      onProgress?.(20 + (processed / batches.length) * 50);
     }
 
     onProgress?.(70);
@@ -453,10 +464,24 @@ function calculateDateRange(points: TrackingPoint[]) {
 }
 
 /**
- * Get common name for species (fallback)
+ * Check if a species is an indicator species
+ */
+function isIndicatorSpecies(scientificName: string): boolean {
+  if (!scientificName) return false;
+  return INDICATOR_SPECIES_NAMES.has(scientificName.toLowerCase());
+}
+
+/**
+ * Get common name for species from indicator species database
  */
 function getCommonName(scientificName: string): string {
-  const commonNames: Record<string, string> = {
+  const indicator = findByScientificName(scientificName);
+  if (indicator) {
+    return indicator.commonName;
+  }
+
+  // Fallback to genus-based mapping
+  const genusNames: Record<string, string> = {
     'Balaenoptera': 'Baleen Whale',
     'Megaptera': 'Humpback Whale',
     'Physeter': 'Sperm Whale',
@@ -469,23 +494,28 @@ function getCommonName(scientificName: string): string {
   };
 
   const genus = scientificName.split(' ')[0];
-  return commonNames[genus] || scientificName;
+  return genusNames[genus] || scientificName;
 }
 
 /**
  * Cache management functions
  */
 
+function getCacheKey(mpaId: string): string {
+  return `${mpaId}-${CACHE_VERSION}`;
+}
+
 export async function getCachedTrackingSummary(mpaId: string): Promise<MPATrackingSummary | null> {
   try {
     const db = await initDB();
-    const cached = await db.get('tracking-cache', mpaId);
+    const cacheKey = getCacheKey(mpaId);
+    const cached = await db.get('tracking-cache', cacheKey);
 
     if (!cached) return null;
 
     // Check if cache is expired
     if (Date.now() > cached.expiresAt) {
-      await db.delete('tracking-cache', mpaId);
+      await db.delete('tracking-cache', cacheKey);
       return null;
     }
 
@@ -499,8 +529,9 @@ export async function getCachedTrackingSummary(mpaId: string): Promise<MPATracki
 export async function cacheTrackingSummary(summary: MPATrackingSummary): Promise<void> {
   try {
     const db = await initDB();
+    const cacheKey = getCacheKey(summary.mpaId);
     const cache: TrackingCache = {
-      id: summary.mpaId,
+      id: cacheKey,
       mpaId: summary.mpaId,
       summary,
       lastFetched: Date.now(),

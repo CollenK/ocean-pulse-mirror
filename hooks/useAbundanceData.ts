@@ -1,9 +1,10 @@
 /**
  * Custom hook for loading and managing MPA abundance data
  * Handles caching, API fetching, and data processing
+ * Filters data to show only indicator species
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MPAAbundanceSummary } from '@/types/obis-abundance';
 import {
   getCachedAbundanceSummary,
@@ -12,6 +13,18 @@ import {
   processSpeciesTrends,
   calculateOverallBiodiversity,
 } from '@/lib/obis-abundance';
+
+export interface UseAbundanceDataOptions {
+  mpaId: string;
+  center: [number, number];
+  radiusKm?: number;
+  mpaInfo?: {
+    latitude: number;
+    longitude: number;
+    name: string;
+    description?: string;
+  };
+}
 
 export interface UseAbundanceDataResult {
   summary: MPAAbundanceSummary | null;
@@ -23,16 +36,19 @@ export interface UseAbundanceDataResult {
 
 /**
  * Hook to fetch and manage abundance data for an MPA
+ * Filters to show only indicator species relevant to the MPA's ecosystem
  *
  * @param mpaId - The unique identifier for the MPA
  * @param center - The center coordinates [lat, lng] of the MPA
  * @param radiusKm - The radius in kilometers to search around the center (default: 50)
+ * @param mpaInfo - Optional MPA info for indicator species filtering
  * @returns Object containing summary data, loading state, error, and progress
  */
 export function useAbundanceData(
   mpaId: string,
   center: [number, number],
-  radiusKm: number = 50
+  radiusKm: number = 50,
+  mpaInfo?: { latitude: number; longitude: number; name: string; description?: string }
 ): UseAbundanceDataResult {
   const [summary, setSummary] = useState<MPAAbundanceSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,8 +76,8 @@ export function useAbundanceData(
 
         setProgress(20);
 
-        // Fetch from OBIS
-        const records = await fetchAbundanceData(mpaId, center, radiusKm);
+        // Fetch from OBIS (filtered by indicator species)
+        const records = await fetchAbundanceData(mpaId, center, radiusKm, mpaInfo);
 
         if (!isMounted) return;
         setProgress(60);
@@ -138,7 +154,7 @@ export function useAbundanceData(
     return () => {
       isMounted = false;
     };
-  }, [mpaId, center[0], center[1], radiusKm, refetchTrigger]);
+  }, [mpaId, center[0], center[1], radiusKm, refetchTrigger, mpaInfo?.name]);
 
   const refetch = () => {
     setRefetchTrigger(prev => prev + 1);
