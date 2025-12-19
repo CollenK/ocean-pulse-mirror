@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { MPA } from '@/types';
 import { fetchMPAById, formatArea } from '@/lib/mpa-service';
@@ -11,6 +11,13 @@ import { Card, CardTitle, CardContent, Button, Badge, Icon, CircularProgress, ge
 import { MPACardSkeleton } from '@/components/ui';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useAbundanceData } from '@/hooks/useAbundanceData';
+import { AbundanceTrendCard } from '@/components/AbundanceTrendCard';
+import { useEnvironmentalData } from '@/hooks/useEnvironmentalData';
+import { EnvironmentalDashboard } from '@/components/EnvironmentalDashboard';
+import { useTrackingData } from '@/hooks/useTrackingData';
+import { TrackingHeatmap } from '@/components/TrackingHeatmap';
+import { TrackingStatsCard } from '@/components/TrackingStatsCard';
 
 export default function MPADetailPage() {
   const params = useParams();
@@ -22,6 +29,55 @@ export default function MPADetailPage() {
   const [species, setSpecies] = useState<OBISSpecies[]>([]);
   const [speciesLoading, setSpeciesLoading] = useState(false);
   const [showAllSpecies, setShowAllSpecies] = useState(false);
+  const [showAllTrends, setShowAllTrends] = useState(false);
+
+  // Load abundance data
+  const {
+    summary: abundanceSummary,
+    loading: abundanceLoading,
+    progress: abundanceProgress
+  } = useAbundanceData(
+    mpa?.id || '',
+    mpa?.center || [0, 0],
+    50
+  );
+
+  // Load environmental data
+  const {
+    summary: environmentalSummary,
+    loading: environmentalLoading,
+    progress: environmentalProgress
+  } = useEnvironmentalData(
+    mpa?.id || '',
+    mpa?.center || [0, 0],
+    50
+  );
+
+  // Generate WKT and boundary from MPA bounds (memoized to prevent infinite loops)
+  const mpaBoundary = useMemo(() => {
+    return mpa?.bounds?.map(([lat, lng]) => [lat, lng] as [number, number]) || [];
+  }, [mpa?.bounds]);
+
+  const mpaWKT = useMemo(() => {
+    if (!mpa?.bounds || mpa.bounds.length === 0) return '';
+    // Convert bounds to WKT POLYGON format
+    const coords = mpa.bounds.map(([lat, lng]) => `${lng} ${lat}`).join(', ');
+    // Close the polygon by repeating the first point
+    const firstPoint = mpa.bounds[0];
+    return `POLYGON((${coords}, ${firstPoint[1]} ${firstPoint[0]}))`;
+  }, [mpa?.bounds]);
+
+  // Load tracking data
+  const {
+    summary: trackingSummary,
+    loading: trackingLoading,
+    progress: trackingProgress
+  } = useTrackingData({
+    mpaId: mpa?.id || '',
+    wkt: mpaWKT,
+    mpaBoundary: mpaBoundary,
+    enabled: !!mpa && mpaBoundary.length > 0
+  });
 
   useEffect(() => {
     const id = params.id as string;
@@ -302,7 +358,7 @@ export default function MPADetailPage() {
         </motion.div>
 
         {/* Species Preview */}
-        <Card>
+        <Card className="mb-6">
           <CardTitle>Species Diversity</CardTitle>
           <CardContent>
             {speciesLoading ? (
@@ -376,6 +432,268 @@ export default function MPADetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Population Trends (10-Year Analysis) */}
+        {abundanceLoading ? (
+          <Card className="mb-6">
+            <CardTitle>Population Trends (10-Year Analysis)</CardTitle>
+            <CardContent>
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
+                <p className="text-gray-600 mb-2">Analyzing 10 years of abundance data...</p>
+                <p className="text-sm text-gray-500 mb-4">
+                  This may take up to 30 seconds
+                </p>
+                <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
+                  <motion.div
+                    className="bg-gradient-to-r from-ocean-primary to-ocean-accent h-2 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${abundanceProgress}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : abundanceSummary && abundanceSummary.speciesTrends.length > 0 ? (
+          <Card className="mb-6">
+            <CardTitle>Population Trends (10-Year Analysis)</CardTitle>
+            <CardContent>
+              {/* Overall biodiversity summary */}
+              <div className="mb-6 p-4 bg-gradient-to-br from-ocean-primary/10 to-ocean-accent/10 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Overall Biodiversity Health</p>
+                    <p className="text-3xl font-bold text-ocean-deep">
+                      {abundanceSummary.overallBiodiversity.healthScore}
+                      <span className="text-lg text-gray-500">/100</span>
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Based on {abundanceSummary.speciesTrends.length} species trends
+                    </p>
+                  </div>
+                  <div className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+                    abundanceSummary.overallBiodiversity.trendDirection === 'increasing'
+                      ? 'bg-green-100 text-green-700'
+                      : abundanceSummary.overallBiodiversity.trendDirection === 'stable'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    <Icon name={
+                      abundanceSummary.overallBiodiversity.trendDirection === 'increasing'
+                        ? 'arrow-trend-up'
+                        : abundanceSummary.overallBiodiversity.trendDirection === 'stable'
+                        ? 'minus'
+                        : 'arrow-trend-down'
+                    } />
+                    <span className="font-medium capitalize">
+                      {abundanceSummary.overallBiodiversity.trendDirection}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data quality indicator */}
+              <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+                <div className="flex items-start gap-2">
+                  <Icon name="info" size="sm" className="text-blue-600 mt-0.5" />
+                  <div className="text-sm text-gray-700">
+                    <p className="font-medium mb-1">Data Coverage</p>
+                    <p className="text-xs text-gray-600">
+                      {abundanceSummary.dataQuality.recordsWithAbundance.toLocaleString()} occurrence records
+                      with abundance data from the OBIS database
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trend cards grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {abundanceSummary.speciesTrends
+                  .slice(0, showAllTrends ? undefined : 6)
+                  .map((trend) => (
+                    <AbundanceTrendCard key={trend.scientificName} trend={trend} />
+                  ))}
+              </div>
+
+              {/* View all button */}
+              {abundanceSummary.speciesTrends.length > 6 && (
+                <Button
+                  fullWidth
+                  variant="secondary"
+                  onClick={() => setShowAllTrends(!showAllTrends)}
+                >
+                  <Icon name={showAllTrends ? "angle-up" : "angle-down"} size="sm" />
+                  {showAllTrends ? 'Show Less' : `View All ${abundanceSummary.speciesTrends.length} Trends`}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : abundanceSummary ? (
+          <Card className="mb-6">
+            <CardTitle>Population Trends (10-Year Analysis)</CardTitle>
+            <CardContent>
+              <div className="text-center py-8">
+                <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
+                  <Icon name="chart-line" className="text-gray-400 text-3xl" />
+                </div>
+                <p className="text-gray-600 mb-2 font-medium">No abundance data available</p>
+                <p className="text-sm text-gray-500">
+                  This MPA may not have historical abundance records in the OBIS database yet
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {/* Habitat Quality (Environmental Data) */}
+        {environmentalLoading ? (
+          <Card className="mb-6">
+            <CardTitle>Habitat Quality & Environmental Conditions</CardTitle>
+            <CardContent>
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
+                <p className="text-gray-600 mb-2">Analyzing environmental conditions...</p>
+                <p className="text-sm text-gray-500 mb-4">
+                  Temperature, salinity, pH, and more
+                </p>
+                <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
+                  <motion.div
+                    className="bg-gradient-to-r from-ocean-primary to-ocean-accent h-2 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${environmentalProgress}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : environmentalSummary && environmentalSummary.parameters.length > 0 ? (
+          <Card className="mb-6">
+            <CardTitle>Habitat Quality & Environmental Conditions</CardTitle>
+            <CardContent>
+              {/* Habitat quality score */}
+              <div className="mb-6 p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Habitat Quality Score</p>
+                    <p className="text-3xl font-bold text-ocean-deep">
+                      {environmentalSummary.habitatQualityScore}
+                      <span className="text-lg text-gray-500">/100</span>
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Based on {environmentalSummary.parameters.length} environmental parameters
+                    </p>
+                  </div>
+                  <div className="w-16 h-16 rounded-full bg-white shadow-md flex items-center justify-center">
+                    <Icon
+                      name={
+                        environmentalSummary.habitatQualityScore >= 80 ? 'circle-check' :
+                        environmentalSummary.habitatQualityScore >= 60 ? 'circle-exclamation' :
+                        'triangle-exclamation'
+                      }
+                      className={`text-3xl ${
+                        environmentalSummary.habitatQualityScore >= 80 ? 'text-green-500' :
+                        environmentalSummary.habitatQualityScore >= 60 ? 'text-yellow-500' :
+                        'text-orange-500'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Data quality indicator */}
+              <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+                <div className="flex items-start gap-2">
+                  <Icon name="info" size="sm" className="text-blue-600 mt-0.5" />
+                  <div className="text-sm text-gray-700">
+                    <p className="font-medium mb-1">Environmental Monitoring Data</p>
+                    <p className="text-xs text-gray-600">
+                      {environmentalSummary.dataQuality.measurementsCount.toLocaleString()} measurements
+                      across {environmentalSummary.parameters.length} parameters from OBIS-ENV-DATA
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Environmental dashboard */}
+              <EnvironmentalDashboard summary={environmentalSummary} />
+            </CardContent>
+          </Card>
+        ) : environmentalSummary ? (
+          <Card className="mb-6">
+            <CardTitle>Habitat Quality & Environmental Conditions</CardTitle>
+            <CardContent>
+              <div className="text-center py-8">
+                <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
+                  <Icon name="flask" className="text-gray-400 text-3xl" />
+                </div>
+                <p className="text-gray-600 mb-2 font-medium">No environmental data available</p>
+                <p className="text-sm text-gray-500">
+                  This MPA may not have environmental measurements in the OBIS database yet
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {/* Tracking & Movement Data */}
+        {trackingLoading ? (
+          <Card className="mb-6">
+            <CardTitle>Marine Megafauna Tracking</CardTitle>
+            <CardContent>
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
+                <p className="text-gray-600 mb-2">Loading tracking data...</p>
+                <p className="text-sm text-gray-500 mb-4">
+                  Analyzing satellite and acoustic tracking data
+                </p>
+                <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
+                  <motion.div
+                    className="bg-gradient-to-r from-ocean-primary to-ocean-accent h-2 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${trackingProgress}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : trackingSummary && trackingSummary.trackedIndividuals > 0 ? (
+          <>
+            {/* Tracking Stats Card */}
+            <div className="mb-6">
+              <TrackingStatsCard summary={trackingSummary} />
+            </div>
+
+            {/* Tracking Heatmap */}
+            <Card className="mb-6">
+              <CardTitle>Movement Patterns & Spatial Distribution</CardTitle>
+              <CardContent>
+                <TrackingHeatmap
+                  summary={trackingSummary}
+                  center={mpa.center}
+                  zoom={6}
+                />
+              </CardContent>
+            </Card>
+          </>
+        ) : trackingSummary ? (
+          <Card className="mb-6">
+            <CardTitle>Marine Megafauna Tracking</CardTitle>
+            <CardContent>
+              <div className="text-center py-8">
+                <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
+                  <Icon name="location-dot" className="text-gray-400 text-3xl" />
+                </div>
+                <p className="text-gray-600 mb-2 font-medium">No tracking data available</p>
+                <p className="text-sm text-gray-500">
+                  This MPA may not have satellite or acoustic tracking records in the OBIS database yet
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </main>
   );

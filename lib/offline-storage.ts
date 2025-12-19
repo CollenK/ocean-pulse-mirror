@@ -1,11 +1,14 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { MPA, Species, Observation } from '@/types';
+import type { AbundanceCache, AbundanceRecord } from '@/types/obis-abundance';
+import type { EnvironmentalCache } from '@/types/obis-environmental';
+import type { TrackingCache } from '@/types/obis-tracking';
 
 /**
  * IndexedDB Schema for Ocean PULSE
  * Stores MPAs, species data, and user observations for offline access
  */
-interface OceanPulseDB extends DBSchema {
+export interface OceanPulseDB extends DBSchema {
   'mpas': {
     key: string;
     value: MPA & {
@@ -15,14 +18,14 @@ interface OceanPulseDB extends DBSchema {
     indexes: { 'by-last-updated': 'lastUpdated' };
   };
   'species-data': {
-    key: string; // mpaId
+    key: string;
     value: {
-      mpaId: string;
-      species: Species[];
-      totalRecords: number;
+      id: string;
+      data: any;
       lastUpdated: number;
+      cached: boolean;
     };
-    indexes: { 'by-mpa': 'mpaId' };
+    indexes: { 'by-last-updated': 'lastUpdated' };
   };
   'observations': {
     key: number;
@@ -42,10 +45,34 @@ interface OceanPulseDB extends DBSchema {
       lastUpdated: number;
     };
   };
+  'abundance-cache': {
+    key: string; // mpaId
+    value: AbundanceCache;
+    indexes: { 'by-last-fetched': 'lastFetched' };
+  };
+  'abundance-records': {
+    key: string; // composite: `${mpaId}:${speciesName}:${date}`
+    value: AbundanceRecord;
+    indexes: {
+      'by-mpa': 'mpaId';
+      'by-species': 'scientificName';
+      'by-date': 'date';
+    };
+  };
+  'environmental-cache': {
+    key: string; // mpaId
+    value: EnvironmentalCache;
+    indexes: { 'by-last-fetched': 'lastFetched' };
+  };
+  'tracking-cache': {
+    key: string; // mpaId
+    value: TrackingCache;
+    indexes: { 'by-last-fetched': 'lastFetched' };
+  };
 }
 
 const DB_NAME = 'ocean-pulse-db';
-const DB_VERSION = 1;
+const DB_VERSION = 4;
 
 /**
  * Initialize the IndexedDB database
@@ -59,10 +86,10 @@ export async function initDB(): Promise<IDBPDatabase<OceanPulseDB>> {
         mpaStore.createIndex('by-last-updated', 'lastUpdated');
       }
 
-      // Species data store
+      // Species data store (updated schema in v2)
       if (!db.objectStoreNames.contains('species-data')) {
-        const speciesStore = db.createObjectStore('species-data', { keyPath: 'mpaId' });
-        speciesStore.createIndex('by-mpa', 'mpaId');
+        const speciesStore = db.createObjectStore('species-data', { keyPath: 'id' });
+        speciesStore.createIndex('by-last-updated', 'lastUpdated');
       }
 
       // User observations store
@@ -78,6 +105,32 @@ export async function initDB(): Promise<IDBPDatabase<OceanPulseDB>> {
       // Settings store
       if (!db.objectStoreNames.contains('settings')) {
         db.createObjectStore('settings', { keyPath: 'key' });
+      }
+
+      // Abundance cache store (added in v2)
+      if (!db.objectStoreNames.contains('abundance-cache')) {
+        const abundanceCacheStore = db.createObjectStore('abundance-cache', { keyPath: 'id' });
+        abundanceCacheStore.createIndex('by-last-fetched', 'lastFetched');
+      }
+
+      // Abundance records store (added in v2)
+      if (!db.objectStoreNames.contains('abundance-records')) {
+        const abundanceRecordsStore = db.createObjectStore('abundance-records', { keyPath: 'id' });
+        abundanceRecordsStore.createIndex('by-mpa', 'mpaId');
+        abundanceRecordsStore.createIndex('by-species', 'scientificName');
+        abundanceRecordsStore.createIndex('by-date', 'date');
+      }
+
+      // Environmental cache store (added in v3)
+      if (!db.objectStoreNames.contains('environmental-cache')) {
+        const environmentalCacheStore = db.createObjectStore('environmental-cache', { keyPath: 'id' });
+        environmentalCacheStore.createIndex('by-last-fetched', 'lastFetched');
+      }
+
+      // Tracking cache store (added in v4)
+      if (!db.objectStoreNames.contains('tracking-cache')) {
+        const trackingCacheStore = db.createObjectStore('tracking-cache', { keyPath: 'id' });
+        trackingCacheStore.createIndex('by-last-fetched', 'lastFetched');
       }
     },
   });
@@ -155,10 +208,10 @@ export async function cacheSpeciesData(
 ): Promise<void> {
   const db = await initDB();
   await db.put('species-data', {
-    mpaId,
-    species,
-    totalRecords,
+    id: `mpa:${mpaId}`,
+    data: { species, totalRecords },
     lastUpdated: Date.now(),
+    cached: true,
   });
 }
 
@@ -167,8 +220,8 @@ export async function cacheSpeciesData(
  */
 export async function getCachedSpecies(mpaId: string): Promise<Species[] | null> {
   const db = await initDB();
-  const data = await db.get('species-data', mpaId);
-  return data?.species || null;
+  const data = await db.get('species-data', `mpa:${mpaId}`);
+  return data?.data?.species || null;
 }
 
 // ==================== OBSERVATION OPERATIONS ====================
