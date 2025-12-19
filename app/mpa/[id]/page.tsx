@@ -15,6 +15,8 @@ import { AbundanceTrendCard } from '@/components/AbundanceTrendCard';
 import { useEnvironmentalData } from '@/hooks/useEnvironmentalData';
 import { EnvironmentalDashboard } from '@/components/EnvironmentalDashboard';
 import { useTrackingData } from '@/hooks/useTrackingData';
+import { useCompositeHealthScore } from '@/hooks/useCompositeHealthScore';
+import { HealthScoreModal } from '@/components/HealthScoreModal';
 import { TrackingStatsCard } from '@/components/TrackingStatsCard';
 import { SpeciesCard } from '@/components/SpeciesCard';
 import { getIndicatorSpeciesForMPA } from '@/lib/indicator-species';
@@ -48,6 +50,7 @@ export default function MPADetailPage() {
   const [speciesLoading, setSpeciesLoading] = useState(false);
   const [showAllSpecies, setShowAllSpecies] = useState(false);
   const [showAllTrends, setShowAllTrends] = useState(false);
+  const [showHealthModal, setShowHealthModal] = useState(false);
 
   // Load abundance data (filtered by indicator species)
   const {
@@ -103,6 +106,17 @@ export default function MPADetailPage() {
     mpaBoundary: mpaBoundary,
     enabled: !!mpa && mpaBoundary.length > 0,
     mpaInfo: mpaInfo,
+  });
+
+  // Calculate composite health score from real data
+  const compositeHealth = useCompositeHealthScore({
+    abundanceSummary,
+    abundanceLoading,
+    environmentalSummary,
+    environmentalLoading,
+    trackingSummary,
+    trackingLoading,
+    indicatorSpeciesCount: indicatorSpecies.length,
   });
 
   useEffect(() => {
@@ -223,12 +237,24 @@ export default function MPADetailPage() {
                 </div>
               </div>
 
-              <CircularProgress
-                value={mpa.healthScore}
-                size="xl"
-                color={getHealthColor(mpa.healthScore)}
-                className="flex-shrink-0"
-              />
+              {compositeHealth.loading && compositeHealth.score === 0 ? (
+                <div className="w-24 h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-white/30 border-t-white" />
+                </div>
+              ) : (
+                <div className="flex-shrink-0 relative">
+                  <CircularProgress
+                    value={compositeHealth.score}
+                    size="xl"
+                    color={getHealthColor(compositeHealth.score)}
+                  />
+                  {compositeHealth.confidence !== 'high' && (
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center" title={`${compositeHealth.dataSourcesAvailable}/3 data sources`}>
+                      <Icon name="info" className="text-white text-xs" />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -256,13 +282,34 @@ export default function MPADetailPage() {
           transition={{ delay: 0.2 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"
         >
-          <Card className="text-center shadow-lg hover:shadow-xl transition-shadow">
+          <Card
+            className="text-center shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
+            interactive
+            hover
+            onClick={() => !compositeHealth.loading && setShowHealthModal(true)}
+          >
             <CardContent className="py-4">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-ocean-primary to-ocean-accent mx-auto mb-2 flex items-center justify-center">
-                <Icon name="chart-line" className="text-white text-xl" />
+                <Icon name="heart-rate" className="text-white text-xl" />
               </div>
-              <p className="text-3xl font-bold text-ocean-deep">{mpa.healthScore}</p>
-              <p className="text-xs text-gray-500 mt-1">Health Score</p>
+              {compositeHealth.loading && compositeHealth.score === 0 ? (
+                <>
+                  <div className="h-9 flex items-center justify-center">
+                    <div className="animate-pulse bg-gray-200 rounded w-12 h-8" />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Calculating...</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-3xl font-bold text-ocean-deep">{compositeHealth.score}</p>
+                  <p className="text-xs text-gray-500 mt-1">Health Score</p>
+                  <p className="text-xs text-gray-400">{compositeHealth.dataSourcesAvailable}/3 sources</p>
+                  <p className="text-xs text-ocean-primary mt-1 flex items-center justify-center gap-1">
+                    <Icon name="info" size="sm" />
+                    Tap for details
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -488,7 +535,7 @@ export default function MPADetailPage() {
         {/* Indicator Species Population Trends (10-Year Analysis) */}
         <CollapsibleCard
           title="Population Trends"
-          icon="chart-line"
+          icon="arrow-trend-up"
           iconColor="text-purple-600"
           defaultOpen={false}
           badge={
@@ -772,6 +819,13 @@ export default function MPADetailPage() {
           )}
         </CollapsibleCard>
       </div>
+
+      {/* Health Score Modal */}
+      <HealthScoreModal
+        isOpen={showHealthModal}
+        onClose={() => setShowHealthModal(false)}
+        healthData={compositeHealth}
+      />
     </main>
   );
 }
