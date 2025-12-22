@@ -18,12 +18,24 @@ import { getIndicatorSpeciesForMPA } from './indicator-species';
 const MOVEBANK_API_BASE = 'https://www.movebank.org/movebank/service/public/json';
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 const CACHE_VERSION = 'v1-movebank'; // Version to invalidate old caches
-const REQUEST_DELAY = 1500; // 1.5 seconds between requests (rate limit: 1 concurrent per IP)
+const REQUEST_DELAY = 3000; // 3 seconds between requests (conservative rate limit)
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY = 5000; // 5 seconds base delay for retry
 
 // Rate limiter
 let lastRequestTime = 0;
+let isRateLimited = false;
+let rateLimitResetTime = 0;
 
 async function rateLimit() {
+  // If we're rate limited, wait until reset time
+  if (isRateLimited && Date.now() < rateLimitResetTime) {
+    const waitTime = rateLimitResetTime - Date.now();
+    console.log(`[Movebank] Rate limited, waiting ${Math.ceil(waitTime / 1000)}s...`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+    isRateLimited = false;
+  }
+
   const now = Date.now();
   const timeSinceLastRequest = now - lastRequestTime;
 
@@ -34,6 +46,51 @@ async function rateLimit() {
   }
 
   lastRequestTime = Date.now();
+}
+
+// In-memory cache for studies list (shared across all MPA requests)
+let studiesCache: { data: MovebankStudy[]; timestamp: number } | null = null;
+const STUDIES_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Fetch with retry logic for rate limiting
+ */
+async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Response | null> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    await rateLimit();
+
+    try {
+      const response = await fetch(url);
+
+      if (response.status === 429) {
+        // Rate limited - set flag and calculate backoff
+        isRateLimited = true;
+        const backoffDelay = RETRY_BASE_DELAY * Math.pow(2, attempt);
+        rateLimitResetTime = Date.now() + backoffDelay;
+
+        if (attempt < retries) {
+          console.log(`[Movebank] Rate limited (429), retry ${attempt + 1}/${retries} in ${backoffDelay / 1000}s...`);
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+          continue;
+        } else {
+          console.error('[Movebank] Rate limited after all retries');
+          return null;
+        }
+      }
+
+      return response;
+    } catch (error) {
+      if (attempt < retries) {
+        const backoffDelay = RETRY_BASE_DELAY * Math.pow(2, attempt);
+        console.log(`[Movebank] Request failed, retry ${attempt + 1}/${retries} in ${backoffDelay / 1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -178,19 +235,29 @@ async function fetchMarineStudiesNearMPA(
   center: [number, number],
   radiusKm: number = 500
 ): Promise<MovebankStudy[]> {
-  await rateLimit();
-
   try {
-    // Fetch all public studies - Movebank doesn't support geographic filtering directly
-    const url = `${MOVEBANK_API_BASE}?entity_type=study&i_can_see_data=true&license_type=CC_0,CC_BY,CC_BY_NC`;
+    let studies: MovebankStudy[];
 
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.error('[Movebank] Failed to fetch studies:', response.status);
-      return [];
+    // Check in-memory cache first
+    if (studiesCache && Date.now() - studiesCache.timestamp < STUDIES_CACHE_TTL) {
+      console.log('[Movebank] Using cached studies list');
+      studies = studiesCache.data;
+    } else {
+      // Fetch all public studies - Movebank doesn't support geographic filtering directly
+      const url = `${MOVEBANK_API_BASE}?entity_type=study&i_can_see_data=true&license_type=CC_0,CC_BY,CC_BY_NC`;
+
+      const response = await fetchWithRetry(url);
+      if (!response || !response.ok) {
+        console.error('[Movebank] Failed to fetch studies:', response?.status || 'no response');
+        return [];
+      }
+
+      studies = await response.json();
+
+      // Cache the studies list
+      studiesCache = { data: studies, timestamp: Date.now() };
+      console.log(`[Movebank] Cached ${studies.length} studies`);
     }
-
-    const studies: MovebankStudy[] = await response.json();
 
     // Filter studies:
     // 1. Within radius of MPA center
@@ -233,14 +300,12 @@ async function fetchMarineStudiesNearMPA(
  * Fetch individuals from a study
  */
 async function fetchStudyIndividuals(studyId: number): Promise<MovebankIndividual[]> {
-  await rateLimit();
-
   try {
     const url = `${MOVEBANK_API_BASE}?entity_type=individual&study_id=${studyId}`;
 
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.error('[Movebank] Failed to fetch individuals:', response.status);
+    const response = await fetchWithRetry(url);
+    if (!response || !response.ok) {
+      console.error('[Movebank] Failed to fetch individuals:', response?.status || 'no response');
       return [];
     }
 
@@ -259,21 +324,19 @@ async function fetchStudyEvents(
   studyId: number,
   maxEvents: number = 5000
 ): Promise<MovebankEvent[]> {
-  await rateLimit();
-
   try {
     // Get data from last 2 years
     const twoYearsAgo = Date.now() - (2 * 365 * 24 * 60 * 60 * 1000);
 
     const url = `${MOVEBANK_API_BASE}?entity_type=event&study_id=${studyId}&timestamp_start=${twoYearsAgo}&sensor_type_id=653&max_events_per_individual=${Math.floor(maxEvents / 10)}`;
 
-    const response = await fetch(url);
-    if (!response.ok) {
+    const response = await fetchWithRetry(url);
+    if (!response || !response.ok) {
       // May be rate limited or unauthorized
-      if (response.status === 403) {
+      if (response?.status === 403) {
         console.log(`[Movebank] Study ${studyId} requires authentication, skipping`);
       } else {
-        console.error('[Movebank] Failed to fetch events:', response.status);
+        console.error('[Movebank] Failed to fetch events:', response?.status || 'no response');
       }
       return [];
     }
@@ -567,7 +630,7 @@ export async function fetchMovebankTrackingData(
 
     // Step 2: Fetch events and individuals from each study
     const allPoints: TrackingPoint[] = [];
-    const studyCount = Math.min(studies.length, 5); // Limit to 5 studies to avoid rate limiting
+    const studyCount = Math.min(studies.length, 3); // Limit to 3 studies to avoid rate limiting
 
     for (let i = 0; i < studyCount; i++) {
       const study = studies[i];
