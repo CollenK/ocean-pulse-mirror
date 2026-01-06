@@ -57,7 +57,7 @@ export function UserMenu() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-colors"
+        className="flex items-center gap-2 p-1.5 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm transition-colors"
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
@@ -65,18 +65,18 @@ export function UserMenu() {
           <img
             src={avatarUrl}
             alt={displayName}
-            className="w-9 h-9 rounded-full object-cover border-2 border-ocean-primary/20"
+            className="w-9 h-9 rounded-full object-cover border-2 border-white/50"
           />
         ) : (
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-ocean-primary to-ocean-accent flex items-center justify-center">
-            <span className="text-white text-sm font-medium">
+          <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center">
+            <span className="text-ocean-primary text-sm font-medium">
               {displayName.charAt(0).toUpperCase()}
             </span>
           </div>
         )}
         <Icon
           name="angle-down"
-          className={`text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`text-white transition-transform ${isOpen ? 'rotate-180' : ''}`}
           size="sm"
         />
       </button>
