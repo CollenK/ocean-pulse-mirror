@@ -131,6 +131,18 @@ ALTER TABLE health_scores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE saved_mpas ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (for re-running migrations)
+DROP POLICY IF EXISTS "MPAs are viewable by everyone" ON mpas;
+DROP POLICY IF EXISTS "Environmental data is viewable by everyone" ON environmental_data;
+DROP POLICY IF EXISTS "Species data is viewable by everyone" ON species_data;
+DROP POLICY IF EXISTS "Health scores are viewable by everyone" ON health_scores;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can view their own saved MPAs" ON saved_mpas;
+DROP POLICY IF EXISTS "Users can save MPAs" ON saved_mpas;
+DROP POLICY IF EXISTS "Users can delete their own saved MPAs" ON saved_mpas;
+
 -- Public read access for data tables (anyone can view MPA data)
 CREATE POLICY "MPAs are viewable by everyone"
     ON mpas FOR SELECT USING (true);
@@ -212,6 +224,16 @@ CREATE TRIGGER update_mpas_updated_at
 -- ============================================
 -- Service Role Policies (for backend access)
 -- ============================================
+
+-- Drop existing service role policies if they exist
+DROP POLICY IF EXISTS "Service role can insert MPAs" ON mpas;
+DROP POLICY IF EXISTS "Service role can update MPAs" ON mpas;
+DROP POLICY IF EXISTS "Service role can insert environmental data" ON environmental_data;
+DROP POLICY IF EXISTS "Service role can update environmental data" ON environmental_data;
+DROP POLICY IF EXISTS "Service role can insert species data" ON species_data;
+DROP POLICY IF EXISTS "Service role can update species data" ON species_data;
+DROP POLICY IF EXISTS "Service role can insert health scores" ON health_scores;
+DROP POLICY IF EXISTS "Service role can update health scores" ON health_scores;
 
 -- Allow service role to insert/update data tables
 CREATE POLICY "Service role can insert MPAs"

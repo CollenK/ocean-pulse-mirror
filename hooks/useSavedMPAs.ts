@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { useCallback, useEffect, useState, useMemo } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
 import { useAuth } from './useAuth';
-import type { SavedMPA, MPA } from '@/types/supabase';
+import type { SavedMPA, MPA, Database } from '@/types/supabase';
 
 interface SavedMPAWithDetails extends SavedMPA {
   mpa?: MPA;
@@ -15,11 +15,17 @@ export function useSavedMPAs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const supabase = createClient();
+  // Create Supabase client safely
+  const supabase = useMemo(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) return null;
+    return createBrowserClient<Database>(url, key);
+  }, []);
 
   // Fetch saved MPAs
   const fetchSavedMPAs = useCallback(async () => {
-    if (!user) {
+    if (!user || !supabase) {
       setSavedMPAs([]);
       setLoading(false);
       return;
@@ -38,11 +44,19 @@ export function useSavedMPAs() {
         .eq('user_id', user.id)
         .order('saved_at', { ascending: false });
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        // Silently fail if table doesn't exist yet
+        if (fetchError.message?.includes('does not exist')) {
+          setSavedMPAs([]);
+          return;
+        }
+        throw fetchError;
+      }
 
       setSavedMPAs(data || []);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch saved MPAs'));
+      setSavedMPAs([]);
     } finally {
       setLoading(false);
     }
@@ -55,7 +69,7 @@ export function useSavedMPAs() {
 
   // Save an MPA
   const saveMPA = useCallback(async (mpaId: string, notes?: string) => {
-    if (!user) {
+    if (!user || !supabase) {
       return { error: new Error('Must be logged in to save MPAs') };
     }
 
@@ -80,7 +94,7 @@ export function useSavedMPAs() {
 
   // Unsave an MPA
   const unsaveMPA = useCallback(async (mpaId: string) => {
-    if (!user) {
+    if (!user || !supabase) {
       return { error: new Error('Must be logged in') };
     }
 
@@ -115,13 +129,18 @@ export function useSavedMPAs() {
     }
   }, [isSaved, saveMPA, unsaveMPA]);
 
+  // Get array of saved MPA IDs
+  const savedMPAIds = savedMPAs.map(s => s.mpa_id);
+
   return {
     savedMPAs,
+    savedMPAIds,
     loading,
     error,
     isAuthenticated,
     saveMPA,
     unsaveMPA,
+    removeSave: unsaveMPA, // Alias for removeSave
     isSaved,
     toggleSave,
     refetch: fetchSavedMPAs,
