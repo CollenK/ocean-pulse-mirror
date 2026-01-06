@@ -127,14 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, 'mounted:', mounted, 'user:', session?.user?.email);
-        if (!mounted) {
-          console.log('Not mounted, skipping state update');
-          return;
-        }
+        if (!mounted) return;
 
         if (session?.user) {
-          console.log('User found, updating state immediately');
           // Update state immediately with user, then fetch profile in background
           setState({
             user: session.user,
@@ -143,19 +138,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             loading: false,
             isAuthenticated: true,
           });
-          console.log('State updated with user');
 
           // Fetch profile in background (don't block auth)
           fetchProfile(session.user.id).then(profile => {
             if (mounted && profile) {
-              console.log('Profile loaded:', profile);
               setState(prev => ({ ...prev, profile }));
             }
-          }).catch(err => {
-            console.log('Profile fetch failed (ok if table doesnt exist):', err);
-          });
+          }).catch(() => {});
         } else {
-          console.log('No user, setting unauthenticated state');
           setState({
             user: null,
             profile: null,
