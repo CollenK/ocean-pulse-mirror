@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { MPA } from '@/types';
 import { fetchAllMPAs } from '@/lib/mpa-service';
 import { usePullToRefresh, PullToRefreshIndicator } from '@/hooks/usePullToRefresh';
+import { UserMenu } from '@/components/UserMenu';
 import dynamic from 'next/dynamic';
 
 // Dynamically import map component (no SSR due to Leaflet)
@@ -61,7 +62,12 @@ export default function Home() {
       />
       <main id="main-content" ref={containerRef} className="min-h-screen pb-32">
         {/* Hero Header with Gradient */}
-        <div className="bg-gradient-to-br from-ocean-primary via-ocean-accent to-cyan-400 pt-8 pb-12 px-6 mb-6">
+        <div className="bg-gradient-to-br from-ocean-primary via-ocean-accent to-cyan-400 pt-4 pb-12 px-6 mb-6">
+          {/* User Menu - Top Right */}
+          <div className="max-w-screen-xl mx-auto flex justify-end mb-4">
+            <UserMenu />
+          </div>
+
           <div className="max-w-screen-xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}

@@ -22,6 +22,8 @@ import { SpeciesCard } from '@/components/SpeciesCard';
 import { getIndicatorSpeciesForMPA } from '@/lib/indicator-species';
 import type { IndicatorSpecies } from '@/types/indicator-species';
 import { CATEGORY_INFO } from '@/types/indicator-species';
+import { UserMenu } from '@/components/UserMenu';
+import { SaveMPAButton } from '@/components/SaveMPAButton';
 
 // Dynamically import TrackingHeatmap with SSR disabled (Leaflet requires window)
 const TrackingHeatmap = dynamic(
@@ -205,21 +207,29 @@ export default function MPADetailPage() {
   return (
     <main className="min-h-screen pb-32">
       {/* Modern Hero Header with Gradient */}
-      <div className="bg-gradient-to-br from-ocean-primary via-ocean-accent to-cyan-400 pt-8 pb-16 px-6">
+      <div className="bg-gradient-to-br from-ocean-primary via-ocean-accent to-cyan-400 pt-4 pb-16 px-6">
         <div className="max-w-screen-xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
+          {/* Top bar with back button and user menu */}
+          <div className="flex items-center justify-between mb-4">
             <Button
               onClick={() => router.back()}
               variant="ghost"
               size="sm"
-              className="mb-6 text-white/90 hover:text-white hover:bg-white/20 border-none"
+              className="text-white/90 hover:text-white hover:bg-white/20 border-none"
             >
               <Icon name="angle-left" size="sm" />
               Back
             </Button>
+            <div className="flex items-center gap-2">
+              <SaveMPAButton mpaId={mpa.id} variant="icon" size="md" />
+              <UserMenu />
+            </div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
 
             <div className="flex items-start justify-between gap-6 mb-6">
               <div className="flex-1">
