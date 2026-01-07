@@ -36,6 +36,9 @@ build:
   image: node:20
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+  variables:
+    NEXT_PUBLIC_SUPABASE_URL: $SUPABASE_URL
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: $SUPABASE_ANON_KEY
   cache:
     key: ${CI_COMMIT_REF_SLUG}
     paths:
