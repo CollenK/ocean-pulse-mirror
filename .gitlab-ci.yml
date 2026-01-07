@@ -19,13 +19,14 @@ migrate:
       allow_failure: true
   variables:
     SUPABASE_CLI_VERSION: "2.1.1"
+    SUPABASE_DB_PASSWORD: $SUPABASE_DB_PWD
   before_script:
     - apt-get update && apt-get install -y curl
     - curl -fsSL "https://github.com/supabase/cli/releases/download/v${SUPABASE_CLI_VERSION}/supabase_${SUPABASE_CLI_VERSION}_linux_amd64.deb" -o supabase.deb
     - dpkg -i supabase.deb
   script:
-    - supabase link --project-ref $SUPABASE_PROJECT_ID
-    - supabase db push
+    - supabase link --project-ref $SUPABASE_PROJECT_ID --password $SUPABASE_DB_PASSWORD
+    - supabase db push --password $SUPABASE_DB_PASSWORD
   environment:
     name: production
 
