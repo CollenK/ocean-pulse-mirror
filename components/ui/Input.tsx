@@ -11,7 +11,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, helperText, fullWidth = false, className = '', ...props }, ref) => {
     const baseStyles =
-      'w-full px-4 py-3 text-base bg-white border-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed';
+      'w-full px-4 py-3 text-base text-gray-900 bg-white border-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed placeholder:text-gray-400';
 
     const errorStyles = error
       ? 'border-red-500 focus:ring-red-500'
@@ -64,7 +64,7 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ label, error, helperText, fullWidth = false, className = '', ...props }, ref) => {
     const baseStyles =
-      'w-full px-4 py-3 text-base bg-white border-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed resize-none';
+      'w-full px-4 py-3 text-base text-gray-900 bg-white border-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed resize-none placeholder:text-gray-400';
 
     const errorStyles = error
       ? 'border-red-500 focus:ring-red-500'

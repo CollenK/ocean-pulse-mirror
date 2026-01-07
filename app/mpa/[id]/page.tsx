@@ -426,49 +426,6 @@ export default function MPADetailPage() {
           </div>
         </CollapsibleCard>
 
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="grid grid-cols-3 gap-3 mb-6"
-        >
-          <Link href="/observe">
-            <Card hover interactive className="text-center">
-              <CardContent className="py-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 mx-auto mb-2 flex items-center justify-center">
-                  <Icon name="camera" className="text-white text-lg" />
-                </div>
-                <p className="text-xs font-medium text-ocean-deep">Add Photo</p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Card hover interactive className="text-center cursor-pointer" onClick={() => {}}>
-            <CardContent className="py-4">
-              <div className={`w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center ${
-                cached
-                  ? 'bg-gradient-to-br from-green-400 to-emerald-500'
-                  : 'bg-gradient-to-br from-gray-300 to-gray-400'
-              }`}>
-                <Icon name={cached ? 'check' : 'download'} className="text-white text-lg" />
-              </div>
-              <p className="text-xs font-medium text-ocean-deep">
-                {cached ? 'Saved' : 'Save'}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card hover interactive className="text-center cursor-pointer">
-            <CardContent className="py-4">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 mx-auto mb-2 flex items-center justify-center">
-                <Icon name="share" className="text-white text-lg" />
-              </div>
-              <p className="text-xs font-medium text-ocean-deep">Share</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
         {/* Live Reports Section */}
         <CollapsibleCard
           title="Live Reports"
