@@ -143,7 +143,7 @@ export default function Home() {
                           <h3 className="text-xl font-bold text-ocean-deep">{mpas[0].name}</h3>
                           <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
                             <Icon name="marker" size="sm" />
-                            {mpas[0].location}
+                            {mpas[0].country}
                           </p>
                         </div>
                       </div>
@@ -164,7 +164,7 @@ export default function Home() {
                         <div className="text-xs text-gray-500 mt-1">Species</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-ocean-deep">{mpas[0].year}</div>
+                        <div className="text-2xl font-bold text-ocean-deep">{mpas[0].establishedYear}</div>
                         <div className="text-xs text-gray-500 mt-1">Est.</div>
                       </div>
                     </div>
@@ -296,7 +296,7 @@ export default function Home() {
                             <div className="font-medium text-ocean-deep">{mpa.name}</div>
                             <div className="text-xs text-gray-500 flex items-center gap-1">
                               <Icon name="marker" size="sm" />
-                              {mpa.location}
+                              {mpa.country}
                             </div>
                           </div>
                         </div>

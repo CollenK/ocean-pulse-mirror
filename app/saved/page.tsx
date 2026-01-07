@@ -163,7 +163,7 @@ export default function SavedMPAsPage() {
                           <h3 className="font-semibold text-gray-900 truncate">{mpa.name}</h3>
                           <p className="text-sm text-gray-500 flex items-center gap-1">
                             <Icon name="marker" size="sm" />
-                            {mpa.location}
+                            {mpa.country}
                           </p>
                           <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
                             <span className="flex items-center gap-1">

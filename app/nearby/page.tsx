@@ -187,7 +187,7 @@ export default function NearbyPage() {
                           <Badge variant="info" size="sm">
                             {mpa.speciesCount} species
                           </Badge>
-                          <Badge variant="secondary" size="sm">
+                          <Badge variant="info" size="sm">
                             {mpa.protectionLevel}
                           </Badge>
                         </div>

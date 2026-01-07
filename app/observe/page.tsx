@@ -69,16 +69,19 @@ export default function ObservePage() {
 
     try {
       const observation = {
-        id: `obs-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         speciesName: data.speciesName,
         speciesType: data.speciesType,
         quantity: data.quantity,
-        mpaId: data.mpaId,
-        photo: data.photo,
+        mpaId: data.mpaId || '',
+        photo: data.photo as unknown as Blob,
         photoMetadata: data.photoMetadata,
-        notes: data.notes,
+        notes: data.notes || '',
         latitude: data.latitude,
         longitude: data.longitude,
+        location: {
+          lat: data.latitude || 0,
+          lng: data.longitude || 0,
+        },
         timestamp: Date.now(),
         synced: false,
       };

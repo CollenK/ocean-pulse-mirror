@@ -490,10 +490,9 @@ export default function MPADetailPage() {
                   return (
                     <Badge
                       key={category}
-                      variant="secondary"
+                      variant="info"
                       size="sm"
                       className="px-2 py-1"
-                      style={{ backgroundColor: `${info.color}15`, color: info.color }}
                     >
                       {info.name}: {count}
                     </Badge>

@@ -139,7 +139,7 @@ export default function SpeciesSearchPage() {
                   {results.length} {results.length === 1 ? 'species' : 'species'}
                 </Badge>
               </div>
-              <CardContent role="region" aria-live="polite" aria-atomic="false">
+              <CardContent>
                 {results.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
@@ -176,7 +176,7 @@ export default function SpeciesSearchPage() {
                                 )}
                                 <div className="flex flex-wrap gap-2">
                                   {species.taxonRank && (
-                                    <Badge variant="secondary" size="sm">
+                                    <Badge variant="info" size="sm">
                                       {species.taxonRank}
                                     </Badge>
                                   )}
@@ -186,7 +186,7 @@ export default function SpeciesSearchPage() {
                                     </Badge>
                                   )}
                                   {species.records !== undefined && species.records > 0 && (
-                                    <Badge variant="secondary" size="sm">
+                                    <Badge variant="info" size="sm">
                                       <Icon name="chart-simple" size="sm" />
                                       {species.records.toLocaleString()} records
                                     </Badge>
@@ -243,7 +243,7 @@ export default function SpeciesSearchPage() {
                               )}
                               <div className="flex flex-wrap gap-2">
                                 {species.taxonRank && (
-                                  <Badge variant="secondary" size="sm">
+                                  <Badge variant="info" size="sm">
                                     {species.taxonRank}
                                   </Badge>
                                 )}

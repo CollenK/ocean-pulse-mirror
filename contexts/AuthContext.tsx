@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
-import { createBrowserClient, type SupabaseClient } from '@supabase/ssr';
-import type { User, Session } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
+import type { User, Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Profile } from '@/types/supabase';
 
 interface AuthState {
@@ -174,7 +174,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabaseRef.current) return { error: new Error('Supabase not configured') };
     if (!state.user) return { error: new Error('Not authenticated') };
 
-    const { data, error } = await supabaseRef.current
+    const client = supabaseRef.current as any;
+    const { data, error } = await client
       .from('profiles')
       .update(updates)
       .eq('id', state.user.id)

@@ -8,13 +8,13 @@
 
 import { useMemo } from 'react';
 import type { MPAAbundanceSummary } from '@/types/obis-abundance';
-import type { EnvironmentalSummary } from '@/types/obis-environmental';
+import type { MPAEnvironmentalSummary } from '@/types/obis-environmental';
 import type { MPATrackingSummary } from '@/types/obis-tracking';
 
 interface CompositeHealthScoreInput {
   abundanceSummary: MPAAbundanceSummary | null;
   abundanceLoading: boolean;
-  environmentalSummary: EnvironmentalSummary | null;
+  environmentalSummary: MPAEnvironmentalSummary | null;
   environmentalLoading: boolean;
   trackingSummary: MPATrackingSummary | null;
   trackingLoading: boolean;
@@ -198,7 +198,7 @@ function calculatePopulationScore(summary: MPAAbundanceSummary | null): number {
 /**
  * Calculate habitat quality score from environmental data
  */
-function calculateHabitatScore(summary: EnvironmentalSummary | null): number {
+function calculateHabitatScore(summary: MPAEnvironmentalSummary | null): number {
   if (!summary || summary.parameters.length === 0) {
     return 0;
   }

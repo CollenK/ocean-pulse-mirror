@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { trackPermissionRequest } from '@/lib/analytics';
 
-export interface GeolocationPosition {
+export interface GeolocationData {
   latitude: number;
   longitude: number;
   accuracy: number;
@@ -24,7 +24,7 @@ interface UseGeolocationOptions {
 }
 
 interface UseGeolocationReturn {
-  position: GeolocationPosition | null;
+  position: GeolocationData | null;
   error: string | null;
   loading: boolean;
   permission: PermissionStatus;
@@ -42,7 +42,7 @@ export function useGeolocation(
     watch = false,
   } = options;
 
-  const [position, setPosition] = useState<GeolocationPosition | null>(null);
+  const [position, setPosition] = useState<GeolocationData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [permission, setPermission] = useState<PermissionStatus>('prompt');

@@ -59,7 +59,7 @@ function DataSourceCard({
               {name}
             </h4>
             <Badge
-              variant={available ? 'info' : 'secondary'}
+              variant={available ? 'info' : 'default'}
               size="sm"
             >
               {weight}% weight

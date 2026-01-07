@@ -5,14 +5,13 @@
 
 import type {
   IndicatorSpecies,
-  SpeciesCategory,
   IndicatorHealthScore,
   CategoryHealthScore,
   SpeciesPresence,
   ConservationStatus,
   SensitivityRating,
 } from '@/types/indicator-species';
-import { CATEGORY_INFO } from '@/types/indicator-species';
+import { CATEGORY_INFO, SpeciesCategory } from '@/types/indicator-species';
 import {
   getIndicatorSpeciesForMPA,
   getIndicatorSpeciesByCategory,

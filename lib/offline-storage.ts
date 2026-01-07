@@ -273,7 +273,7 @@ export async function saveObservation(observation: Omit<Observation, 'id'>): Pro
 export async function getUnsyncedObservations(): Promise<(Observation & { id: number })[]> {
   const db = await initDB();
   const index = db.transaction('observations').store.index('by-sync-status');
-  return await index.getAll(false);
+  return await index.getAll(false as any);
 }
 
 /**
@@ -294,7 +294,7 @@ export async function markObservationSynced(id: number): Promise<void> {
 export async function getObservationsForMPA(mpaId: string): Promise<(Observation & { id: number })[]> {
   const db = await initDB();
   const index = db.transaction('observations').store.index('by-mpa');
-  return await index.getAll(mpaId);
+  return await index.getAll(mpaId as any);
 }
 
 /**

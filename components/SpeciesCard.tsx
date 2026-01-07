@@ -66,13 +66,12 @@ export function SpeciesCard({
       >
         {/* Category Icon */}
         <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: `${categoryInfo.color}15` }}
+          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-ocean-primary/10"
         >
           <Icon
             name={CATEGORY_ICONS[species.category]}
             size="md"
-            style={{ color: categoryInfo.color }}
+            className="text-ocean-primary"
           />
         </div>
 
@@ -155,7 +154,7 @@ export function SpeciesCard({
           <Icon
             name="gauge"
             size="sm"
-            style={{ color: sensitivityInfo.color }}
+            className="text-ocean-primary"
           />
           <span className="text-xs text-gray-600">
             {sensitivityInfo.label}
@@ -202,7 +201,7 @@ export function SpeciesCard({
         <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex items-center justify-end">
           <span className="text-xs text-ocean-primary font-medium flex items-center gap-1">
             View Details
-            <Icon name="chevron-right" size="xs" />
+            <Icon name="chevron-right" size="sm" />
           </span>
         </div>
       )}

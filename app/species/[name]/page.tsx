@@ -105,7 +105,7 @@ export default function SpeciesDetailPage() {
               </Badge>
             )}
             {species.kingdom && (
-              <Badge variant="secondary" size="md">
+              <Badge variant="info" size="md">
                 {species.kingdom}
               </Badge>
             )}

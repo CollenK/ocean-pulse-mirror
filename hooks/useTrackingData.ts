@@ -100,6 +100,10 @@ export function useTrackingData({
         }
 
         // Fetch real tracking data from Movebank
+        if (!mpaInfo) {
+          setLoading(false);
+          return;
+        }
         const center: [number, number] = [mpaInfo.latitude, mpaInfo.longitude];
         const trackingSummary = await fetchMovebankTrackingData(
           mpaId,

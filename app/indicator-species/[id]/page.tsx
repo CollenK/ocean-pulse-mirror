@@ -206,7 +206,6 @@ export default function IndicatorSpeciesDetailPage() {
                         <p className="font-semibold text-gray-800">{statusInfo.name}</p>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-600">{statusInfo.description}</p>
                   </div>
 
                   {/* Sensitivity */}
@@ -248,7 +247,7 @@ export default function IndicatorSpeciesDetailPage() {
                       className="inline-flex items-center gap-1 text-sm text-ocean-primary hover:text-ocean-dark"
                     >
                       View on OBIS
-                      <Icon name="external-link" size="xs" />
+                      <Icon name="external-link" size="sm" />
                     </a>
                   </div>
 
@@ -294,19 +293,15 @@ export default function IndicatorSpeciesDetailPage() {
                         className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100"
                       >
                         <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center"
-                          style={{ backgroundColor: `${ecoInfo.color}20` }}
+                          className="w-10 h-10 rounded-lg flex items-center justify-center bg-ocean-primary/10"
                         >
                           <Icon
                             name={ECOSYSTEM_ICONS[eco]}
                             size="sm"
-                            style={{ color: ecoInfo.color }}
+                            className="text-ocean-primary"
                           />
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-800">{ecoInfo.name}</p>
-                          <p className="text-xs text-gray-500">{ecoInfo.description}</p>
-                        </div>
+                        <p className="font-medium text-gray-800">{ecoInfo.name}</p>
                       </div>
                     );
                   })}
@@ -423,7 +418,6 @@ export default function IndicatorSpeciesDetailPage() {
                     <p className="text-xs text-gray-500">IUCN Red List</p>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600">{statusInfo.description}</p>
               </CardContent>
             </Card>
 
@@ -445,13 +439,12 @@ export default function IndicatorSpeciesDetailPage() {
                           className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors group"
                         >
                           <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                            style={{ backgroundColor: `${categoryInfo.color}15` }}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-ocean-primary/10"
                           >
                             <Icon
                               name={CATEGORY_ICONS[related.category]}
                               size="sm"
-                              style={{ color: categoryInfo.color }}
+                              className="text-ocean-primary"
                             />
                           </div>
                           <div className="flex-1 min-w-0">

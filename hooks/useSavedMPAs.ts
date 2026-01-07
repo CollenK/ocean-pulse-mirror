@@ -74,7 +74,8 @@ export function useSavedMPAs() {
     }
 
     try {
-      const { error: saveError } = await supabase
+      const client = supabase as any;
+      const { error: saveError } = await client
         .from('saved_mpas')
         .insert({
           user_id: user.id,
@@ -99,7 +100,8 @@ export function useSavedMPAs() {
     }
 
     try {
-      const { error: deleteError } = await supabase
+      const client = supabase as any;
+      const { error: deleteError } = await client
         .from('saved_mpas')
         .delete()
         .eq('user_id', user.id)

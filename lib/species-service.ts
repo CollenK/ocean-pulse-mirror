@@ -163,7 +163,7 @@ export async function getSpeciesDetailsCached(
   if (result) {
     // Cache result
     try {
-      const db = await getDB();
+      const db = await initDB();
       await db.put('species-data', {
         id: cacheKey,
         data: result,
@@ -187,7 +187,7 @@ export async function getPopularSpecies(limit: number = 10): Promise<OBISSpecies
 
   // Try cache first
   try {
-    const db = await getDB();
+    const db = await initDB();
     const cached = await db.get('species-data', cacheKey);
 
     if (cached && Date.now() - cached.lastUpdated < CACHE_DURATION) {
@@ -286,7 +286,7 @@ export async function getNearbyOccurrences(
  */
 export async function clearSpeciesCache(): Promise<void> {
   try {
-    const db = await getDB();
+    const db = await initDB();
     const tx = db.transaction('species-data', 'readwrite');
     await tx.store.clear();
     await tx.done;
@@ -304,7 +304,7 @@ export async function getSpeciesCacheStats(): Promise<{
   newestEntry: number;
 }> {
   try {
-    const db = await getDB();
+    const db = await initDB();
     const all = await db.getAll('species-data');
 
     if (all.length === 0) {

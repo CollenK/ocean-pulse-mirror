@@ -307,7 +307,7 @@ export async function getIndicatorSpeciesMap(): Promise<Map<string, IndicatorSpe
 export async function getIndicatorByTaxonId(taxonId: number): Promise<IndicatorSpecies | undefined> {
   const db = await initDB();
   const index = db.transaction('indicator-species').store.index('by-taxon-id');
-  return await index.get(taxonId);
+  return await index.get(taxonId as any);
 }
 
 /**
