@@ -5,7 +5,7 @@
  */
 
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
-import { saveObservation as saveObservationLocal, getObservationsForMPA as getLocalObservations } from '@/lib/offline-storage';
+import { saveObservation as saveObservationLocal, getObservationsForMPA as getLocalObservations, deleteLocalObservation } from '@/lib/offline-storage';
 import type { ReportType } from '@/types';
 import type { Json, ObservationRow } from '@/types/supabase';
 
@@ -227,6 +227,14 @@ export async function getObservationCountForMPA(mpaId: string): Promise<number> 
   return count;
 }
 
+/**
+ * Check if a string is a valid UUID format
+ */
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
 export interface UpdateObservationInput {
   id: string;
   userId: string;
@@ -241,8 +249,14 @@ export interface UpdateObservationInput {
 /**
  * Update an existing observation
  * Only allows users to update their own observations
+ * Note: Local (unsynced) observations cannot be edited
  */
 export async function updateObservation(input: UpdateObservationInput): Promise<{ success: boolean; error?: string }> {
+  // Check if this is a local observation (numeric ID) - these can't be edited
+  if (!isUUID(input.id)) {
+    return { success: false, error: 'Local observations cannot be edited. Please wait for sync or delete and recreate.' };
+  }
+
   if (!isSupabaseConfigured()) {
     return { success: false, error: 'Supabase not configured' };
   }
@@ -284,8 +298,26 @@ export async function updateObservation(input: UpdateObservationInput): Promise<
 /**
  * Delete an observation
  * Only allows users to delete their own observations
+ * Handles both Supabase (UUID) and local (numeric) observation IDs
  */
 export async function deleteObservation(observationId: string, userId: string): Promise<{ success: boolean; error?: string }> {
+  // Check if this is a local observation (numeric ID) or Supabase observation (UUID)
+  if (!isUUID(observationId)) {
+    // Local observation - delete from IndexedDB
+    try {
+      const numericId = parseInt(observationId, 10);
+      if (isNaN(numericId)) {
+        return { success: false, error: 'Invalid observation ID' };
+      }
+      await deleteLocalObservation(numericId);
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to delete local observation:', error);
+      return { success: false, error: 'Failed to delete local observation' };
+    }
+  }
+
+  // Supabase observation
   if (!isSupabaseConfigured()) {
     return { success: false, error: 'Supabase not configured' };
   }

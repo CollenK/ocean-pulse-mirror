@@ -347,6 +347,14 @@ export async function getObservationCount(): Promise<number> {
   return await db.count('observations');
 }
 
+/**
+ * Delete a local observation by ID
+ */
+export async function deleteLocalObservation(id: number): Promise<void> {
+  const db = await initDB();
+  await db.delete('observations', id);
+}
+
 // ==================== SETTINGS OPERATIONS ====================
 
 /**
