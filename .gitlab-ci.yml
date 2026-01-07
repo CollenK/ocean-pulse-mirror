@@ -9,7 +9,7 @@ variables:
 # Run database migrations when migration files change
 migrate:
   stage: migrate
-  image: node:20
+  image: debian:bookworm-slim
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
@@ -17,9 +17,12 @@ migrate:
     - if: $CI_COMMIT_BRANCH == "main"
       when: manual
       allow_failure: true
+  before_script:
+    - apt-get update && apt-get install -y curl
+    - curl -fsSL https://raw.githubusercontent.com/supabase/cli/main/scripts/install.sh | sh
   script:
-    - npx supabase link --project-ref $SUPABASE_PROJECT_ID
-    - npx supabase db push
+    - supabase link --project-ref $SUPABASE_PROJECT_ID
+    - supabase db push
   environment:
     name: production
 
