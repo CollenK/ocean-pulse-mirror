@@ -9,7 +9,7 @@ variables:
 # Run database migrations when migration files change
 migrate:
   stage: migrate
-  image: node:20-alpine
+  image: node:20
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
@@ -17,18 +17,16 @@ migrate:
     - if: $CI_COMMIT_BRANCH == "main"
       when: manual
       allow_failure: true
-  before_script:
-    - npm install -g supabase
   script:
-    - supabase link --project-ref $SUPABASE_PROJECT_ID
-    - supabase db push
+    - npx supabase link --project-ref $SUPABASE_PROJECT_ID
+    - npx supabase db push
   environment:
     name: production
 
 # Build the Next.js application
 build:
   stage: build
-  image: node:20-alpine
+  image: node:20
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
   cache:
