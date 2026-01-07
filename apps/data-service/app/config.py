@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = [
         "http://localhost:3000",
         "https://ocean-pulse.vercel.app",
+        "https://ocean-pulse-ochre.vercel.app",
     ]
 
     # Copernicus Marine Service
