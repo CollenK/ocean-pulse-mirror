@@ -4,6 +4,7 @@ import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AnalyticsProvider } from '@/components/AnalyticsProvider'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { Providers } from '@/components/Providers'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -118,15 +119,17 @@ export default function RootLayout({
         <a href="#main-content" className="skip-to-content">
           Skip to main content
         </a>
-        <AuthProvider>
-          <AnalyticsProvider>
-            <ErrorBoundary>
-              <OfflineIndicator />
-              {children}
-              <BottomNav />
-            </ErrorBoundary>
-          </AnalyticsProvider>
-        </AuthProvider>
+        <Providers>
+          <AuthProvider>
+            <AnalyticsProvider>
+              <ErrorBoundary>
+                <OfflineIndicator />
+                {children}
+                <BottomNav />
+              </ErrorBoundary>
+            </AnalyticsProvider>
+          </AuthProvider>
+        </Providers>
       </body>
     </html>
   )

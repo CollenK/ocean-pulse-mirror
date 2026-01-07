@@ -15,7 +15,7 @@ import { AbundanceTrendCard } from '@/components/AbundanceTrendCard';
 import { useEnvironmentalData } from '@/hooks/useEnvironmentalData';
 import { EnvironmentalDashboard } from '@/components/EnvironmentalDashboard';
 import { useTrackingData } from '@/hooks/useTrackingData';
-import { useCompositeHealthScore } from '@/hooks/useCompositeHealthScore';
+import { useHybridHealthScore } from '@/hooks/useHybridHealthScore';
 import { HealthScoreModal } from '@/components/HealthScoreModal';
 import { TrackingStatsCard } from '@/components/TrackingStatsCard';
 import { SpeciesCard } from '@/components/SpeciesCard';
@@ -110,8 +110,12 @@ export default function MPADetailPage() {
     mpaInfo: mpaInfo,
   });
 
-  // Calculate composite health score from real data
-  const compositeHealth = useCompositeHealthScore({
+  // Calculate health score - uses backend when available, falls back to client-side
+  const compositeHealth = useHybridHealthScore({
+    mpaId: mpa?.id || '',
+    mpaName: mpa?.name || '',
+    lat: mpa?.center[0] || 0,
+    lon: mpa?.center[1] || 0,
     abundanceSummary,
     abundanceLoading,
     environmentalSummary,
@@ -119,6 +123,7 @@ export default function MPADetailPage() {
     trackingSummary,
     trackingLoading,
     indicatorSpeciesCount: indicatorSpecies.length,
+    preferBackend: true, // Try backend first for Copernicus data
   });
 
   useEffect(() => {
@@ -313,7 +318,12 @@ export default function MPADetailPage() {
                 <>
                   <p className="text-3xl font-bold text-ocean-deep">{compositeHealth.score}</p>
                   <p className="text-xs text-gray-500 mt-1">Health Score</p>
-                  <p className="text-xs text-gray-400">{compositeHealth.dataSourcesAvailable}/3 sources</p>
+                  <p className="text-xs text-gray-400">
+                    {compositeHealth.dataSourcesAvailable}/{compositeHealth.source === 'backend' ? '5' : '3'} sources
+                    {compositeHealth.backendAvailable && (
+                      <span className="ml-1 text-green-600" title="Using Copernicus satellite data">*</span>
+                    )}
+                  </p>
                   <p className="text-xs text-ocean-primary mt-1 flex items-center justify-center gap-1">
                     <Icon name="info" size="sm" />
                     Tap for details
