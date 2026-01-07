@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Rectangle, useMap } from 'react-leaflet';
-import { LatLngBoundsExpression, LatLngExpression } from 'leaflet';
+import { LatLngBoundsExpression, LatLngExpression, LatLngBounds } from 'leaflet';
 import { MPA } from '@/types';
 import { HealthBadge } from '@/components/ui';
 import { Icon } from '@/components/Icon';
@@ -23,23 +23,52 @@ interface MobileMapProps {
   center?: LatLngExpression;
   zoom?: number;
   onMPAClick?: (mpa: MPA) => void;
+  focusMpaId?: string;
 }
 
-// Map height adjustment component
-function MapResizer() {
+// World bounds to prevent panning to see duplicate world
+const WORLD_BOUNDS = new LatLngBounds(
+  [-85, -180], // Southwest corner
+  [85, 180]    // Northeast corner
+);
+
+// Component to fit map to viewport - calculates optimal zoom to fill screen
+function FitWorldBounds({ customCenter, customZoom }: { customCenter?: LatLngExpression; customZoom?: number }) {
   const map = useMap();
 
   useEffect(() => {
-    const updateHeight = () => {
+    const fitWorld = () => {
       map.invalidateSize();
+
+      // If custom center/zoom provided, use those instead of auto-fitting
+      if (customCenter && customZoom) {
+        map.setView(customCenter, customZoom, { animate: false });
+        return;
+      }
+
+      // Get container height to calculate zoom that fills vertically
+      const container = map.getContainer();
+      const containerHeight = container.clientHeight;
+
+      // Calculate zoom level that makes world fill the viewport height
+      // At zoom 0, world is 256px tall. Each zoom level doubles the size.
+      // We want: 256 * 2^zoom >= containerHeight
+      // So: zoom >= log2(containerHeight / 256)
+      const optimalZoom = Math.log2(containerHeight / 256) + 0.3; // +0.3 for slight padding
+      const zoom = Math.max(2, Math.min(optimalZoom, 4)); // Clamp between 2 and 4
+
+      map.setView([20, 0], zoom, { animate: false });
     };
 
-    window.addEventListener('resize', updateHeight);
-    // Initial resize
-    setTimeout(updateHeight, 100);
+    // Initial fit
+    setTimeout(fitWorld, 100);
 
-    return () => window.removeEventListener('resize', updateHeight);
-  }, [map]);
+    // Only re-fit on resize if no custom center (i.e., world view)
+    if (!customCenter) {
+      window.addEventListener('resize', fitWorld);
+      return () => window.removeEventListener('resize', fitWorld);
+    }
+  }, [map, customCenter, customZoom]);
 
   return null;
 }
@@ -110,7 +139,9 @@ function createCustomIcon(healthScore: number) {
   });
 }
 
-export function MobileMap({ mpas, center = [0, 20], zoom = 2, onMPAClick }: MobileMapProps) {
+export function MobileMap({ mpas, center, zoom, onMPAClick, focusMpaId }: MobileMapProps) {
+  // Determine if we have custom center/zoom (from URL params)
+  const hasCustomView = center !== undefined && zoom !== undefined;
   const [mapHeight, setMapHeight] = useState('100vh');
 
   useEffect(() => {
@@ -125,18 +156,22 @@ export function MobileMap({ mpas, center = [0, 20], zoom = 2, onMPAClick }: Mobi
   }, []);
 
   return (
-    <div style={{ height: mapHeight, width: '100%' }} className="relative">
+    <div style={{ height: mapHeight, width: '100%', backgroundColor: '#a3d5e8' }} className="relative">
       <MapContainer
-        center={center}
-        zoom={zoom}
+        center={center || [20, 0]}
+        zoom={zoom || 2}
         zoomControl={false}
         className="h-full w-full"
         style={{ height: '100%', width: '100%' }}
+        maxBounds={WORLD_BOUNDS}
+        maxBoundsViscosity={1.0}
+        minZoom={2}
       >
         {/* Ocean-themed tile layer */}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          noWrap={true}
         />
 
         {/* MPA Markers and Boundaries */}
@@ -195,7 +230,7 @@ export function MobileMap({ mpas, center = [0, 20], zoom = 2, onMPAClick }: Mobi
           </div>
         ))}
 
-        <MapResizer />
+        <FitWorldBounds customCenter={center} customZoom={zoom} />
         <MapControls />
       </MapContainer>
     </div>

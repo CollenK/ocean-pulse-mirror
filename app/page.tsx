@@ -2,7 +2,8 @@
 
 import { Card, CardTitle, CardContent, Button, Badge, Icon, CircularProgress, getHealthColor } from '@/components/ui';
 import Link from 'next/link';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { MPA } from '@/types';
 import { fetchAllMPAs } from '@/lib/mpa-service';
@@ -16,10 +17,18 @@ const MobileMap = dynamic(
   { ssr: false, loading: () => <div className="flex items-center justify-center h-screen">Loading map...</div> }
 );
 
-export default function Home() {
+// Wrapper component to handle search params with Suspense
+function HomeContent() {
   const [mpas, setMpas] = useState<MPA[]>([]);
   const [showMap, setShowMap] = useState(false);
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
+
+  // Check for map navigation params from MPA detail page
+  const mapLat = searchParams.get('lat');
+  const mapLng = searchParams.get('lng');
+  const mapZoom = searchParams.get('zoom');
+  const focusMpaId = searchParams.get('mpa');
 
   const loadMPAs = useCallback(async () => {
     const data = await fetchAllMPAs();
@@ -31,24 +40,46 @@ export default function Home() {
     loadMPAs();
   }, [loadMPAs]);
 
+  // Auto-show map if navigation params are present
+  useEffect(() => {
+    if (mapLat && mapLng) {
+      setShowMap(true);
+    }
+  }, [mapLat, mapLng]);
+
   // Pull to refresh
   const { containerRef, pullDistance, refreshing, canRefresh } = usePullToRefresh({
     onRefresh: loadMPAs,
     enabled: !showMap, // Disable when map is showing
   });
   if (showMap) {
+    // Determine map center and zoom from URL params or defaults
+    const center = mapLat && mapLng
+      ? [parseFloat(mapLat), parseFloat(mapLng)] as [number, number]
+      : undefined;
+    const zoom = mapZoom ? parseFloat(mapZoom) : undefined;
+
     return (
       <main id="main-content" className="min-h-screen">
         <div className="absolute top-4 left-4 z-[1001]">
           <Button
-            onClick={() => setShowMap(false)}
+            onClick={() => {
+              setShowMap(false);
+              // Clear URL params when going back
+              window.history.replaceState({}, '', '/');
+            }}
             size="sm"
             variant="secondary"
           >
             ← Back to Home
           </Button>
         </div>
-        <MobileMap mpas={mpas} />
+        <MobileMap
+          mpas={mpas}
+          center={center}
+          zoom={zoom}
+          focusMpaId={focusMpaId || undefined}
+        />
       </main>
     );
   }
@@ -311,5 +342,14 @@ export default function Home() {
       </div>
     </main>
     </>
+  );
+}
+
+// Main export wrapped in Suspense for useSearchParams
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }

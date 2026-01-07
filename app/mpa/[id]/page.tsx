@@ -420,7 +420,7 @@ export default function MPADetailPage() {
             </div>
           </div>
           <div className="mt-4">
-            <Link href="/">
+            <Link href={`/?lat=${mpa.center[0]}&lng=${mpa.center[1]}&zoom=6&mpa=${mpa.id}`}>
               <Button fullWidth>View on Map</Button>
             </Link>
           </div>
