@@ -35,12 +35,11 @@ const ECOSYSTEM_ICONS: Record<EcosystemType, string> = {
   [EcosystemType.CORAL_REEF]: 'gem',
   [EcosystemType.KELP_FOREST]: 'leaf',
   [EcosystemType.SEAGRASS]: 'grass',
-  [EcosystemType.MANGROVE]: 'tree',
   [EcosystemType.ROCKY_REEF]: 'mountain',
   [EcosystemType.OPEN_OCEAN]: 'globe',
   [EcosystemType.POLAR]: 'snowflake',
   [EcosystemType.TEMPERATE]: 'thermometer',
-  [EcosystemType.DEEP_SEA]: 'droplet',
+  [EcosystemType.TROPICAL]: 'sun',
 };
 
 // Sensitivity rating display
