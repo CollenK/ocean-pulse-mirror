@@ -1,0 +1,59 @@
+stages:
+  - migrate
+  - build
+  - deploy
+
+variables:
+  SUPABASE_PROJECT_ID: "oftyqrsmirvzmxpbmucd"
+
+# Run database migrations when migration files change
+migrate:
+  stage: migrate
+  image: node:20-alpine
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - supabase/migrations/**/*
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+      allow_failure: true
+  before_script:
+    - npm install -g supabase
+  script:
+    - supabase link --project-ref $SUPABASE_PROJECT_ID
+    - supabase db push
+  environment:
+    name: production
+
+# Build the Next.js application
+build:
+  stage: build
+  image: node:20-alpine
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+      - .next/cache/
+  before_script:
+    - npm ci
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - .next/
+    expire_in: 1 week
+
+# Optional: Deploy stage (customize based on your hosting)
+# deploy:
+#   stage: deploy
+#   image: node:20-alpine
+#   rules:
+#     - if: $CI_COMMIT_BRANCH == "main"
+#   script:
+#     - echo "Add your deployment commands here"
+#   environment:
+#     name: production
+#   needs:
+#     - build

@@ -259,11 +259,7 @@ export function PhotoUploader({
   };
 
   return (
-    <div className="space-y-4">
-      <label className="block text-sm font-semibold text-gray-700">
-        Photo Evidence
-      </label>
-
+    <div className="space-y-3">
       {/* Hidden file input */}
       <input
         ref={fileInputRef}

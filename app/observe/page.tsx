@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, Button, Input, Textarea, Badge } from '@/components/ui';
 import {
   HealthScoreSlider,
+  MPASearchSelect,
   PhotoUploader,
   ReportTypeSelector,
   PhotoMetadata,
@@ -12,12 +13,11 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { fetchAllMPAs } from '@/lib/mpa-service';
 import {
-  saveObservation,
   saveDraft,
   deleteDraft,
   getDraft,
-  saveHealthAssessment,
 } from '@/lib/offline-storage';
+import { createObservation, uploadObservationPhoto } from '@/lib/observations-service';
 import { MPA, ReportType, REPORT_TYPES } from '@/types';
 
 interface ObservationData {
@@ -132,6 +132,14 @@ function ObservePageContent() {
     }
   }, [searchParams]);
 
+  // Pre-select MPA if provided in URL
+  useEffect(() => {
+    const mpaParam = searchParams.get('mpa');
+    if (mpaParam && !data.mpaId) {
+      setData(prev => ({ ...prev, mpaId: mpaParam }));
+    }
+  }, [searchParams, data.mpaId]);
+
   const loadDraft = async (id: number) => {
     try {
       const draft = await getDraft(id);
@@ -172,8 +180,8 @@ function ObservePageContent() {
     setData(prev => ({ ...prev, healthScoreAssessment: score }));
   };
 
-  const handleMpaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setData(prev => ({ ...prev, mpaId: e.target.value }));
+  const handleMpaChange = (mpaId: string) => {
+    setData(prev => ({ ...prev, mpaId }));
     if (errors.mpaId) {
       setErrors(prev => ({ ...prev, mpaId: '' }));
     }
@@ -247,35 +255,34 @@ function ObservePageContent() {
     try {
       // Use MPA center as location
       const selectedMPA = mpas.find(m => m.id === data.mpaId);
-      const location = selectedMPA
-        ? { lat: selectedMPA.center[0], lng: selectedMPA.center[1] }
-        : { lat: 0, lng: 0 };
+      const latitude = selectedMPA ? selectedMPA.center[0] : 0;
+      const longitude = selectedMPA ? selectedMPA.center[1] : 0;
 
-      const observation = {
-        reportType: data.reportType!,
-        speciesName: data.speciesName,
-        quantity: data.quantity,
+      // Upload photo to Supabase Storage if present
+      let photoUrl: string | undefined;
+      if (data.photo && user?.id) {
+        const uploadedUrl = await uploadObservationPhoto(data.photo, user.id);
+        if (uploadedUrl) {
+          photoUrl = uploadedUrl;
+        }
+      }
+
+      // Create observation using Supabase service (falls back to IndexedDB if offline)
+      const result = await createObservation({
         mpaId: data.mpaId || '',
-        photo: data.photo || '',
-        notes: data.notes || '',
-        location,
-        timestamp: Date.now(),
-        synced: false,
+        reportType: data.reportType!,
+        speciesName: data.speciesName || undefined,
+        speciesType: data.speciesType || undefined,
+        quantity: data.quantity || undefined,
+        notes: data.notes || undefined,
+        latitude,
+        longitude,
+        photoUrl: photoUrl || data.photo, // Use uploaded URL or base64 fallback
         healthScoreAssessment: data.healthScoreAssessment,
         userId: user?.id,
-      };
+      });
 
-      await saveObservation(observation);
-
-      // Save health assessment if provided
-      if (data.healthScoreAssessment && data.mpaId && user?.id) {
-        await saveHealthAssessment({
-          mpaId: data.mpaId,
-          userId: user.id,
-          score: data.healthScoreAssessment,
-          timestamp: Date.now(),
-        });
-      }
+      console.log('Observation saved:', result.synced ? 'to Supabase' : 'locally');
 
       // Delete draft if exists
       if (draftId) {
@@ -372,25 +379,17 @@ function ObservePageContent() {
           <label className="block text-sm font-semibold text-gray-900 mb-2">
             Location <span className="text-red-500">*</span>
           </label>
-          <select
-            value={data.mpaId || ''}
+          <MPASearchSelect
+            mpas={mpas}
+            value={data.mpaId}
             onChange={handleMpaChange}
-            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 bg-white ${
-              errors.mpaId ? 'border-red-300 bg-red-50' : 'border-gray-200'
-            }`}
-          >
-            <option value="">Select a Marine Protected Area...</option>
-            {mpas.map((mpa) => (
-              <option key={mpa.id} value={mpa.id}>
-                {mpa.name} - {mpa.country}
-              </option>
-            ))}
-          </select>
+            error={!!errors.mpaId}
+          />
           {errors.mpaId ? (
             <p className="mt-2 text-sm text-red-600">{errors.mpaId}</p>
           ) : (
             <p className="mt-2 text-xs text-gray-500">
-              Select the MPA where you made your observation
+              Search or select the MPA where you made your observation
             </p>
           )}
         </section>
@@ -485,7 +484,7 @@ function ObservePageContent() {
         {/* Sync Notice */}
         <div className="p-4 bg-cyan-50 border border-cyan-100 rounded-xl">
           <p className="text-sm text-cyan-800">
-            Your observation will be saved locally and synced when you&apos;re online.
+            Your observation will be saved to our database. If you&apos;re offline, it will be stored locally and synced when you reconnect.
             {data.healthScoreAssessment && data.mpaId && (
               <> Your health score will contribute to the MPA&apos;s community rating.</>
             )}

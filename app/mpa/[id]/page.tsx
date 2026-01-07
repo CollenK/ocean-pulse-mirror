@@ -24,6 +24,8 @@ import type { IndicatorSpecies } from '@/types/indicator-species';
 import { CATEGORY_INFO } from '@/types/indicator-species';
 import { UserMenu } from '@/components/UserMenu';
 import { SaveMPAButton } from '@/components/SaveMPAButton';
+import { LiveReports } from '@/components/LiveReports';
+import { useObservations } from '@/hooks/useObservations';
 
 // Dynamically import TrackingHeatmap with SSR disabled (Leaflet requires window)
 const TrackingHeatmap = dynamic(
@@ -53,6 +55,9 @@ export default function MPADetailPage() {
   const [showAllSpecies, setShowAllSpecies] = useState(false);
   const [showAllTrends, setShowAllTrends] = useState(false);
   const [showHealthModal, setShowHealthModal] = useState(false);
+
+  // Load observations for badge count
+  const { observations: mpaObservations } = useObservations(mpa?.id || '', { enabled: !!mpa });
 
   // Load abundance data (filtered by indicator species)
   const {
@@ -463,6 +468,22 @@ export default function MPADetailPage() {
             </CardContent>
           </Card>
         </motion.div>
+
+        {/* Live Reports Section */}
+        <CollapsibleCard
+          title="Live Reports"
+          icon="camera"
+          iconColor="text-blue-600"
+          defaultOpen={false}
+          badge={
+            mpaObservations.length > 0 && (
+              <Badge variant="info" size="sm">{mpaObservations.length} reports</Badge>
+            )
+          }
+          className="mb-4"
+        >
+          <LiveReports mpaId={mpa.id} maxHeight={500} />
+        </CollapsibleCard>
 
         {/* Indicator Species */}
         <CollapsibleCard
