@@ -2,13 +2,20 @@
  * useHybridHealthScore Hook
  * Uses the Python backend for health scores when available,
  * falls back to client-side calculation otherwise
+ * Now includes community-contributed health assessments
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useBackendHealthScore } from './useBackendData';
+import { getUserHealthScoreForMPA } from '@/lib/offline-storage';
 import type { MPAAbundanceSummary } from '@/types/obis-abundance';
 import type { MPAEnvironmentalSummary } from '@/types/obis-environmental';
 import type { MPATrackingSummary } from '@/types/obis-tracking';
+
+interface UserHealthData {
+  averageScore: number | null;
+  count: number;
+}
 
 interface HybridHealthScoreInput {
   mpaId: string;
@@ -25,6 +32,8 @@ interface HybridHealthScoreInput {
   indicatorSpeciesCount: number;
   // Option to prefer backend
   preferBackend?: boolean;
+  // Include community assessments in score
+  includeCommunityAssessments?: boolean;
 }
 
 interface HybridHealthScore {
@@ -37,6 +46,8 @@ interface HybridHealthScore {
     // Additional backend-specific metrics
     thermalStress?: { score: number; weight: number; available: boolean };
     productivity?: { score: number; weight: number; available: boolean };
+    // Community assessments
+    communityAssessment?: { score: number; weight: number; available: boolean; count: number };
   };
   confidence: 'high' | 'medium' | 'low';
   dataSourcesAvailable: number;
@@ -49,10 +60,15 @@ interface HybridHealthScore {
     ph?: { value: number; unit: string };
     salinity?: { value: number; unit: string };
   };
+  communityData?: {
+    averageScore: number;
+    assessmentCount: number;
+  };
 }
 
 /**
  * Hybrid health score hook that tries backend first, falls back to client-side
+ * Optionally includes community-contributed health assessments
  */
 export function useHybridHealthScore({
   mpaId,
@@ -67,7 +83,35 @@ export function useHybridHealthScore({
   trackingLoading,
   indicatorSpeciesCount,
   preferBackend = true,
+  includeCommunityAssessments = true,
 }: HybridHealthScoreInput): HybridHealthScore {
+  // State for community assessments
+  const [communityData, setCommunityData] = useState<UserHealthData>({ averageScore: null, count: 0 });
+  const [communityLoading, setCommunityLoading] = useState(true);
+
+  // Fetch community assessments
+  useEffect(() => {
+    if (!mpaId || !includeCommunityAssessments) {
+      setCommunityLoading(false);
+      return;
+    }
+
+    setCommunityLoading(true);
+    getUserHealthScoreForMPA(mpaId)
+      .then(data => {
+        setCommunityData({
+          averageScore: data.averageScore,
+          count: data.count,
+        });
+      })
+      .catch(error => {
+        console.error('Failed to fetch community health assessments:', error);
+      })
+      .finally(() => {
+        setCommunityLoading(false);
+      });
+  }, [mpaId, includeCommunityAssessments]);
+
   // Try to fetch from backend
   const backendParams = preferBackend && mpaId ? {
     mpaId,
@@ -96,7 +140,7 @@ export function useHybridHealthScore({
       const { overall_score, confidence, components, environmental_data, species_data } = backendData;
 
       // Map backend response to our format
-      const breakdown = {
+      const breakdown: HybridHealthScore['breakdown'] = {
         populationTrends: {
           score: components.biodiversity || 0,
           weight: 30,
@@ -124,6 +168,18 @@ export function useHybridHealthScore({
         },
       };
 
+      // Add community assessment if available
+      const hasCommunityData = communityData.averageScore !== null && communityData.count > 0;
+      if (hasCommunityData) {
+        // Convert 1-10 scale to 0-100
+        breakdown.communityAssessment = {
+          score: (communityData.averageScore! / 10) * 100,
+          weight: 10, // Community assessments get 10% weight
+          available: true,
+          count: communityData.count,
+        };
+      }
+
       // Count available data sources
       const dataSourcesAvailable = [
         breakdown.populationTrends.available,
@@ -131,6 +187,7 @@ export function useHybridHealthScore({
         breakdown.speciesDiversity.available,
         breakdown.thermalStress?.available,
         breakdown.productivity?.available,
+        breakdown.communityAssessment?.available,
       ].filter(Boolean).length;
 
       // Map environmental data
@@ -158,15 +215,27 @@ export function useHybridHealthScore({
         } : undefined,
       } : undefined;
 
+      // Blend community score into overall score if available
+      let finalScore = overall_score;
+      if (hasCommunityData && communityData.averageScore !== null) {
+        const communityScoreNormalized = (communityData.averageScore / 10) * 100;
+        // Weight: 90% backend, 10% community
+        finalScore = Math.round(overall_score * 0.9 + communityScoreNormalized * 0.1);
+      }
+
       return {
-        score: overall_score,
-        loading: backendLoading,
+        score: finalScore,
+        loading: backendLoading || communityLoading,
         breakdown,
         confidence: confidence as 'high' | 'medium' | 'low',
         dataSourcesAvailable,
         source: 'backend' as const,
         backendAvailable: true,
         environmentalData: environmentalDataMapped,
+        communityData: hasCommunityData ? {
+          averageScore: communityData.averageScore!,
+          assessmentCount: communityData.count,
+        } : undefined,
       };
     }
 
@@ -178,22 +247,28 @@ export function useHybridHealthScore({
     const hasPopulationData = abundanceSummary && abundanceSummary.speciesTrends.length > 0;
     const hasHabitatData = environmentalSummary && environmentalSummary.parameters.length > 0;
     const hasDiversityData = indicatorSpeciesCount > 0;
+    const hasCommunityData = communityData.averageScore !== null && communityData.count > 0;
 
-    // Base weights
-    let populationWeight = 0.40;
-    let habitatWeight = 0.35;
+    // Community score normalized to 0-100
+    const communityScore = hasCommunityData ? (communityData.averageScore! / 10) * 100 : 0;
+
+    // Base weights (adjusted to include community)
+    let populationWeight = 0.35;
+    let habitatWeight = 0.30;
     let diversityWeight = 0.25;
+    let communityWeight = hasCommunityData ? 0.10 : 0;
 
-    const availableSources = [hasPopulationData, hasHabitatData, hasDiversityData].filter(Boolean).length;
+    const availableSources = [hasPopulationData, hasHabitatData, hasDiversityData, hasCommunityData].filter(Boolean).length;
 
     if (availableSources === 0) {
       return {
         score: 0,
-        loading: clientLoading,
+        loading: clientLoading || communityLoading,
         breakdown: {
-          populationTrends: { score: 0, weight: 40, available: false },
-          habitatQuality: { score: 0, weight: 35, available: false },
+          populationTrends: { score: 0, weight: 35, available: false },
+          habitatQuality: { score: 0, weight: 30, available: false },
           speciesDiversity: { score: 0, weight: 25, available: false },
+          communityAssessment: { score: 0, weight: 10, available: false, count: 0 },
         },
         confidence: 'low',
         dataSourcesAvailable: 0,
@@ -202,46 +277,38 @@ export function useHybridHealthScore({
       };
     }
 
-    // Redistribute weights for missing data
-    if (!hasPopulationData) {
-      const redistribution = populationWeight / availableSources;
-      if (hasHabitatData) habitatWeight += redistribution * (habitatWeight / (habitatWeight + diversityWeight));
-      if (hasDiversityData) diversityWeight += redistribution * (diversityWeight / (habitatWeight + diversityWeight));
-      populationWeight = 0;
-    }
-    if (!hasHabitatData) {
-      const redistribution = habitatWeight / availableSources;
-      if (hasPopulationData) populationWeight += redistribution * (populationWeight / (populationWeight + diversityWeight));
-      if (hasDiversityData) diversityWeight += redistribution * (diversityWeight / (populationWeight + diversityWeight));
-      habitatWeight = 0;
-    }
-    if (!hasDiversityData) {
-      const redistribution = diversityWeight / availableSources;
-      if (hasPopulationData) populationWeight += redistribution * (populationWeight / (populationWeight + habitatWeight));
-      if (hasHabitatData) habitatWeight += redistribution * (habitatWeight / (populationWeight + habitatWeight));
-      diversityWeight = 0;
-    }
+    // Redistribute weights for missing data (excluding community weight redistribution)
+    const dataWeights = {
+      population: hasPopulationData ? populationWeight : 0,
+      habitat: hasHabitatData ? habitatWeight : 0,
+      diversity: hasDiversityData ? diversityWeight : 0,
+    };
 
-    // Normalize weights
-    const totalWeight = populationWeight + habitatWeight + diversityWeight;
-    populationWeight /= totalWeight;
-    habitatWeight /= totalWeight;
-    diversityWeight /= totalWeight;
+    const totalDataWeight = dataWeights.population + dataWeights.habitat + dataWeights.diversity;
+    const targetDataWeight = 1 - communityWeight;
+
+    if (totalDataWeight > 0) {
+      const scaleFactor = targetDataWeight / totalDataWeight;
+      populationWeight = dataWeights.population * scaleFactor;
+      habitatWeight = dataWeights.habitat * scaleFactor;
+      diversityWeight = dataWeights.diversity * scaleFactor;
+    }
 
     // Calculate weighted score
-    const compositeScore = Math.round(
+    let compositeScore = Math.round(
       (hasPopulationData ? populationScore * populationWeight : 0) +
       (hasHabitatData ? habitatScore * habitatWeight : 0) +
-      (hasDiversityData ? diversityScore * diversityWeight : 0)
+      (hasDiversityData ? diversityScore * diversityWeight : 0) +
+      (hasCommunityData ? communityScore * communityWeight : 0)
     );
 
     const confidence: 'high' | 'medium' | 'low' =
-      availableSources >= 3 ? 'high' :
+      availableSources >= 4 ? 'high' :
       availableSources >= 2 ? 'medium' : 'low';
 
     return {
       score: Math.min(100, Math.max(0, compositeScore)),
-      loading: clientLoading,
+      loading: clientLoading || communityLoading,
       breakdown: {
         populationTrends: {
           score: populationScore,
@@ -258,11 +325,21 @@ export function useHybridHealthScore({
           weight: Math.round(diversityWeight * 100),
           available: !!hasDiversityData,
         },
+        communityAssessment: {
+          score: communityScore,
+          weight: Math.round(communityWeight * 100),
+          available: hasCommunityData,
+          count: communityData.count,
+        },
       },
       confidence,
       dataSourcesAvailable: availableSources,
       source: 'client' as const,
       backendAvailable: false,
+      communityData: hasCommunityData ? {
+        averageScore: communityData.averageScore!,
+        assessmentCount: communityData.count,
+      } : undefined,
     };
   }, [
     backendData,
@@ -276,6 +353,8 @@ export function useHybridHealthScore({
     trackingSummary,
     trackingLoading,
     indicatorSpeciesCount,
+    communityData,
+    communityLoading,
   ]);
 }
 

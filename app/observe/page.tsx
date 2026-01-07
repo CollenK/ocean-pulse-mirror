@@ -1,35 +1,113 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardTitle, CardContent, Button, Input, Textarea, Badge } from '@/components/ui';
-import { CameraCapture, ImageMetadata } from '@/components/CameraCapture';
-import { useGeolocation } from '@/hooks/useGeolocation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Card, CardContent, Button, Input, Textarea, Badge } from '@/components/ui';
+import {
+  HealthScoreSlider,
+  PhotoUploader,
+  ReportTypeSelector,
+  PhotoMetadata,
+} from '@/components/Observation';
+import { useAuth } from '@/hooks/useAuth';
 import { fetchAllMPAs } from '@/lib/mpa-service';
-import { saveObservation } from '@/lib/offline-storage';
-import { MPA } from '@/types';
-
-type ObservationStep = 'photo' | 'species' | 'location' | 'notes' | 'review';
+import {
+  saveObservation,
+  saveDraft,
+  deleteDraft,
+  getDraft,
+  saveHealthAssessment,
+} from '@/lib/offline-storage';
+import { MPA, ReportType, REPORT_TYPES } from '@/types';
 
 interface ObservationData {
+  reportType?: ReportType;
   photo?: string;
-  photoMetadata?: ImageMetadata;
+  photoMetadata?: PhotoMetadata;
   speciesName: string;
   speciesType: string;
   quantity: number;
   mpaId?: string;
   notes: string;
-  latitude?: number;
-  longitude?: number;
+  healthScoreAssessment?: number;
 }
 
-export default function ObservePage() {
+// Sign-in prompt component for unauthenticated users
+function SignInPrompt() {
   const router = useRouter();
-  const { position } = useGeolocation({ enableHighAccuracy: true });
 
-  const [step, setStep] = useState<ObservationStep>('photo');
+  return (
+    <main className="min-h-screen pb-24 bg-gray-50">
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
+        <div className="p-4">
+          <div className="max-w-2xl mx-auto flex items-center justify-between">
+            <h1 className="text-xl font-bold text-gray-900">Submit New Report</h1>
+            <button
+              onClick={() => router.back()}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <span className="text-xl text-gray-500">×</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-2xl mx-auto p-6">
+        <Card>
+          <CardContent>
+            <div className="text-center py-8 space-y-6">
+              <div className="w-20 h-20 mx-auto bg-cyan-100 rounded-full flex items-center justify-center">
+                <span className="text-4xl">🔐</span>
+              </div>
+
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold text-gray-900">
+                  Sign in to add observations
+                </h2>
+                <p className="text-gray-600 max-w-md mx-auto">
+                  You need to be signed in to submit observations. Your contributions help build
+                  community-driven health scores for marine protected areas.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-sm mx-auto">
+                <Button onClick={() => router.push('/login')} fullWidth>
+                  Sign In
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => router.push('/login?signup=true')}
+                  fullWidth
+                >
+                  Create Account
+                </Button>
+              </div>
+
+              <button
+                onClick={() => router.back()}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                Go back
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </main>
+  );
+}
+
+// Main form content
+function ObservePageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
+
   const [mpas, setMpas] = useState<MPA[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [draftId, setDraftId] = useState<number | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [data, setData] = useState<ObservationData>({
     speciesName: '',
@@ -38,57 +116,172 @@ export default function ObservePage() {
     notes: '',
   });
 
+  // Load MPAs
   useEffect(() => {
     fetchAllMPAs().then(setMpas);
   }, []);
 
-  // Update location from geolocation
+  // Load draft if provided in URL
   useEffect(() => {
-    if (position && !data.latitude) {
-      setData(prev => ({
-        ...prev,
-        latitude: position.latitude,
-        longitude: position.longitude,
-      }));
+    const draftParam = searchParams.get('draft');
+    if (draftParam) {
+      const id = parseInt(draftParam, 10);
+      if (!isNaN(id)) {
+        loadDraft(id);
+      }
     }
-  }, [position, data.latitude]);
+  }, [searchParams]);
 
-  const handlePhotoCapture = (imageData: string, metadata: ImageMetadata) => {
+  const loadDraft = async (id: number) => {
+    try {
+      const draft = await getDraft(id);
+      if (draft) {
+        setDraftId(id);
+        setData({
+          reportType: draft.reportType,
+          photo: draft.photo as string,
+          speciesName: draft.speciesName || '',
+          speciesType: 'fish',
+          quantity: draft.quantity || 1,
+          mpaId: draft.mpaId,
+          notes: draft.notes,
+          healthScoreAssessment: draft.healthScoreAssessment,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load draft:', error);
+    }
+  };
+
+  const handleReportTypeChange = (type: ReportType) => {
+    setData(prev => ({ ...prev, reportType: type }));
+    if (errors.reportType) {
+      setErrors(prev => ({ ...prev, reportType: '' }));
+    }
+  };
+
+  const handlePhotoChange = (photo: string | null, metadata: PhotoMetadata | null) => {
     setData(prev => ({
       ...prev,
-      photo: imageData,
-      photoMetadata: metadata,
-      latitude: metadata.location?.latitude || prev.latitude,
-      longitude: metadata.location?.longitude || prev.longitude,
+      photo: photo || undefined,
+      photoMetadata: metadata || undefined,
     }));
-    setStep('species');
+  };
+
+  const handleHealthScoreChange = (score: number) => {
+    setData(prev => ({ ...prev, healthScoreAssessment: score }));
+  };
+
+  const handleMpaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setData(prev => ({ ...prev, mpaId: e.target.value }));
+    if (errors.mpaId) {
+      setErrors(prev => ({ ...prev, mpaId: '' }));
+    }
+  };
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!data.reportType) {
+      newErrors.reportType = 'Please select a report type';
+    }
+
+    if (!data.mpaId) {
+      newErrors.mpaId = 'Please select a Marine Protected Area';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSaveDraft = async () => {
+    if (!data.reportType) {
+      setErrors({ reportType: 'Please select a report type before saving a draft' });
+      return;
+    }
+
+    setSavingDraft(true);
+
+    try {
+      const draftData = {
+        reportType: data.reportType,
+        photo: data.photo || '',
+        mpaId: data.mpaId || '',
+        notes: data.notes,
+        location: { lat: 0, lng: 0 },
+        speciesName: data.speciesName,
+        quantity: data.quantity,
+        healthScoreAssessment: data.healthScoreAssessment,
+        timestamp: Date.now(),
+        userId: user?.id,
+      };
+
+      if (draftId) {
+        const { updateDraft } = await import('@/lib/offline-storage');
+        await updateDraft(draftId, draftData);
+      } else {
+        const newId = await saveDraft(draftData);
+        setDraftId(newId);
+      }
+
+      // Show success feedback
+      alert('Draft saved successfully!');
+    } catch (error) {
+      console.error('Failed to save draft:', error);
+      alert('Failed to save draft. Please try again.');
+    } finally {
+      setSavingDraft(false);
+    }
   };
 
   const handleSubmit = async () => {
+    if (!validate()) {
+      // Scroll to first error
+      const firstError = document.querySelector('[data-error="true"]');
+      firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     setSubmitting(true);
 
     try {
+      // Use MPA center as location
+      const selectedMPA = mpas.find(m => m.id === data.mpaId);
+      const location = selectedMPA
+        ? { lat: selectedMPA.center[0], lng: selectedMPA.center[1] }
+        : { lat: 0, lng: 0 };
+
       const observation = {
+        reportType: data.reportType!,
         speciesName: data.speciesName,
-        speciesType: data.speciesType,
         quantity: data.quantity,
         mpaId: data.mpaId || '',
-        photo: data.photo as unknown as Blob,
-        photoMetadata: data.photoMetadata,
+        photo: data.photo || '',
         notes: data.notes || '',
-        latitude: data.latitude,
-        longitude: data.longitude,
-        location: {
-          lat: data.latitude || 0,
-          lng: data.longitude || 0,
-        },
+        location,
         timestamp: Date.now(),
         synced: false,
+        healthScoreAssessment: data.healthScoreAssessment,
+        userId: user?.id,
       };
 
       await saveObservation(observation);
 
-      // Success! Navigate back
+      // Save health assessment if provided
+      if (data.healthScoreAssessment && data.mpaId && user?.id) {
+        await saveHealthAssessment({
+          mpaId: data.mpaId,
+          userId: user.id,
+          score: data.healthScoreAssessment,
+          timestamp: Date.now(),
+        });
+      }
+
+      // Delete draft if exists
+      if (draftId) {
+        await deleteDraft(draftId);
+      }
+
       router.push('/?observation=success');
     } catch (error) {
       console.error('Failed to save observation:', error);
@@ -98,337 +291,270 @@ export default function ObservePage() {
     }
   };
 
-  const progress = {
-    photo: 20,
-    species: 40,
-    location: 60,
-    notes: 80,
-    review: 100,
-  }[step];
+  const handleCancel = () => {
+    if (data.reportType || data.photo || data.notes || data.healthScoreAssessment) {
+      if (confirm('You have unsaved changes. Are you sure you want to leave?')) {
+        router.back();
+      }
+    } else {
+      router.back();
+    }
+  };
+
+  // Loading state
+  if (authLoading) {
+    return (
+      <main className="min-h-screen pb-24 bg-gray-50">
+        <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
+          <div className="p-4">
+            <div className="max-w-2xl mx-auto">
+              <h1 className="text-xl font-bold text-gray-900">Submit New Report</h1>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-2xl mx-auto p-6">
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-cyan-500 border-t-transparent" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    );
+  }
+
+  // Auth required
+  if (!user) {
+    return <SignInPrompt />;
+  }
+
+  const reportTypeInfo = data.reportType ? REPORT_TYPES[data.reportType] : null;
 
   return (
     <main className="min-h-screen pb-24 bg-gray-50">
-      {/* Progress Bar */}
+      {/* Header */}
       <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
-        <div className="h-1 bg-gray-200">
-          <div
-            className="h-1 bg-cyan-500 transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
         <div className="p-4">
-          <div className="max-w-screen-xl mx-auto flex items-center justify-between">
-            <h1 className="text-xl font-bold text-navy-600">
-              Add Observation
-            </h1>
-            <Badge variant="info" size="sm">
-              Step {['photo', 'species', 'location', 'notes', 'review'].indexOf(step) + 1}/5
-            </Badge>
+          <div className="max-w-2xl mx-auto flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Submit New Report</h1>
+              <p className="text-sm text-gray-500">Help us monitor ocean health by sharing your observations</p>
+            </div>
+            <button
+              onClick={handleCancel}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <span className="text-2xl text-gray-400 hover:text-gray-600">×</span>
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-screen-xl mx-auto p-6">
-        {/* Step 1: Photo Capture */}
-        {step === 'photo' && (
-          <div>
-            <CameraCapture
-              onCapture={handlePhotoCapture}
-              onCancel={() => router.back()}
-            />
-          </div>
+      <div className="max-w-2xl mx-auto p-6 space-y-6">
+        {/* Report Type */}
+        <section data-error={!!errors.reportType}>
+          <label className="block text-sm font-semibold text-gray-900 mb-3">
+            Report Type <span className="text-red-500">*</span>
+          </label>
+          <ReportTypeSelector
+            value={data.reportType}
+            onChange={handleReportTypeChange}
+          />
+          {errors.reportType && (
+            <p className="mt-2 text-sm text-red-600">{errors.reportType}</p>
+          )}
+        </section>
+
+        {/* Location (MPA Selection) */}
+        <section data-error={!!errors.mpaId}>
+          <label className="block text-sm font-semibold text-gray-900 mb-2">
+            Location <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={data.mpaId || ''}
+            onChange={handleMpaChange}
+            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 bg-white ${
+              errors.mpaId ? 'border-red-300 bg-red-50' : 'border-gray-200'
+            }`}
+          >
+            <option value="">Select a Marine Protected Area...</option>
+            {mpas.map((mpa) => (
+              <option key={mpa.id} value={mpa.id}>
+                {mpa.name} - {mpa.country}
+              </option>
+            ))}
+          </select>
+          {errors.mpaId ? (
+            <p className="mt-2 text-sm text-red-600">{errors.mpaId}</p>
+          ) : (
+            <p className="mt-2 text-xs text-gray-500">
+              Select the MPA where you made your observation
+            </p>
+          )}
+        </section>
+
+        {/* Species Info - Only show for species sighting */}
+        {data.reportType === 'species_sighting' && (
+          <section className="space-y-4 p-4 bg-cyan-50 rounded-xl border border-cyan-100">
+            <h3 className="font-semibold text-cyan-900 flex items-center gap-2">
+              <span>🐠</span> Species Details
+            </h3>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Species Name
+              </label>
+              <Input
+                value={data.speciesName}
+                onChange={(e) => setData(prev => ({ ...prev, speciesName: e.target.value }))}
+                placeholder="e.g., Green Sea Turtle, Clownfish"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Species Type
+                </label>
+                <select
+                  value={data.speciesType}
+                  onChange={(e) => setData(prev => ({ ...prev, speciesType: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 bg-white"
+                >
+                  <option value="fish">Fish</option>
+                  <option value="mammal">Mammal</option>
+                  <option value="reptile">Reptile</option>
+                  <option value="invertebrate">Invertebrate</option>
+                  <option value="bird">Seabird</option>
+                  <option value="plant">Marine Plant</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Quantity
+                </label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={data.quantity}
+                  onChange={(e) => setData(prev => ({ ...prev, quantity: Number(e.target.value) }))}
+                />
+              </div>
+            </div>
+          </section>
         )}
 
-        {/* Step 2: Species Information */}
-        {step === 'species' && (
-          <div className="space-y-4">
-            <Card>
-              <CardTitle>Species Information</CardTitle>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Species Name *
-                    </label>
-                    <Input
-                      value={data.speciesName}
-                      onChange={(e) => setData(prev => ({ ...prev, speciesName: e.target.value }))}
-                      placeholder="e.g., Green Sea Turtle, Clownfish"
-                      required
-                    />
-                  </div>
+        {/* Description */}
+        <section>
+          <label className="block text-sm font-semibold text-gray-900 mb-2">
+            Description
+          </label>
+          <Textarea
+            value={data.notes}
+            onChange={(e) => setData(prev => ({ ...prev, notes: e.target.value }))}
+            placeholder="Describe your observation in detail..."
+            rows={4}
+            className="resize-y"
+          />
+        </section>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Species Type *
-                    </label>
-                    <select
-                      value={data.speciesType}
-                      onChange={(e) => setData(prev => ({ ...prev, speciesType: e.target.value }))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                    >
-                      <option value="fish">Fish</option>
-                      <option value="mammal">Mammal</option>
-                      <option value="reptile">Reptile (Turtle, Sea Snake)</option>
-                      <option value="invertebrate">Invertebrate (Coral, Jellyfish)</option>
-                      <option value="bird">Seabird</option>
-                      <option value="plant">Marine Plant/Algae</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
+        {/* Photo Evidence */}
+        <section>
+          <label className="block text-sm font-semibold text-gray-900 mb-3">
+            Photo Evidence
+          </label>
+          <PhotoUploader
+            value={data.photo}
+            metadata={data.photoMetadata}
+            onChange={handlePhotoChange}
+          />
+        </section>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Quantity Observed
-                    </label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={data.quantity}
-                      onChange={(e) => setData(prev => ({ ...prev, quantity: Number(e.target.value) }))}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Health Score Assessment */}
+        <section>
+          <HealthScoreSlider
+            value={data.healthScoreAssessment}
+            onChange={handleHealthScoreChange}
+          />
+        </section>
 
-            {data.photo && (
-              <Card>
-                <CardTitle>Captured Photo</CardTitle>
-                <CardContent>
-                  <img
-                    src={data.photo}
-                    alt="Captured observation"
-                    className="w-full rounded-lg"
-                  />
-                </CardContent>
-              </Card>
+        {/* Sync Notice */}
+        <div className="p-4 bg-cyan-50 border border-cyan-100 rounded-xl">
+          <p className="text-sm text-cyan-800">
+            Your observation will be saved locally and synced when you&apos;re online.
+            {data.healthScoreAssessment && data.mpaId && (
+              <> Your health score will contribute to the MPA&apos;s community rating.</>
             )}
+          </p>
+        </div>
 
-            <div className="flex gap-3">
-              <Button
-                variant="ghost"
-                onClick={() => setStep('photo')}
-                fullWidth
-              >
-                ← Back
-              </Button>
-              <Button
-                onClick={() => setStep('location')}
-                disabled={!data.speciesName}
-                fullWidth
-              >
-                Next →
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Location */}
-        {step === 'location' && (
-          <div className="space-y-4">
-            <Card>
-              <CardTitle>Location Details</CardTitle>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Marine Protected Area (Optional)
-                    </label>
-                    <select
-                      value={data.mpaId || ''}
-                      onChange={(e) => setData(prev => ({ ...prev, mpaId: e.target.value }))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                    >
-                      <option value="">Select MPA (if applicable)</option>
-                      {mpas.map(mpa => (
-                        <option key={mpa.id} value={mpa.id}>
-                          {mpa.name} - {mpa.country}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {data.latitude && data.longitude && (
-                    <div className="p-4 bg-cyan-50 border border-cyan-200 rounded-lg">
-                      <p className="text-sm font-semibold text-cyan-900 mb-2">
-                        📍 GPS Coordinates
-                      </p>
-                      <div className="text-sm text-cyan-800 space-y-1">
-                        <p>Lat: {data.latitude.toFixed(6)}°</p>
-                        <p>Lon: {data.longitude.toFixed(6)}°</p>
-                        {data.photoMetadata?.location && (
-                          <p className="text-xs mt-2">
-                            Accuracy: ±{data.photoMetadata.location.accuracy.toFixed(0)}m
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {!data.latitude && (
-                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-sm text-yellow-800">
-                        ⚠️ No location data available. Enable location services for better tracking.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="flex gap-3">
-              <Button
-                variant="ghost"
-                onClick={() => setStep('species')}
-                fullWidth
-              >
-                ← Back
-              </Button>
-              <Button
-                onClick={() => setStep('notes')}
-                fullWidth
-              >
-                Next →
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Notes */}
-        {step === 'notes' && (
-          <div className="space-y-4">
-            <Card>
-              <CardTitle>Additional Notes</CardTitle>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Observation Notes (Optional)
-                    </label>
-                    <Textarea
-                      value={data.notes}
-                      onChange={(e) => setData(prev => ({ ...prev, notes: e.target.value }))}
-                      placeholder="Describe the habitat, behavior, or any interesting details about your observation..."
-                      rows={6}
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                      Include details like water conditions, depth, behavior, or surrounding habitat
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="flex gap-3">
-              <Button
-                variant="ghost"
-                onClick={() => setStep('location')}
-                fullWidth
-              >
-                ← Back
-              </Button>
-              <Button
-                onClick={() => setStep('review')}
-                fullWidth
-              >
-                Review →
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Review & Submit */}
-        {step === 'review' && (
-          <div className="space-y-4">
-            <Card>
-              <CardTitle>Review Observation</CardTitle>
-              <CardContent>
-                <div className="space-y-4">
-                  {data.photo && (
-                    <div>
-                      <img
-                        src={data.photo}
-                        alt="Observation"
-                        className="w-full rounded-lg mb-2"
-                      />
-                      {data.photoMetadata && (
-                        <div className="flex gap-2 text-xs text-gray-500">
-                          <span>{data.photoMetadata.width}×{data.photoMetadata.height}</span>
-                          <span>•</span>
-                          <span>{(data.photoMetadata.size / 1024).toFixed(0)} KB</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="space-y-3 pt-4 border-t">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Species:</span>
-                      <span className="font-semibold">{data.speciesName}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Type:</span>
-                      <span className="capitalize">{data.speciesType}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Quantity:</span>
-                      <span>{data.quantity}</span>
-                    </div>
-                    {data.mpaId && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">MPA:</span>
-                        <span className="text-sm">
-                          {mpas.find(m => m.id === data.mpaId)?.name || 'Unknown'}
-                        </span>
-                      </div>
-                    )}
-                    {data.latitude && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Location:</span>
-                        <span className="font-mono text-xs">
-                          {data.latitude.toFixed(4)}°, {data.longitude?.toFixed(4)}°
-                        </span>
-                      </div>
-                    )}
-                    {data.notes && (
-                      <div className="pt-3 border-t">
-                        <p className="text-gray-600 mb-2">Notes:</p>
-                        <p className="text-sm text-gray-800">{data.notes}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-4">
-              <p className="text-sm text-cyan-800">
-                💾 Your observation will be saved locally and synced when you're online.
-              </p>
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                variant="ghost"
-                onClick={() => setStep('notes')}
-                fullWidth
-                disabled={submitting}
-              >
-                ← Back
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                loading={submitting}
-                fullWidth
-                size="lg"
-              >
-                {submitting ? 'Saving...' : '✓ Submit Observation'}
-              </Button>
-            </div>
-          </div>
-        )}
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3 pt-4">
+          <Button
+            onClick={handleSubmit}
+            loading={submitting}
+            disabled={submitting || savingDraft}
+            fullWidth
+            size="lg"
+          >
+            Submit Report
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleSaveDraft}
+            loading={savingDraft}
+            disabled={submitting || savingDraft}
+            fullWidth
+          >
+            Save Draft
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={handleCancel}
+            disabled={submitting || savingDraft}
+            fullWidth
+          >
+            Cancel
+          </Button>
+        </div>
       </div>
     </main>
+  );
+}
+
+// Loading fallback
+function ObservePageFallback() {
+  return (
+    <main className="min-h-screen pb-24 bg-gray-50">
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
+        <div className="p-4">
+          <div className="max-w-2xl mx-auto">
+            <h1 className="text-xl font-bold text-gray-900">Submit New Report</h1>
+          </div>
+        </div>
+      </div>
+      <div className="max-w-2xl mx-auto p-6">
+        <Card>
+          <CardContent>
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-cyan-500 border-t-transparent" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </main>
+  );
+}
+
+// Main page export with Suspense boundary
+export default function ObservePage() {
+  return (
+    <Suspense fallback={<ObservePageFallback />}>
+      <ObservePageContent />
+    </Suspense>
   );
 }

@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { MPA, Species, Observation } from '@/types';
+import { MPA, Species, Observation, UserHealthAssessment } from '@/types';
 import type { AbundanceCache, AbundanceRecord } from '@/types/obis-abundance';
 import type { EnvironmentalCache } from '@/types/obis-environmental';
 import type { TrackingCache } from '@/types/obis-tracking';
@@ -84,10 +84,31 @@ export interface OceanPulseDB extends DBSchema {
     value: IndicatorSpeciesCache;
     indexes: { 'by-last-fetched': 'lastFetched' };
   };
+  'observation-drafts': {
+    key: number;
+    value: Observation & {
+      id: number;
+    };
+    indexes: {
+      'by-mpa': 'mpaId';
+      'by-timestamp': 'timestamp';
+    };
+  };
+  'user-health-assessments': {
+    key: number;
+    value: UserHealthAssessment & {
+      id: number;
+    };
+    indexes: {
+      'by-mpa': 'mpaId';
+      'by-user': 'userId';
+      'by-sync-status': 'synced';
+    };
+  };
 }
 
 const DB_NAME = 'ocean-pulse-db';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 /**
  * Initialize the IndexedDB database
@@ -160,6 +181,27 @@ export async function initDB(): Promise<IDBPDatabase<OceanPulseDB>> {
       if (!db.objectStoreNames.contains('indicator-cache')) {
         const indicatorCacheStore = db.createObjectStore('indicator-cache', { keyPath: 'id' });
         indicatorCacheStore.createIndex('by-last-fetched', 'lastFetched');
+      }
+
+      // Observation drafts store (added in v6)
+      if (!db.objectStoreNames.contains('observation-drafts')) {
+        const draftsStore = db.createObjectStore('observation-drafts', {
+          keyPath: 'id',
+          autoIncrement: true,
+        });
+        draftsStore.createIndex('by-mpa', 'mpaId');
+        draftsStore.createIndex('by-timestamp', 'timestamp');
+      }
+
+      // User health assessments store (added in v6)
+      if (!db.objectStoreNames.contains('user-health-assessments')) {
+        const healthStore = db.createObjectStore('user-health-assessments', {
+          keyPath: 'id',
+          autoIncrement: true,
+        });
+        healthStore.createIndex('by-mpa', 'mpaId');
+        healthStore.createIndex('by-user', 'userId');
+        healthStore.createIndex('by-sync-status', 'synced');
       }
     },
   });
@@ -399,4 +441,143 @@ export function formatBytes(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+}
+
+// ==================== OBSERVATION DRAFT OPERATIONS ====================
+
+/**
+ * Save an observation draft
+ */
+export async function saveDraft(observation: Omit<Observation, 'id' | 'synced'>): Promise<number> {
+  const db = await initDB();
+  return await db.add('observation-drafts', {
+    ...observation,
+    isDraft: true,
+    synced: false,
+    timestamp: observation.timestamp || Date.now(),
+  } as any);
+}
+
+/**
+ * Update an existing draft
+ */
+export async function updateDraft(id: number, observation: Partial<Observation>): Promise<void> {
+  const db = await initDB();
+  const existing = await db.get('observation-drafts', id);
+  if (existing) {
+    await db.put('observation-drafts', {
+      ...existing,
+      ...observation,
+      id,
+    });
+  }
+}
+
+/**
+ * Get all drafts
+ */
+export async function getAllDrafts(): Promise<(Observation & { id: number })[]> {
+  const db = await initDB();
+  return await db.getAll('observation-drafts');
+}
+
+/**
+ * Get a draft by ID
+ */
+export async function getDraft(id: number): Promise<(Observation & { id: number }) | undefined> {
+  const db = await initDB();
+  return await db.get('observation-drafts', id);
+}
+
+/**
+ * Delete a draft
+ */
+export async function deleteDraft(id: number): Promise<void> {
+  const db = await initDB();
+  await db.delete('observation-drafts', id);
+}
+
+/**
+ * Get drafts count
+ */
+export async function getDraftsCount(): Promise<number> {
+  const db = await initDB();
+  return await db.count('observation-drafts');
+}
+
+// ==================== USER HEALTH ASSESSMENT OPERATIONS ====================
+
+/**
+ * Save a user health assessment
+ */
+export async function saveHealthAssessment(
+  assessment: Omit<UserHealthAssessment, 'id' | 'synced'>
+): Promise<number> {
+  const db = await initDB();
+  return await db.add('user-health-assessments', {
+    ...assessment,
+    timestamp: assessment.timestamp || Date.now(),
+    synced: false,
+  } as any);
+}
+
+/**
+ * Get health assessments for an MPA
+ */
+export async function getHealthAssessmentsForMPA(mpaId: string): Promise<(UserHealthAssessment & { id: number })[]> {
+  const db = await initDB();
+  const index = db.transaction('user-health-assessments').store.index('by-mpa');
+  return await index.getAll(mpaId as any);
+}
+
+/**
+ * Get unsynced health assessments
+ */
+export async function getUnsyncedHealthAssessments(): Promise<(UserHealthAssessment & { id: number })[]> {
+  const db = await initDB();
+  const index = db.transaction('user-health-assessments').store.index('by-sync-status');
+  return await index.getAll(false as any);
+}
+
+/**
+ * Mark a health assessment as synced
+ */
+export async function markHealthAssessmentSynced(id: number): Promise<void> {
+  const db = await initDB();
+  const assessment = await db.get('user-health-assessments', id);
+  if (assessment) {
+    assessment.synced = true;
+    await db.put('user-health-assessments', assessment);
+  }
+}
+
+/**
+ * Calculate average user health score for an MPA
+ * Returns the average score and count of assessments
+ */
+export async function getUserHealthScoreForMPA(mpaId: string): Promise<{
+  averageScore: number | null;
+  count: number;
+  recentAssessments: UserHealthAssessment[];
+}> {
+  const assessments = await getHealthAssessmentsForMPA(mpaId);
+
+  if (assessments.length === 0) {
+    return { averageScore: null, count: 0, recentAssessments: [] };
+  }
+
+  // Calculate average
+  const totalScore = assessments.reduce((sum, a) => sum + a.score, 0);
+  const averageScore = totalScore / assessments.length;
+
+  // Get 5 most recent
+  const recentAssessments = assessments
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 5);
+
+  return {
+    averageScore,
+    count: assessments.length,
+    recentAssessments,
+  };
 }

@@ -47,20 +47,79 @@ export type ConservationStatus =
   | 'DD' // Data Deficient
   | 'NE'; // Not Evaluated
 
+// Report Type for Observations
+export type ReportType =
+  | 'species_sighting'
+  | 'habitat_condition'
+  | 'water_quality'
+  | 'threat_concern'
+  | 'enforcement_activity'
+  | 'research_observation';
+
+export const REPORT_TYPES: Record<ReportType, { label: string; icon: string; description: string }> = {
+  species_sighting: {
+    label: 'Species Sighting',
+    icon: '🐠',
+    description: 'Report a marine species observation',
+  },
+  habitat_condition: {
+    label: 'Habitat Condition',
+    icon: '🪸',
+    description: 'Report on coral, seagrass, or other habitat health',
+  },
+  water_quality: {
+    label: 'Water Quality',
+    icon: '💧',
+    description: 'Report water clarity, color, or quality issues',
+  },
+  threat_concern: {
+    label: 'Threat/Concern',
+    icon: '⚠️',
+    description: 'Report pollution, illegal activity, or other threats',
+  },
+  enforcement_activity: {
+    label: 'Enforcement Activity',
+    icon: '🛡️',
+    description: 'Report patrol sightings or enforcement actions',
+  },
+  research_observation: {
+    label: 'Research Observation',
+    icon: '🔬',
+    description: 'Log scientific research data or findings',
+  },
+};
+
 // Observation Types
 export interface Observation {
   id?: number;
   mpaId: string;
-  photo: Blob;
+  photo: Blob | string;
   location: {
     lat: number;
     lng: number;
+    accuracy?: number;
+    manuallyEntered?: boolean;
   };
   notes: string;
   timestamp: number;
   synced: boolean;
   speciesName?: string;
   quantity?: number;
+  reportType: ReportType;
+  healthScoreAssessment?: number; // 1-10 scale
+  userId?: string;
+  isDraft?: boolean;
+}
+
+// User Health Assessment - for contributing to overall MPA health score
+export interface UserHealthAssessment {
+  id?: number;
+  mpaId: string;
+  userId: string;
+  score: number; // 1-10 scale
+  timestamp: number;
+  observationId?: number;
+  synced: boolean;
 }
 
 // Location Types
