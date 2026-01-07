@@ -17,9 +17,12 @@ migrate:
     - if: $CI_COMMIT_BRANCH == "main"
       when: manual
       allow_failure: true
+  variables:
+    SUPABASE_CLI_VERSION: "2.1.1"
   before_script:
     - apt-get update && apt-get install -y curl
-    - curl -fsSL https://raw.githubusercontent.com/supabase/cli/main/scripts/install.sh | sh
+    - curl -fsSL "https://github.com/supabase/cli/releases/download/v${SUPABASE_CLI_VERSION}/supabase_${SUPABASE_CLI_VERSION}_linux_amd64.deb" -o supabase.deb
+    - dpkg -i supabase.deb
   script:
     - supabase link --project-ref $SUPABASE_PROJECT_ID
     - supabase db push
