@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Component, ReactNode } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import { Card, CardTitle, CardContent, Button } from './ui';
 
 interface Props {
@@ -36,8 +37,11 @@ export class ErrorBoundary extends Component<Props, State> {
       errorInfo,
     });
 
-    // In production, you would send this to an error reporting service
-    // Example: Sentry, LogRocket, etc.
+    // Report to Sentry
+    Sentry.withScope((scope) => {
+      scope.setExtra('componentStack', errorInfo.componentStack);
+      Sentry.captureException(error);
+    });
   }
 
   handleReset = () => {
