@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { REPORT_TYPES } from '@/types';
-import { Badge } from '@/components/ui';
+import { Badge, Button, Modal } from '@/components/ui';
+import { Icon } from '@/components/Icon';
 import type { ObservationWithProfile } from '@/lib/observations-service';
 
 // Simple relative time formatter
@@ -70,10 +72,21 @@ function generateUsername(userId?: string | null, id?: string): string {
 
 interface ObservationCardProps {
   observation: ObservationWithProfile;
+  currentUserId?: string | null;
   onViewDetails?: () => void;
+  onEdit?: (observation: ObservationWithProfile) => void;
+  onDelete?: (observationId: string) => void;
 }
 
-export function ObservationCard({ observation, onViewDetails }: ObservationCardProps) {
+export function ObservationCard({
+  observation,
+  currentUserId,
+  onViewDetails,
+  onEdit,
+  onDelete,
+}: ObservationCardProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const isOwner = currentUserId && observation.user_id === currentUserId;
   const reportTypeInfo = observation.report_type
     ? REPORT_TYPES[observation.report_type]
     : null;
@@ -153,7 +166,68 @@ export function ObservationCard({ observation, onViewDetails }: ObservationCardP
             </button>
           )}
         </div>
+
+        {/* Edit/Delete buttons for owner */}
+        {isOwner && (onEdit || onDelete) && (
+          <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
+            {onEdit && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onEdit(observation)}
+                className="flex-1"
+              >
+                <Icon name="edit" size="sm" />
+                Edit
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <Icon name="trash" size="sm" />
+                Delete
+              </Button>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Delete Observation"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Are you sure you want to delete this observation? This action cannot be undone.
+          </p>
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => setShowDeleteConfirm(false)}
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                onDelete?.(observation.id);
+                setShowDeleteConfirm(false);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+              fullWidth
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

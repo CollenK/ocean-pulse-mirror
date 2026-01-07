@@ -16,10 +16,10 @@ export function OfflineIndicator() {
 
   useEffect(() => {
     if (!isOnline) {
-      setMessage('📡 You are offline. Viewing cached data.');
+      setMessage('You are offline. Viewing cached data.');
       setShow(true);
     } else if (isSlowConnection(effectiveType)) {
-      setMessage(`⚠️ Slow connection (${effectiveType}). Using cached data when possible.`);
+      setMessage(`Slow connection (${effectiveType}). Using cached data when possible.`);
       setShow(true);
     } else {
       // Hide after a delay when back online

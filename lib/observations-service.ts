@@ -227,6 +227,100 @@ export async function getObservationCountForMPA(mpaId: string): Promise<number> 
   return count;
 }
 
+export interface UpdateObservationInput {
+  id: string;
+  userId: string;
+  reportType?: ReportType;
+  speciesName?: string;
+  speciesType?: string;
+  quantity?: number;
+  notes?: string;
+  healthScoreAssessment?: number;
+}
+
+/**
+ * Update an existing observation
+ * Only allows users to update their own observations
+ */
+export async function updateObservation(input: UpdateObservationInput): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const supabase = createClient();
+
+    // Build update data (only include fields that are provided)
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (input.reportType !== undefined) updateData.report_type = input.reportType;
+    if (input.speciesName !== undefined) updateData.species_name = input.speciesName;
+    if (input.speciesType !== undefined) updateData.species_type = input.speciesType;
+    if (input.quantity !== undefined) updateData.quantity = input.quantity;
+    if (input.notes !== undefined) updateData.notes = input.notes;
+    if (input.healthScoreAssessment !== undefined) updateData.health_score_assessment = input.healthScoreAssessment;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase
+      .from('observations') as any)
+      .update(updateData)
+      .eq('id', input.id)
+      .eq('user_id', input.userId); // Ensure user can only update their own observations
+
+    if (error) {
+      console.error('Supabase update error:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to update observation:', error);
+    return { success: false, error: 'Failed to update observation' };
+  }
+}
+
+/**
+ * Delete an observation
+ * Only allows users to delete their own observations
+ */
+export async function deleteObservation(observationId: string, userId: string): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const supabase = createClient();
+
+    // First, delete any associated health assessments
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase
+      .from('user_health_assessments') as any)
+      .delete()
+      .eq('observation_id', observationId)
+      .eq('user_id', userId);
+
+    // Then delete the observation (user_id check ensures they can only delete their own)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase
+      .from('observations') as any)
+      .delete()
+      .eq('id', observationId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Supabase delete error:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete observation:', error);
+    return { success: false, error: 'Failed to delete observation' };
+  }
+}
+
 /**
  * Upload photo to Supabase Storage
  * Returns the public URL of the uploaded photo

@@ -1,4 +1,5 @@
 import { InputHTMLAttributes, TextareaHTMLAttributes, forwardRef } from 'react';
+import { Icon } from '@/components/Icon';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -39,7 +40,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         />
         {error && (
           <p id={errorId} className="mt-1 text-sm text-red-600 flex items-center gap-1" role="alert">
-            <span aria-hidden="true">⚠</span>
+            <Icon name="exclamation" size="sm" />
             {error}
           </p>
         )}
@@ -93,7 +94,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         />
         {error && (
           <p id={errorId} className="mt-1 text-sm text-red-600 flex items-center gap-1" role="alert">
-            <span aria-hidden="true">⚠</span>
+            <Icon name="exclamation" size="sm" />
             {error}
           </p>
         )}

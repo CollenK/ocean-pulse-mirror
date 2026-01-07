@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { Icon } from '@/components/Icon';
 
 interface BadgeProps {
   children: ReactNode;
@@ -59,19 +60,19 @@ export function HealthBadge({ score, size = 'md', showScore = true }: HealthBadg
     return 'At Risk';
   };
 
-  const getHealthIcon = (score: number): string => {
-    if (score >= 80) return '✓';
-    if (score >= 50) return '⚠';
-    return '✕';
+  const getHealthIconName = (score: number): string => {
+    if (score >= 80) return 'check';
+    if (score >= 50) return 'exclamation';
+    return 'cross';
   };
 
   const variant = getHealthVariant(score);
   const label = getHealthLabel(score);
-  const icon = getHealthIcon(score);
+  const iconName = getHealthIconName(score);
 
   return (
     <Badge variant={variant} size={size}>
-      {icon} {label}
+      <Icon name={iconName} size="sm" /> {label}
       {showScore && ` (${score})`}
     </Badge>
   );

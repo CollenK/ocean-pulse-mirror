@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardTitle, CardContent, Button, Badge } from '@/components/ui';
 import { MPACardSkeleton } from '@/components/ui';
+import { Icon } from '@/components/Icon';
 import { getSpeciesDetailsCached, formatSpeciesName } from '@/lib/species-service';
 import { formatTaxonomy, getCommonName, OBISSpecies } from '@/lib/obis-client';
 
@@ -82,7 +83,7 @@ export default function SpeciesDetailPage() {
             ← Back
           </Button>
 
-          <div className="mb-4 text-6xl">🐠</div>
+          <div className="mb-4"><Icon name="fish" className="text-6xl" /></div>
 
           <h1 className="text-3xl font-bold mb-2">{commonName}</h1>
 
@@ -233,13 +234,13 @@ export default function SpeciesDetailPage() {
           <CardContent>
             <div className="space-y-3">
               <Button fullWidth variant="secondary" disabled>
-                📍 View Distribution Map (Coming Soon)
+                <Icon name="marker" className="mr-2" /> View Distribution Map (Coming Soon)
               </Button>
               <Button fullWidth variant="secondary" disabled>
-                📊 View Population Trends (Coming Soon)
+                <Icon name="chart-line" className="mr-2" /> View Population Trends (Coming Soon)
               </Button>
               <Button fullWidth variant="ghost">
-                🔗 Share Species Info
+                <Icon name="share" className="mr-2" /> Share Species Info
               </Button>
             </div>
           </CardContent>

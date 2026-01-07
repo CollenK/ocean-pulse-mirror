@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardTitle, CardContent, Button } from '@/components/ui';
+import { Icon } from '@/components/Icon';
 import { PermissionStatus } from '@/hooks/useGeolocation';
 
 interface LocationPermissionPromptProps {
@@ -60,7 +61,7 @@ export function LocationPermissionPrompt({
   return (
     <Card className="mb-6 bg-cyan-50 border-cyan-200">
       <div className="text-center p-6">
-        <div className="text-6xl mb-4">📍</div>
+        <div className="mb-4"><Icon name="marker" className="text-6xl text-cyan-600" /></div>
         <CardTitle className="text-cyan-900 mb-2">Enable Location</CardTitle>
         <CardContent>
           <p className="text-cyan-800 mb-6">

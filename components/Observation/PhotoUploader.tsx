@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui';
+import { Icon } from '@/components/Icon';
 import { trackPermissionRequest } from '@/lib/analytics';
 
 export interface PhotoMetadata {
@@ -290,7 +291,7 @@ export function PhotoUploader({
               {metadata.location && (
                 <>
                   <span>•</span>
-                  <span className="text-cyan-600">📍 GPS tagged</span>
+                  <span className="text-cyan-600 flex items-center gap-1"><Icon name="marker" size="sm" /> GPS tagged</span>
                 </>
               )}
             </div>

@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup, Rectangle, useMap } from 'react
 import { LatLngBoundsExpression, LatLngExpression } from 'leaflet';
 import { MPA } from '@/types';
 import { HealthBadge } from '@/components/ui';
+import { Icon } from '@/components/Icon';
 import Link from 'next/link';
 import 'leaflet/dist/leaflet.css';
 
@@ -68,7 +69,7 @@ function MapControls() {
         className="touch-target bg-white rounded-full w-12 h-12 shadow-lg flex items-center justify-center text-xl text-navy-600 hover:bg-gray-50 active:scale-95 transition-all"
         aria-label="My location"
       >
-        📍
+        <Icon name="marker" />
       </button>
     </div>
   );
@@ -98,9 +99,9 @@ function createCustomIcon(healthScore: number) {
         box-shadow: 0 3px 10px rgba(0,0,0,0.3);
         display: flex;
         align-items: center;
-        justify-center;
+        justify-content: center;
       ">
-        <div style="transform: rotate(45deg); color: white; font-size: 16px;">🌊</div>
+        <i class="fi fi-rr-water" style="transform: rotate(45deg); color: white; font-size: 14px;"></i>
       </div>
     `,
     iconSize: [32, 32],

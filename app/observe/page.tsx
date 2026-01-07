@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, Button, Input, Textarea, Badge } from '@/components/ui';
+import { Icon } from '@/components/Icon';
 import {
   HealthScoreSlider,
   MPASearchSelect,
@@ -57,7 +58,7 @@ function SignInPrompt() {
           <CardContent>
             <div className="text-center py-8 space-y-6">
               <div className="w-20 h-20 mx-auto bg-cyan-100 rounded-full flex items-center justify-center">
-                <span className="text-4xl">🔐</span>
+                <Icon name="lock" className="text-4xl text-cyan-600" />
               </div>
 
               <div className="space-y-2">
@@ -398,7 +399,7 @@ function ObservePageContent() {
         {data.reportType === 'species_sighting' && (
           <section className="space-y-4 p-4 bg-cyan-50 rounded-xl border border-cyan-100">
             <h3 className="font-semibold text-cyan-900 flex items-center gap-2">
-              <span>🐠</span> Species Details
+              <Icon name="fish" /> Species Details
             </h3>
 
             <div>

@@ -3,6 +3,7 @@
 import React, { Component, ReactNode } from 'react';
 import * as Sentry from '@sentry/nextjs';
 import { Card, CardTitle, CardContent, Button } from './ui';
+import { Icon } from './Icon';
 
 interface Props {
   children: ReactNode;
@@ -59,7 +60,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50">
           <Card className="max-w-lg w-full">
-            <CardTitle className="text-red-600">⚠️ Something went wrong</CardTitle>
+            <CardTitle className="text-red-600 flex items-center gap-2"><Icon name="exclamation" /> Something went wrong</CardTitle>
             <CardContent>
               <div className="space-y-4">
                 <p className="text-gray-700">
@@ -138,7 +139,7 @@ export function ErrorFallback({
 }) {
   return (
     <div className="p-6 text-center">
-      <div className="text-6xl mb-4">⚠️</div>
+      <div className="mb-4"><Icon name="exclamation" className="text-6xl text-red-500" /></div>
       <h2 className="text-xl font-bold text-red-600 mb-2">Something went wrong</h2>
       <p className="text-gray-600 mb-4">{error.message}</p>
       <Button onClick={resetError}>Try Again</Button>

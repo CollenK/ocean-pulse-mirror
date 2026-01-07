@@ -1,8 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { useObservations } from '@/hooks/useObservations';
+import { useAuth } from '@/hooks/useAuth';
 import { ObservationCard } from './ObservationCard';
+import { EditObservationModal } from './Observation/EditObservationModal';
 import { Button, Icon } from '@/components/ui';
+import { deleteObservation, type ObservationWithProfile } from '@/lib/observations-service';
 import Link from 'next/link';
 
 interface LiveReportsProps {
@@ -11,7 +15,34 @@ interface LiveReportsProps {
 }
 
 export function LiveReports({ mpaId, maxHeight = 500 }: LiveReportsProps) {
-  const { observations, loading, totalCount } = useObservations(mpaId);
+  const { observations, loading, refetch } = useObservations(mpaId);
+  const { user } = useAuth();
+  const [editingObservation, setEditingObservation] = useState<ObservationWithProfile | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+
+  const handleEdit = (observation: ObservationWithProfile) => {
+    setEditingObservation(observation);
+  };
+
+  const handleDelete = async (observationId: string) => {
+    if (!user?.id) return;
+
+    setDeleteLoading(observationId);
+    const result = await deleteObservation(observationId, user.id);
+
+    if (result.success) {
+      await refetch();
+    } else {
+      console.error('Failed to delete observation:', result.error);
+    }
+
+    setDeleteLoading(null);
+  };
+
+  const handleEditSuccess = async () => {
+    await refetch();
+    setEditingObservation(null);
+  };
 
   if (loading) {
     return (
@@ -46,9 +77,12 @@ export function LiveReports({ mpaId, maxHeight = 500 }: LiveReportsProps) {
             <ObservationCard
               key={observation.id}
               observation={observation}
+              currentUserId={user?.id}
               onViewDetails={() => {
                 console.log('View observation:', observation.id);
               }}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
             />
           ))}
         </div>
@@ -72,6 +106,17 @@ export function LiveReports({ mpaId, maxHeight = 500 }: LiveReportsProps) {
           Submit Report
         </Button>
       </Link>
+
+      {/* Edit Observation Modal */}
+      {editingObservation && user?.id && (
+        <EditObservationModal
+          observation={editingObservation}
+          userId={user.id}
+          isOpen={!!editingObservation}
+          onClose={() => setEditingObservation(null)}
+          onSuccess={handleEditSuccess}
+        />
+      )}
     </div>
   );
 }

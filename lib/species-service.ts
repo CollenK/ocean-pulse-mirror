@@ -334,15 +334,15 @@ export function formatSpeciesName(species: OBISSpecies): string {
 }
 
 /**
- * Get conservation status emoji
+ * Get conservation status color class
  */
-export function getConservationEmoji(status?: string): string {
-  if (!status) return '📊';
+export function getConservationStatusColor(status?: string): string {
+  if (!status) return 'text-gray-500';
 
   const lower = status.toLowerCase();
-  if (lower.includes('endangered')) return '🔴';
-  if (lower.includes('vulnerable')) return '🟠';
-  if (lower.includes('threatened')) return '🟡';
-  if (lower.includes('concern')) return '🟡';
-  return '🟢';
+  if (lower.includes('endangered')) return 'text-red-600';
+  if (lower.includes('vulnerable')) return 'text-orange-500';
+  if (lower.includes('threatened')) return 'text-yellow-500';
+  if (lower.includes('concern')) return 'text-yellow-500';
+  return 'text-green-500';
 }

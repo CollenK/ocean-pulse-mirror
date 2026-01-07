@@ -1,6 +1,7 @@
 'use client';
 
 import { ReportType, REPORT_TYPES } from '@/types';
+import { Icon } from '@/components/Icon';
 
 interface ReportTypeSelectorProps {
   value?: ReportType;
@@ -25,7 +26,7 @@ export function ReportTypeSelector({ value, onChange, disabled = false }: Report
               : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
           } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
-          <span className="text-2xl flex-shrink-0">{info.icon}</span>
+          <Icon name={info.icon} size="xl" className={`flex-shrink-0 ${value === type ? 'text-cyan-600' : 'text-gray-500'}`} />
           <div className="min-w-0">
             <p className={`font-semibold ${
               value === type ? 'text-cyan-700' : 'text-gray-800'

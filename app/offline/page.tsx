@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardTitle, CardContent, Button, Badge, HealthBadge } from '@/components/ui';
+import { Icon } from '@/components/Icon';
 import {
   getAllCachedMPAs,
   getCachedMPACount,
@@ -162,7 +163,7 @@ export default function OfflinePage() {
                       variant="ghost"
                       onClick={() => handleDeleteMPA(mpa.id)}
                     >
-                      🗑️
+                      <Icon name="trash" />
                     </Button>
                   </div>
                 ))}

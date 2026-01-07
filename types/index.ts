@@ -59,32 +59,32 @@ export type ReportType =
 export const REPORT_TYPES: Record<ReportType, { label: string; icon: string; description: string }> = {
   species_sighting: {
     label: 'Species Sighting',
-    icon: '🐠',
+    icon: 'fish',
     description: 'Report a marine species observation',
   },
   habitat_condition: {
     label: 'Habitat Condition',
-    icon: '🪸',
+    icon: 'tree',
     description: 'Report on coral, seagrass, or other habitat health',
   },
   water_quality: {
     label: 'Water Quality',
-    icon: '💧',
+    icon: 'water',
     description: 'Report water clarity, color, or quality issues',
   },
   threat_concern: {
     label: 'Threat/Concern',
-    icon: '⚠️',
+    icon: 'exclamation',
     description: 'Report pollution, illegal activity, or other threats',
   },
   enforcement_activity: {
     label: 'Enforcement Activity',
-    icon: '🛡️',
+    icon: 'shield-check',
     description: 'Report patrol sightings or enforcement actions',
   },
   research_observation: {
     label: 'Research Observation',
-    icon: '🔬',
+    icon: 'document',
     description: 'Log scientific research data or findings',
   },
 };

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardTitle, CardContent, Button, Badge, HealthBadge } from '@/components/ui';
+import { Icon } from '@/components/Icon';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { LocationPermissionPrompt } from '@/components/LocationPermissionPrompt';
 import { usePullToRefresh, PullToRefreshIndicator } from '@/hooks/usePullToRefresh';
@@ -49,8 +50,8 @@ export default function NearbyPage() {
       />
       <main ref={containerRef} className="min-h-screen p-6 pb-24 bg-gray-50">
         <div className="max-w-screen-xl mx-auto">
-        <h1 className="text-3xl font-bold text-navy-600 mb-2">
-          📍 Nearby MPAs
+        <h1 className="text-3xl font-bold text-navy-600 mb-2 flex items-center gap-2">
+          <Icon name="marker" size="lg" /> Nearby MPAs
         </h1>
         <p className="text-gray-600 mb-6">
           Find Marine Protected Areas near your location
@@ -121,9 +122,9 @@ export default function NearbyPage() {
             {nearbyMPAs.length > 0 && nearbyMPAs[0].distance > 1000 && (
               <Card className="mb-4 bg-blue-50 border-blue-200">
                 <CardContent>
-                  <p className="text-sm text-blue-800">
-                    💡 <strong>Tip:</strong> The nearest MPA is {nearbyMPAs[0].distance.toFixed(0)} km away.
-                    Marine Protected Areas may be sparse in your region. Consider exploring the map to see all available MPAs.
+                  <p className="text-sm text-blue-800 flex items-start gap-2">
+                    <Icon name="lightbulb" className="flex-shrink-0 mt-0.5" />
+                    <span><strong>Tip:</strong> The nearest MPA is {nearbyMPAs[0].distance.toFixed(0)} km away. Marine Protected Areas may be sparse in your region. Consider exploring the map to see all available MPAs.</span>
                   </p>
                 </CardContent>
               </Card>
@@ -136,7 +137,7 @@ export default function NearbyPage() {
               <CardContent>
               {nearbyMPAs.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="text-6xl mb-4">🔍</div>
+                  <div className="mb-4"><Icon name="search" className="text-6xl text-gray-400" /></div>
                   <p className="text-lg font-semibold text-gray-700 mb-2">
                     No MPAs Nearby
                   </p>

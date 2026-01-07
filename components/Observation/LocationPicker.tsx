@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useGeolocation, GeolocationData } from '@/hooks/useGeolocation';
 import { Button, Input } from '@/components/ui';
+import { Icon } from '@/components/Icon';
 
 interface LocationPickerProps {
   value?: {
@@ -230,7 +231,7 @@ export function LocationPicker({ value, onChange, disabled = false }: LocationPi
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-semibold text-cyan-900 mb-2 flex items-center gap-2">
-                    <span className="text-lg">📍</span> GPS Coordinates
+                    <Icon name="marker" size="lg" /> GPS Coordinates
                   </p>
                   <div className="text-sm text-cyan-800 space-y-1 font-mono">
                     <p>Lat: {currentLocation.lat.toFixed(6)}°</p>
