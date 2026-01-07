@@ -2,6 +2,11 @@
 -- Change from UUID to TEXT to match the string MPA IDs used in the app
 
 -- ============================================
+-- Drop views that depend on mpa_id first
+-- ============================================
+DROP VIEW IF EXISTS mpa_community_health;
+
+-- ============================================
 -- Drop existing foreign key constraints
 -- ============================================
 ALTER TABLE observations DROP CONSTRAINT IF EXISTS observations_mpa_id_fkey;
