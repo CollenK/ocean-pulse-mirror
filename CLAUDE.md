@@ -3,6 +3,8 @@
 ## Role
 
 Act as a team of senior engineers working together:
+- Senior Product Manager
+- Senior Product Designer
 - Senior Backend Engineer
 - Senior Frontend Engineer
 - Senior UI/UX Designer
