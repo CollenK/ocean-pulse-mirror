@@ -91,7 +91,7 @@ test.describe('Offline Data Page - Public', () => {
   });
 
   test('has navigation to browse more MPAs', async ({ page }) => {
-    const browseLink = page.locator('text=/browse|view.*mpa|explore/i, a[href="/"]');
+    const browseLink = page.locator('text=/browse|view.*mpa|explore/i').or(page.locator('a[href="/"]'));
     await expect(browseLink.first()).toBeVisible();
   });
 
@@ -128,7 +128,7 @@ authTest.describe('Profile Page - Authenticated', () => {
     await page.waitForLoadState('networkidle');
 
     // Email display - look for the test email or any email format
-    const email = page.locator('text=/@/, text=/email/i');
+    const email = page.locator('text=/@/').or(page.locator('text=/email/i'));
     await expect(email.first()).toBeVisible({ timeout: 10000 });
   });
 
@@ -173,7 +173,7 @@ authTest.describe('Profile Page - Authenticated', () => {
     await page.goto('/profile');
     await page.waitForLoadState('networkidle');
 
-    const offlineLink = page.locator('a[href="/offline"], text=/offline.*data|offline/i');
+    const offlineLink = page.locator('a[href="/offline"]').or(page.locator('text=/offline.*data|offline/i'));
     const count = await offlineLink.count();
     expect(count >= 0).toBeTruthy(); // Soft assertion
   });
@@ -182,7 +182,7 @@ authTest.describe('Profile Page - Authenticated', () => {
     await page.goto('/profile');
     await page.waitForLoadState('networkidle');
 
-    const savedLink = page.locator('a[href="/saved"], text=/saved.*mpa|saved/i');
+    const savedLink = page.locator('a[href="/saved"]').or(page.locator('text=/saved.*mpa|saved/i'));
     const count = await savedLink.count();
     expect(count >= 0).toBeTruthy(); // Soft assertion
   });
@@ -275,7 +275,7 @@ test.describe('Save MPA Feature', () => {
     await page.waitForLoadState('networkidle');
 
     // Save button might be visible regardless of auth
-    const saveBtn = page.locator('text=/save|bookmark|favorite/i, button[aria-label*="save" i]');
+    const saveBtn = page.locator('text=/save|bookmark|favorite/i').or(page.locator('button[aria-label*="save" i]'));
     // Button should exist (though might require auth to work)
     const count = await saveBtn.count();
     expect(count >= 0).toBeTruthy();

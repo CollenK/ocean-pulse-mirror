@@ -62,7 +62,7 @@ test.describe('Home Page - Featured MPA Card', () => {
     await page.waitForTimeout(2000);
 
     // Look for circular progress or health score display
-    const healthScore = page.locator('[class*="circular"], text=/\\d+%?.*health/i').first();
+    const healthScore = page.locator('[class*="circular"]').or(page.locator('text=/\\d+%?.*health/i')).first();
     // Health score might be displayed as a number or progress indicator
     const scoreExists = await healthScore.count() > 0;
     expect(scoreExists || await page.locator('text=/health/i').count() > 0).toBeTruthy();
@@ -84,7 +84,7 @@ test.describe('Home Page - Quick Action Cards', () => {
     await page.waitForTimeout(1000);
 
     // Map should be visible or page should change
-    const mapVisible = await page.locator('[class*="leaflet"], canvas, text=/back.*home/i').count() > 0;
+    const mapVisible = await page.locator('[class*="leaflet"], canvas').or(page.locator('text=/back.*home/i')).count() > 0;
     expect(mapVisible).toBeTruthy();
   });
 
@@ -97,13 +97,13 @@ test.describe('Home Page - Quick Action Cards', () => {
   });
 
   test('Species card navigates to species page', async ({ page }) => {
-    const speciesCard = page.locator('a[href="/species"], text=Species').first();
+    const speciesCard = page.locator('a[href="/species"]').or(page.locator('text=Species')).first();
     await speciesCard.click();
     await expect(page).toHaveURL(/species/);
   });
 
   test('Observe card navigates to observe page', async ({ page }) => {
-    const observeCard = page.locator('a[href="/observe"], text=Observe').first();
+    const observeCard = page.locator('a[href="/observe"]').or(page.locator('text=Observe')).first();
     await observeCard.click();
 
     // Should navigate to observe or show login requirement

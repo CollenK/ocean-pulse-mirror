@@ -19,12 +19,12 @@ test.describe('Login Page', () => {
   });
 
   test('shows Google OAuth button', async ({ page }) => {
-    const googleBtn = page.locator('button:has-text("Google"), text=/google/i');
+    const googleBtn = page.locator('button:has-text("Google")').or(page.locator('text=/google/i'));
     await expect(googleBtn.first()).toBeVisible();
   });
 
   test('shows GitHub OAuth button', async ({ page }) => {
-    const githubBtn = page.locator('button:has-text("GitHub"), text=/github/i');
+    const githubBtn = page.locator('button:has-text("GitHub")').or(page.locator('text=/github/i'));
     await expect(githubBtn.first()).toBeVisible();
   });
 
@@ -97,7 +97,7 @@ test.describe('User Menu - Unauthenticated', () => {
     await page.waitForLoadState('networkidle');
 
     // Look for user menu or sign in button
-    const signInOption = page.locator('text=/sign in|log in/i, a[href="/login"]');
+    const signInOption = page.locator('text=/sign in|log in/i').or(page.locator('a[href="/login"]'));
     const userAvatar = page.locator('[class*="avatar"], [class*="user-menu"]');
 
     const hasLoginOption = await signInOption.count() > 0;

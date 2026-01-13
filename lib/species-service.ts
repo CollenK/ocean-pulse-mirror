@@ -18,7 +18,7 @@ const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 /**
  * Search for species with caching
- * Searches both API and sample data
+ * Fetches from OBIS API with local cache support
  */
 export async function searchSpeciesCached(
   query: string,
@@ -78,7 +78,7 @@ export async function searchSpeciesCached(
 
 /**
  * Get species for an MPA with caching
- * Uses sample data as fallback when API fails or returns no results
+ * Fetches from OBIS API for the MPA's geographic area
  */
 export async function getSpeciesForMPA(
   mpaId: string,

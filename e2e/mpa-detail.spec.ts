@@ -45,7 +45,7 @@ test.describe('MPA Detail - Page Load', () => {
 
   test('has back navigation', async ({ page }) => {
     // Look for back button or home link
-    const backNav = page.locator('text=/back|home/i, a[href="/"]').first();
+    const backNav = page.locator('text=/back|home/i').or(page.locator('a[href="/"]')).first();
     await expect(backNav).toBeVisible();
   });
 });
@@ -206,9 +206,9 @@ test.describe('MPA Detail - View on Map Feature', () => {
 test.describe('MPA Detail - Different MPAs', () => {
   const mpas = [
     { id: 'gbr-australia', name: 'Great Barrier Reef' },
-    { id: 'galapagos-marine', name: 'Galapagos' },
-    { id: 'palau-marine', name: 'Palau' },
-    { id: 'tubbataha-reefs', name: 'Tubbataha' },
+    { id: 'galapagos-ecuador', name: 'Galápagos' },
+    { id: 'palau-national-marine-sanctuary', name: 'Palau' },
+    { id: 'raja-ampat-indonesia', name: 'Raja Ampat' },
   ];
 
   for (const mpa of mpas) {

@@ -63,7 +63,7 @@ test.describe('Live Reports Section in MPA Detail', () => {
     await page.waitForTimeout(1000);
 
     // Look for add report action
-    const addButton = page.locator('text=/add.*report|new.*observation|submit/i, button:has-text("Add")');
+    const addButton = page.locator('text=/add.*report|new.*observation|submit/i').or(page.locator('button:has-text("Add")'));
     // May or may not be visible depending on auth state
     const count = await addButton.count();
     expect(count >= 0).toBeTruthy();
@@ -148,7 +148,7 @@ authTest.describe('Observation Form - Authenticated', () => {
     await page.waitForLoadState('networkidle');
 
     // Photo upload section
-    const photoUpload = page.locator('text=/photo|camera|upload|image/i, input[type="file"], input[accept*="image"]');
+    const photoUpload = page.locator('text=/photo|camera|upload|image/i').or(page.locator('input[type="file"], input[accept*="image"]'));
     await expect(photoUpload.first()).toBeVisible({ timeout: 10000 });
   });
 

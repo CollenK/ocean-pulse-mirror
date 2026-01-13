@@ -75,8 +75,8 @@ test.describe('Navigation - Public Routes', () => {
 test.describe('Navigation - MPA Detail Pages', () => {
   const mpas = [
     { id: 'gbr-australia', name: 'Great Barrier Reef' },
-    { id: 'med-protected', name: 'Mediterranean' },
-    { id: 'galapagos-marine', name: 'Galapagos' },
+    { id: 'mediterranean-sea', name: 'Mediterranean' },
+    { id: 'galapagos-ecuador', name: 'Galápagos' },
   ];
 
   for (const mpa of mpas) {
@@ -193,7 +193,7 @@ test.describe('Navigation - Back Button and History', () => {
     await page.waitForLoadState('networkidle');
 
     // Look for back button/link
-    const backButton = page.locator('text=/back|home/i, a[href="/"]').first();
+    const backButton = page.locator('text=/back|home/i').or(page.locator('a[href="/"]')).first();
     if (await backButton.count() > 0) {
       await backButton.click();
       await expect(page).toHaveURL('/');

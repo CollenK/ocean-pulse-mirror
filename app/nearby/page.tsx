@@ -19,14 +19,17 @@ export default function NearbyPage() {
   const [maxDistance, setMaxDistance] = useState(500); // km
 
   useEffect(() => {
-    if (position) {
-      const nearest = findNearestMPAs(
-        position.latitude,
-        position.longitude,
-        maxDistance
-      );
-      setNearbyMPAs(nearest);
+    async function loadNearbyMPAs() {
+      if (position) {
+        const nearest = await findNearestMPAs(
+          position.latitude,
+          position.longitude,
+          maxDistance
+        );
+        setNearbyMPAs(nearest);
+      }
     }
+    loadNearbyMPAs();
   }, [position, maxDistance]);
 
   // Pull to refresh - refetch location

@@ -78,7 +78,7 @@ test.describe('Nearby Page - Distance Filter', () => {
   });
 
   test('shows distance filter slider', async ({ page }) => {
-    const slider = page.locator('input[type="range"], [class*="slider"], text=/\\d+.*km/i');
+    const slider = page.locator('input[type="range"], [class*="slider"]').or(page.locator('text=/\\d+.*km/i'));
     await expect(slider.first()).toBeVisible();
   });
 

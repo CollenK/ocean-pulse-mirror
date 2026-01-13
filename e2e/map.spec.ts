@@ -136,7 +136,7 @@ test.describe('Map - Marker Interactions', () => {
       await page.waitForTimeout(500);
 
       // View Details button/link
-      const viewDetails = page.locator('.leaflet-popup a[href*="/mpa/"], .leaflet-popup text=/view details/i');
+      const viewDetails = page.locator('.leaflet-popup a[href*="/mpa/"]').or(page.locator('.leaflet-popup').locator('text=/view details/i'));
       await expect(viewDetails.first()).toBeVisible();
     }
   });

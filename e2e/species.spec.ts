@@ -57,7 +57,7 @@ test.describe('Species Search Page', () => {
     await searchInput.fill('whale');
 
     // Look for loading indicator
-    const loading = page.locator('text=/loading|searching/i, [class*="spinner"], [class*="loading"]');
+    const loading = page.locator('text=/loading|searching/i').or(page.locator('[class*="spinner"], [class*="loading"]'));
     // Loading might be brief, so just check it doesn't error
     await page.waitForTimeout(500);
     expect(true).toBeTruthy();
@@ -150,7 +150,7 @@ test.describe('Species Detail Page', () => {
     await page.waitForLoadState('networkidle');
 
     // Back button or link
-    const backNav = page.locator('text=/back|species/i, a[href="/species"]').first();
+    const backNav = page.locator('text=/back|species/i').or(page.locator('a[href="/species"]')).first();
     await expect(backNav).toBeVisible();
   });
 });
@@ -220,7 +220,7 @@ test.describe('Indicator Species Page', () => {
     await page.waitForTimeout(1000);
 
     // Click a category filter (e.g., Fish)
-    const fishFilter = page.locator('text=/^fish$/i, button:has-text("Fish"), label:has-text("Fish")').first();
+    const fishFilter = page.locator('text=/^fish$/i').or(page.locator('button:has-text("Fish"), label:has-text("Fish")')).first();
     if (await fishFilter.count() > 0) {
       await fishFilter.click();
       await page.waitForTimeout(1000);
