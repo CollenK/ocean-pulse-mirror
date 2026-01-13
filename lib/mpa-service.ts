@@ -106,7 +106,8 @@ function transformMPARow(row: any): MPA {
 }
 
 /**
- * Fetch all MPAs from Supabase
+ * Fetch the largest MPAs from Supabase
+ * Returns the top 100 MPAs by area (km²) for performance
  */
 export async function fetchAllMPAs(): Promise<MPA[]> {
   const supabase = getSupabase();
@@ -117,49 +118,19 @@ export async function fetchAllMPAs(): Promise<MPA[]> {
   }
 
   try {
-    // Fetch MPAs with optional health score join
     const { data, error } = await supabase
       .from('mpas')
-      .select(`
-        *,
-        health_scores (
-          score
-        )
-      `)
-      .order('name');
+      .select('*')
+      .gt('area_km2', 0)
+      .order('area_km2', { ascending: false })
+      .limit(100);
 
     if (error) {
-      // If health_scores join fails (table doesn't exist), try without it
-      if (error.message?.includes('health_scores')) {
-        const { data: mpasOnly, error: mpasError } = await supabase
-          .from('mpas')
-          .select('*')
-          .order('name');
-
-        if (mpasError) {
-          console.error('Error fetching MPAs:', mpasError);
-          return [];
-        }
-
-        return (mpasOnly || []).map(transformMPARow);
-      }
-
       console.error('Error fetching MPAs:', error);
       return [];
     }
 
-    // Transform rows, using latest health score if available
-    return (data || []).map((row: any) => {
-      const healthScores = row.health_scores || [];
-      const latestScore = healthScores.length > 0
-        ? healthScores[healthScores.length - 1]?.score
-        : null;
-
-      return transformMPARow({
-        ...row,
-        latest_health_score: latestScore,
-      });
-    });
+    return (data || []).map(transformMPARow);
   } catch (error) {
     console.error('Error fetching MPAs:', error);
     return [];

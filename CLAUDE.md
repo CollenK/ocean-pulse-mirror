@@ -122,7 +122,8 @@ Common icons used in this project:
 - Use service functions in `lib/` for API calls
 - Services should handle Supabase queries and local fallbacks
 - Custom hooks in `hooks/` wrap services with loading/error states
-
+- Never create mock or dummy data. Always use real data and alert me if
+  you cannot access real data
 ### Error Handling
 - Wrap async operations in try/catch
 - Log errors to console in development
