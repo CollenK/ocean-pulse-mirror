@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Icon } from '@/components/Icon';
 
@@ -12,6 +12,10 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get redirect URL from query params, default to interactive map
+  const redirectTo = searchParams.get('redirect') || '/ocean-pulse-app';
 
   const signInWithProvider = async (provider: 'google' | 'github') => {
     try {
@@ -22,7 +26,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
         },
       });
 
@@ -47,8 +51,8 @@ export default function LoginPage() {
 
       if (error) throw error;
 
-      // Redirect to home on success
-      router.push('/');
+      // Redirect to the intended destination on success
+      router.push(redirectTo);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid email or password');
@@ -214,7 +218,7 @@ export default function LoginPage() {
 
           {/* Continue as Guest */}
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/ocean-pulse-app')}
             className="w-full text-center text-ocean-primary hover:text-ocean-deep transition-colors font-medium"
           >
             Continue as guest

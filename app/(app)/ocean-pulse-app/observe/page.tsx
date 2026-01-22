@@ -72,12 +72,12 @@ function SignInPrompt() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-sm mx-auto">
-                <Button onClick={() => router.push('/login')} fullWidth>
+                <Button onClick={() => router.push('/login?redirect=/ocean-pulse-app/observe')} fullWidth>
                   Sign In
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => router.push('/login?signup=true')}
+                  onClick={() => router.push('/login?redirect=/ocean-pulse-app/observe&signup=true')}
                   fullWidth
                 >
                   Create Account
