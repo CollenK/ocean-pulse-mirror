@@ -100,7 +100,7 @@ export function LiveReports({ mpaId, maxHeight = 500 }: LiveReportsProps) {
       )}
 
       {/* Submit Report Button */}
-      <Link href={`/observe?mpa=${mpaId}`} className="block">
+      <Link href={`/ocean-pulse-app/observe?mpa=${mpaId}`} className="block">
         <Button fullWidth size="lg" className="rounded-xl">
           <Icon name="camera" size="sm" />
           Submit Report
