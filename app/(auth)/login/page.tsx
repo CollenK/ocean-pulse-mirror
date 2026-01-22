@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Icon } from '@/components/Icon';
 
-export default function LoginPage() {
+function LoginContent() {
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showEmailLogin, setShowEmailLogin] = useState(false);
@@ -238,5 +238,40 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-ocean-primary/5 via-white to-ocean-accent/5 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-gradient-to-br from-ocean-primary to-ocean-accent rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <Icon name="water" className="text-white text-2xl" />
+          </div>
+          <h1 className="text-2xl font-bold text-ocean-deep mb-2">
+            Welcome to Ocean PULSE
+          </h1>
+          <p className="text-gray-600">
+            Sign in to save your favorite MPAs and track ocean health
+          </p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="space-y-4">
+            <div className="h-12 bg-gray-100 rounded-xl animate-pulse" />
+            <div className="h-12 bg-gray-100 rounded-xl animate-pulse" />
+            <div className="h-12 bg-gray-100 rounded-xl animate-pulse" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginContent />
+    </Suspense>
   );
 }
