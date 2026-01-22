@@ -1,238 +1,196 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Rectangle, useMap } from 'react-leaflet';
-import { LatLngBoundsExpression, LatLngExpression, LatLngBounds } from 'leaflet';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import Map, { Source, Layer, MapRef } from 'react-map-gl/maplibre';
+import type { LayerProps } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { MPA } from '@/types';
-import { HealthBadge } from '@/components/ui';
-import { Icon } from '@/components/Icon';
-import Link from 'next/link';
-import 'leaflet/dist/leaflet.css';
-
-// Fix for default marker icon in Next.js
-import L from 'leaflet';
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: '/leaflet/marker-icon-2x.png',
-  iconUrl: '/leaflet/marker-icon.png',
-  shadowUrl: '/leaflet/marker-shadow.png',
-});
+import { MPAMarker } from './MPAMarker';
+import { MPAPopup } from './MPAPopup';
+import { MapControls } from './MapControls';
+import { toMapLibreCoords, boundsToGeoJSON, getHealthColor } from './map-utils';
 
 interface MobileMapProps {
   mpas: MPA[];
-  center?: LatLngExpression;
+  center?: [number, number]; // [lat, lng] - converted internally
   zoom?: number;
   onMPAClick?: (mpa: MPA) => void;
   focusMpaId?: string;
 }
 
-// World bounds to prevent panning to see duplicate world
-const WORLD_BOUNDS = new LatLngBounds(
-  [-85, -180], // Southwest corner
-  [85, 180]    // Northeast corner
-);
+// OpenFreeMap style URL (free, no API key required)
+const MAP_STYLE = 'https://tiles.openfreemap.org/styles/positron';
 
-// Component to fit map to viewport - calculates optimal zoom to fill screen
-function FitWorldBounds({ customCenter, customZoom }: { customCenter?: LatLngExpression; customZoom?: number }) {
-  const map = useMap();
+// Layer styles for MPA boundaries
+const boundaryFillLayer: LayerProps = {
+  id: 'mpa-boundaries-fill',
+  type: 'fill',
+  paint: {
+    'fill-color': ['get', 'color'],
+    'fill-opacity': 0.1,
+  },
+};
 
-  useEffect(() => {
-    const fitWorld = () => {
-      map.invalidateSize();
+const boundaryLineLayer: LayerProps = {
+  id: 'mpa-boundaries-line',
+  type: 'line',
+  paint: {
+    'line-color': ['get', 'color'],
+    'line-width': 2,
+    'line-opacity': 0.6,
+  },
+};
 
-      // If custom center/zoom provided, use those instead of auto-fitting
-      if (customCenter && customZoom) {
-        map.setView(customCenter, customZoom, { animate: false });
-        return;
-      }
+export function MobileMap({
+  mpas,
+  center,
+  zoom,
+  onMPAClick,
+  focusMpaId,
+}: MobileMapProps) {
+  const mapRef = useRef<MapRef>(null);
+  const [hoveredMPA, setHoveredMPA] = useState<MPA | null>(null);
+  const [selectedMPA, setSelectedMPA] = useState<MPA | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isHoveringPopupRef = useRef(false);
 
-      // Get container height to calculate zoom that fills vertically
-      const container = map.getContainer();
-      const containerHeight = container.clientHeight;
-
-      // Calculate zoom level that makes world fill the viewport height
-      // At zoom 0, world is 256px tall. Each zoom level doubles the size.
-      // We want: 256 * 2^zoom >= containerHeight
-      // So: zoom >= log2(containerHeight / 256)
-      const optimalZoom = Math.log2(containerHeight / 256) + 0.3; // +0.3 for slight padding
-      const zoom = Math.max(2, Math.min(optimalZoom, 4)); // Clamp between 2 and 4
-
-      map.setView([20, 0], zoom, { animate: false });
-    };
-
-    // Initial fit
-    setTimeout(fitWorld, 100);
-
-    // Only re-fit on resize if no custom center (i.e., world view)
-    if (!customCenter) {
-      window.addEventListener('resize', fitWorld);
-      return () => window.removeEventListener('resize', fitWorld);
+  // Calculate initial view state
+  const initialViewState = useMemo(() => {
+    if (center && zoom !== undefined) {
+      const [lng, lat] = toMapLibreCoords(center);
+      return { longitude: lng, latitude: lat, zoom };
     }
-  }, [map, customCenter, customZoom]);
+    // Default world view
+    return { longitude: 0, latitude: 20, zoom: 2 };
+  }, [center, zoom]);
 
-  return null;
-}
+  // Convert MPA bounds to GeoJSON FeatureCollection
+  const boundariesGeoJSON = useMemo(() => ({
+    type: 'FeatureCollection' as const,
+    features: mpas
+      .filter((mpa) => mpa.bounds && mpa.bounds.length === 2)
+      .map((mpa) => ({
+        type: 'Feature' as const,
+        properties: {
+          id: mpa.id,
+          color: getHealthColor(mpa.healthScore),
+        },
+        geometry: {
+          type: 'Polygon' as const,
+          coordinates: [boundsToGeoJSON(mpa.bounds)],
+        },
+      })),
+  }), [mpas]);
 
-// Custom map controls component
-function MapControls() {
-  const map = useMap();
+  // Hover handlers - show popup on hover (desktop) or persist on click
+  const handleMarkerMouseEnter = useCallback((mpa: MPA) => {
+    // Clear any pending close timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setHoveredMPA(mpa);
+  }, []);
 
-  return (
-    <div className="absolute bottom-24 right-4 z-[1000] flex flex-col gap-2">
-      <button
-        onClick={() => map.zoomIn()}
-        className="touch-target bg-white rounded-full w-12 h-12 shadow-lg flex items-center justify-center text-2xl font-bold text-navy-600 hover:bg-gray-50 active:scale-95 transition-all"
-        aria-label="Zoom in"
-      >
-        +
-      </button>
-      <button
-        onClick={() => map.zoomOut()}
-        className="touch-target bg-white rounded-full w-12 h-12 shadow-lg flex items-center justify-center text-2xl font-bold text-navy-600 hover:bg-gray-50 active:scale-95 transition-all"
-        aria-label="Zoom out"
-      >
-        −
-      </button>
-      <button
-        onClick={() => map.locate({ setView: true, maxZoom: 8 })}
-        className="touch-target bg-white rounded-full w-12 h-12 shadow-lg flex items-center justify-center text-xl text-navy-600 hover:bg-gray-50 active:scale-95 transition-all"
-        aria-label="My location"
-      >
-        <Icon name="marker" />
-      </button>
-    </div>
-  );
-}
+  const handleMarkerMouseLeave = useCallback(() => {
+    // Delay closing to allow mouse to move to popup
+    hoverTimeoutRef.current = setTimeout(() => {
+      if (!isHoveringPopupRef.current) {
+        setHoveredMPA(null);
+      }
+    }, 150);
+  }, []);
 
-// Get marker color based on health score
-function getMarkerColor(healthScore: number): string {
-  if (healthScore >= 80) return '#10B981'; // green
-  if (healthScore >= 50) return '#F59E0B'; // yellow
-  return '#EF4444'; // red
-}
+  // Click handler for mobile and general interaction
+  const handleMarkerClick = useCallback((mpa: MPA) => {
+    onMPAClick?.(mpa);
+    // Always toggle on click (works for both touch and mouse click)
+    setSelectedMPA((prev) => (prev?.id === mpa.id ? null : mpa));
+  }, [onMPAClick]);
 
-// Custom marker icon
-function createCustomIcon(healthScore: number) {
-  const color = getMarkerColor(healthScore);
+  // Close popup handler
+  const handlePopupClose = useCallback(() => {
+    setHoveredMPA(null);
+    setSelectedMPA(null);
+    isHoveringPopupRef.current = false;
+  }, []);
 
-  return L.divIcon({
-    className: 'custom-marker',
-    html: `
-      <div style="
-        width: 32px;
-        height: 32px;
-        background-color: ${color};
-        border: 3px solid white;
-        border-radius: 50% 50% 50% 0;
-        transform: rotate(-45deg);
-        box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      ">
-        <i class="fi fi-rr-water" style="transform: rotate(45deg); color: white; font-size: 14px;"></i>
-      </div>
-    `,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
-  });
-}
+  // Handle popup mouse events to prevent closing when hovering popup
+  const handlePopupMouseEnter = useCallback(() => {
+    isHoveringPopupRef.current = true;
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+  }, []);
 
-export function MobileMap({ mpas, center, zoom, onMPAClick, focusMpaId }: MobileMapProps) {
-  // Determine if we have custom center/zoom (from URL params)
-  const hasCustomView = center !== undefined && zoom !== undefined;
-  const [mapHeight, setMapHeight] = useState('100vh');
+  const handlePopupMouseLeave = useCallback(() => {
+    isHoveringPopupRef.current = false;
+    // Only auto-close hover popup on desktop, not clicked selection
+    hoverTimeoutRef.current = setTimeout(() => {
+      if (!isHoveringPopupRef.current) {
+        setHoveredMPA(null);
+      }
+    }, 150);
+  }, []);
 
+  // Determine which MPA to show popup for
+  // Hover takes precedence on desktop, selected is used on mobile or when clicked
+  const activePopupMPA = hoveredMPA || selectedMPA;
+
+  // Cleanup timeout on unmount
   useEffect(() => {
-    const updateHeight = () => {
-      setMapHeight(`${window.innerHeight}px`);
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
     };
-
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
-
-    return () => window.removeEventListener('resize', updateHeight);
   }, []);
 
   return (
-    <div style={{ height: mapHeight, width: '100%', backgroundColor: '#a3d5e8' }} className="relative">
-      <MapContainer
-        center={center || [20, 0]}
-        zoom={zoom || 2}
-        zoomControl={false}
-        className="h-full w-full"
-        style={{ height: '100%', width: '100%' }}
-        maxBounds={WORLD_BOUNDS}
-        maxBoundsViscosity={1.0}
-        minZoom={2}
+    <div
+      className="relative bg-[#a3d5e8]"
+      style={{ width: '100%', height: '100%' }}
+    >
+      <Map
+        ref={mapRef}
+        initialViewState={initialViewState}
+        style={{ width: '100%', height: '100%' }}
+        mapStyle={MAP_STYLE}
+        minZoom={1.5}
+        maxZoom={18}
+        renderWorldCopies={false}
       >
-        {/* Ocean-themed tile layer */}
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          noWrap={true}
-        />
+        {/* MPA Boundaries as GeoJSON layers */}
+        <Source id="mpa-boundaries" type="geojson" data={boundariesGeoJSON}>
+          <Layer {...boundaryFillLayer} />
+          <Layer {...boundaryLineLayer} />
+        </Source>
 
-        {/* MPA Markers and Boundaries */}
+        {/* MPA Markers */}
         {mpas.map((mpa) => (
-          <div key={mpa.id}>
-            {/* MPA Boundary Rectangle */}
-            {mpa.bounds && mpa.bounds.length === 2 && (
-              <Rectangle
-                bounds={mpa.bounds as LatLngBoundsExpression}
-                pathOptions={{
-                  color: getMarkerColor(mpa.healthScore),
-                  weight: 2,
-                  opacity: 0.6,
-                  fillOpacity: 0.1,
-                }}
-              />
-            )}
-
-            {/* MPA Marker */}
-            <Marker
-              position={mpa.center as LatLngExpression}
-              icon={createCustomIcon(mpa.healthScore)}
-              eventHandlers={{
-                click: () => onMPAClick?.(mpa),
-              }}
-            >
-              <Popup maxWidth={300} className="custom-popup">
-                <div className="p-2">
-                  <h3 className="font-bold text-navy-600 mb-2">{mpa.name}</h3>
-                  <p className="text-sm text-gray-600 mb-2">{mpa.country}</p>
-
-                  <div className="mb-3">
-                    <HealthBadge score={mpa.healthScore} size="sm" />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                    <div>
-                      <span className="text-gray-500">Species:</span>
-                      <span className="font-semibold ml-1">{mpa.speciesCount.toLocaleString()}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Est:</span>
-                      <span className="font-semibold ml-1">{mpa.establishedYear}</span>
-                    </div>
-                  </div>
-
-                  <Link
-                    href={`/mpa/${mpa.id}`}
-                    className="block w-full bg-cyan-500 hover:bg-cyan-600 text-white text-center py-2 rounded-lg font-semibold transition-colors"
-                  >
-                    View Details
-                  </Link>
-                </div>
-              </Popup>
-            </Marker>
-          </div>
+          <MPAMarker
+            key={mpa.id}
+            mpa={mpa}
+            onClick={handleMarkerClick}
+            onMouseEnter={handleMarkerMouseEnter}
+            onMouseLeave={handleMarkerMouseLeave}
+          />
         ))}
 
-        <FitWorldBounds customCenter={center} customZoom={zoom} />
-        <MapControls />
-      </MapContainer>
+        {/* Popup */}
+        {activePopupMPA && (
+          <div
+            onMouseEnter={handlePopupMouseEnter}
+            onMouseLeave={handlePopupMouseLeave}
+          >
+            <MPAPopup mpa={activePopupMPA} onClose={handlePopupClose} mapRef={mapRef} />
+          </div>
+        )}
+      </Map>
+
+      {/* Custom Controls Overlay */}
+      <MapControls mapRef={mapRef} />
     </div>
   );
 }

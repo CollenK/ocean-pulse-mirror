@@ -21,7 +21,7 @@ export default function SavedMPAsPage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push('/login?redirect=/saved');
+      router.push('/login?redirect=/ocean-pulse-app/saved');
     }
   }, [authLoading, isAuthenticated, router]);
 
@@ -58,7 +58,7 @@ export default function SavedMPAsPage() {
   if (authLoading) {
     return (
       <main className="min-h-screen pb-32">
-        <div className="bg-gradient-to-br from-ocean-primary via-ocean-accent to-cyan-400 pt-4 pb-16 px-6">
+        <div className="bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-6">
           <div className="max-w-screen-xl mx-auto">
             <div className="flex justify-end mb-4">
               <div className="w-9 h-9 rounded-full bg-white/20 animate-pulse" />
@@ -78,7 +78,7 @@ export default function SavedMPAsPage() {
   return (
     <main className="min-h-screen pb-32">
       {/* Header */}
-      <div className="bg-gradient-to-br from-ocean-primary via-ocean-accent to-cyan-400 pt-4 pb-16 px-6">
+      <div className="bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-6">
         <div className="max-w-screen-xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <Button
@@ -117,21 +117,21 @@ export default function SavedMPAsPage() {
         {savedLoading || loadingMPAs ? (
           <Card className="shadow-lg">
             <CardContent className="py-12 text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
-              <p className="text-gray-600">Loading saved MPAs...</p>
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-balean-cyan mb-4" />
+              <p className="text-balean-gray-500">Loading saved MPAs...</p>
             </CardContent>
           </Card>
         ) : mpas.length === 0 ? (
           <Card className="shadow-lg">
             <CardContent className="py-12 text-center">
-              <div className="w-20 h-20 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
-                <Icon name="heart" className="text-gray-400 text-4xl" />
+              <div className="w-20 h-20 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
+                <Icon name="heart" className="text-balean-gray-300 text-4xl" />
               </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">No saved MPAs yet</h2>
-              <p className="text-gray-600 mb-6">
+              <h2 className="text-xl font-semibold text-balean-navy mb-2">No saved MPAs yet</h2>
+              <p className="text-balean-gray-500 mb-6">
                 Start exploring and save your favorite marine protected areas
               </p>
-              <Link href="/">
+              <Link href="/ocean-pulse-app">
                 <Button>
                   <Icon name="map" size="sm" />
                   Explore MPAs
@@ -151,7 +151,7 @@ export default function SavedMPAsPage() {
                 <Card className="shadow-lg hover:shadow-xl transition-shadow">
                   <CardContent className="p-0">
                     <div className="flex items-center gap-4 p-4">
-                      <Link href={`/mpa/${mpa.id}`} className="flex-1 flex items-center gap-4">
+                      <Link href={`/ocean-pulse-app/mpa/${mpa.id}`} className="flex-1 flex items-center gap-4">
                         <div className="flex-shrink-0">
                           <CircularProgress
                             value={mpa.healthScore}
@@ -160,12 +160,12 @@ export default function SavedMPAsPage() {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 truncate">{mpa.name}</h3>
-                          <p className="text-sm text-gray-500 flex items-center gap-1">
+                          <h3 className="font-semibold text-balean-navy truncate">{mpa.name}</h3>
+                          <p className="text-sm text-balean-gray-400 flex items-center gap-1">
                             <Icon name="marker" size="sm" />
                             {mpa.country}
                           </p>
-                          <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                          <div className="flex items-center gap-3 mt-2 text-xs text-balean-gray-400">
                             <span className="flex items-center gap-1">
                               <Icon name="fish" size="sm" />
                               {mpa.speciesCount.toLocaleString()} species
@@ -179,7 +179,7 @@ export default function SavedMPAsPage() {
                       </Link>
                       <button
                         onClick={() => handleRemove(mpa.id)}
-                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                        className="p-2 text-balean-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
                         title="Remove from saved"
                       >
                         <Icon name="trash" size="md" />

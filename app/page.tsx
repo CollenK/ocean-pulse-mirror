@@ -1,355 +1,591 @@
 'use client';
 
-import { Card, CardTitle, CardContent, Button, Badge, Icon, CircularProgress, getHealthColor } from '@/components/ui';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import Link from 'next/link';
-import { useEffect, useState, useCallback, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { MPA } from '@/types';
-import { fetchAllMPAs } from '@/lib/mpa-service';
-import { usePullToRefresh, PullToRefreshIndicator } from '@/hooks/usePullToRefresh';
-import { UserMenu } from '@/components/UserMenu';
-import dynamic from 'next/dynamic';
+import { useRef } from 'react';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent } from '@/components/ui/Card';
 
-// Dynamically import map component (no SSR due to Leaflet)
-const MobileMap = dynamic(
-  () => import('@/components/Map/MobileMap').then((mod) => mod.MobileMap),
-  { ssr: false, loading: () => <div className="flex items-center justify-center h-screen">Loading map...</div> }
-);
+// Animation variants
+const fadeInUp = {
+  initial: { opacity: 0, y: 40 },
+  animate: { opacity: 1, y: 0 },
+};
 
-// Wrapper component to handle search params with Suspense
-function HomeContent() {
-  const [mpas, setMpas] = useState<MPA[]>([]);
-  const [showMap, setShowMap] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const searchParams = useSearchParams();
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
 
-  // Check for map navigation params from MPA detail page
-  const mapLat = searchParams.get('lat');
-  const mapLng = searchParams.get('lng');
-  const mapZoom = searchParams.get('zoom');
-  const focusMpaId = searchParams.get('mpa');
+// Feature data
+const features = [
+  {
+    icon: 'fi-rr-map-marker',
+    title: 'Discover MPAs',
+    description: 'Explore Marine Protected Areas worldwide with real-time health monitoring and biodiversity data.',
+    color: 'cyan',
+  },
+  {
+    icon: 'fi-rr-fish',
+    title: 'Track Species',
+    description: 'Access comprehensive species databases powered by OBIS with occurrence data and conservation status.',
+    color: 'coral',
+  },
+  {
+    icon: 'fi-rr-camera',
+    title: 'Submit Observations',
+    description: 'Contribute to ocean science by recording sightings, habitat conditions, and environmental data.',
+    color: 'yellow',
+  },
+  {
+    icon: 'fi-rr-chart-line-up',
+    title: 'Monitor Health',
+    description: 'Track MPA health scores combining environmental metrics, species data, and community observations.',
+    color: 'cyan',
+  },
+  {
+    icon: 'fi-rr-wifi-slash',
+    title: 'Works Offline',
+    description: 'Full offline capability for field research. Sync your data automatically when back online.',
+    color: 'coral',
+  },
+  {
+    icon: 'fi-rr-users',
+    title: 'Join Community',
+    description: 'Connect with researchers, conservationists, and ocean enthusiasts worldwide.',
+    color: 'yellow',
+  },
+];
 
-  const loadMPAs = useCallback(async () => {
-    const data = await fetchAllMPAs();
-    setMpas(data);
-    setLoading(false);
-  }, []);
+// Stats data
+const stats = [
+  { value: '100+', label: 'Marine Protected Areas' },
+  { value: '15K+', label: 'Species Tracked' },
+  { value: '50+', label: 'Countries' },
+  { value: '1M+', label: 'Observations' },
+];
 
-  useEffect(() => {
-    loadMPAs();
-  }, [loadMPAs]);
+// Testimonials
+const testimonials = [
+  {
+    quote: 'Ocean PULSE has transformed how we monitor reef health. The real-time data integration is invaluable.',
+    author: 'Dr. Sarah Chen',
+    role: 'Marine Biologist',
+    org: 'Coral Research Institute',
+  },
+  {
+    quote: 'Finally, a tool that works in the field. The offline capability means we never miss recording important sightings.',
+    author: 'Marcus Rivera',
+    role: 'Field Researcher',
+    org: 'Pacific Conservation',
+  },
+  {
+    quote: 'The community-contributed observations have helped us identify previously unknown migration patterns.',
+    author: 'Prof. Aiko Tanaka',
+    role: 'Research Director',
+    org: 'Ocean Sciences Lab',
+  },
+];
 
-  // Auto-show map if navigation params are present
-  useEffect(() => {
-    if (mapLat && mapLng) {
-      setShowMap(true);
-    }
-  }, [mapLat, mapLng]);
-
-  // Pull to refresh
-  const { containerRef, pullDistance, refreshing, canRefresh } = usePullToRefresh({
-    onRefresh: loadMPAs,
-    enabled: !showMap, // Disable when map is showing
+export default function LandingPage() {
+  const heroRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
   });
-  if (showMap) {
-    // Determine map center and zoom from URL params or defaults
-    const center = mapLat && mapLng
-      ? [parseFloat(mapLat), parseFloat(mapLng)] as [number, number]
-      : undefined;
-    const zoom = mapZoom ? parseFloat(mapZoom) : undefined;
 
-    return (
-      <main id="main-content" className="min-h-screen">
-        <div className="absolute top-4 left-4 z-[1001]">
-          <Button
-            onClick={() => {
-              setShowMap(false);
-              // Clear URL params when going back
-              window.history.replaceState({}, '', '/');
-            }}
-            size="sm"
-            variant="secondary"
-          >
-            ← Back to Home
-          </Button>
-        </div>
-        <MobileMap
-          mpas={mpas}
-          center={center}
-          zoom={zoom}
-          focusMpaId={focusMpaId || undefined}
-        />
-      </main>
-    );
-  }
+  const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '30%']);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
 
   return (
-    <>
-      <PullToRefreshIndicator
-        pullDistance={pullDistance}
-        refreshing={refreshing}
-        canRefresh={canRefresh}
-      />
-      <main id="main-content" ref={containerRef} className="min-h-screen pb-32">
-        {/* Hero Header with Gradient */}
-        <div className="bg-gradient-to-br from-ocean-primary via-ocean-accent to-cyan-400 pt-4 pb-12 px-6 mb-6">
-          {/* User Menu - Top Right */}
-          <div className="max-w-screen-xl mx-auto flex justify-end mb-4">
-            <UserMenu />
-          </div>
-
-          <div className="max-w-screen-xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="text-center text-white"
-            >
-              <div className="flex items-center justify-center gap-3 mb-3">
-                <Icon name="wave" size="xl" className="text-white/90" />
-                <h1 className="text-4xl font-bold">
-                  Ocean PULSE
-                </h1>
+    <div className="min-h-screen bg-white overflow-hidden">
+      {/* Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-balean-gray-100/50">
+        <div className="container-app">
+          <div className="flex items-center justify-between h-16 md:h-20">
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-balean-cyan via-balean-coral to-balean-yellow flex items-center justify-center shadow-lg">
+                <i className="fi fi-rr-whale text-white text-lg" />
               </div>
-              <p className="text-lg text-white/90 mb-6">
-                Marine Protected Area Monitor
-              </p>
-
-              {/* Quick Stats */}
-              <div className="grid grid-cols-3 gap-4 mt-6">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="bg-white/10 backdrop-blur-sm rounded-2xl p-4"
-                >
-                  <div className="text-3xl font-bold">{mpas.length}</div>
-                  <div className="text-sm text-white/80">MPAs</div>
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="bg-white/10 backdrop-blur-sm rounded-2xl p-4"
-                >
-                  <div className="text-3xl font-bold">15K+</div>
-                  <div className="text-sm text-white/80">Species</div>
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.4 }}
-                  className="bg-white/10 backdrop-blur-sm rounded-2xl p-4"
-                >
-                  <div className="text-3xl font-bold">50+</div>
-                  <div className="text-sm text-white/80">Countries</div>
-                </motion.div>
+              <div>
+                <span className="font-display text-lg text-balean-navy tracking-tight">Ocean PULSE</span>
+                <p className="text-xs text-balean-gray-400">by Balean</p>
               </div>
-            </motion.div>
-          </div>
-        </div>
+            </Link>
 
-        <div className="max-w-screen-xl mx-auto px-6">
-
-          {/* Featured MPA - Hero Card */}
-          {mpas.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Card className="mb-6 overflow-hidden hover" shadow="lg">
-                <div className="relative">
-                  {/* Health indicator bar */}
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-ocean-primary to-ocean-accent" />
-
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-ocean-primary to-ocean-accent flex items-center justify-center shadow-lg">
-                          <Icon name="map-marker" className="text-white text-2xl" />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-ocean-deep">{mpas[0].name}</h3>
-                          <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                            <Icon name="marker" size="sm" />
-                            {mpas[0].country}
-                          </p>
-                        </div>
-                      </div>
-                      <CircularProgress
-                        value={mpas[0].healthScore}
-                        size="lg"
-                        color={getHealthColor(mpas[0].healthScore)}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-100">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-ocean-deep">{mpas[0].area}</div>
-                        <div className="text-xs text-gray-500 mt-1">Area</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-ocean-deep">8</div>
-                        <div className="text-xs text-gray-500 mt-1">Species</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-ocean-deep">{mpas[0].establishedYear}</div>
-                        <div className="text-xs text-gray-500 mt-1">Est.</div>
-                      </div>
-                    </div>
-
-                    <Link href={`/mpa/${mpas[0].id}`}>
-                      <Button fullWidth className="mt-4">
-                        <Icon name="arrow-right" size="sm" />
-                        Explore This MPA
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Quick Action Cards */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Card
-                hover
-                interactive
-                className="text-center cursor-pointer"
-                onClick={() => setShowMap(true)}
-              >
-                <CardContent>
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-ocean-primary to-ocean-accent mx-auto mb-3 flex items-center justify-center">
-                    <Icon name="map" className="text-white text-xl" />
-                  </div>
-                  <h3 className="font-semibold text-ocean-deep mb-1">Interactive Map</h3>
-                  <p className="text-xs text-gray-500">{mpas.length} MPAs</p>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Link href="/nearby">
-                <Card hover interactive className="text-center">
-                  <CardContent>
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 mx-auto mb-3 flex items-center justify-center">
-                      <Icon name="marker" className="text-white text-xl" />
-                    </div>
-                    <h3 className="font-semibold text-ocean-deep mb-1">Find Nearby</h3>
-                    <p className="text-xs text-gray-500">Use GPS</p>
-                  </CardContent>
-                </Card>
-              </Link>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <Link href="/species">
-                <Card hover interactive className="text-center">
-                  <CardContent>
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 mx-auto mb-3 flex items-center justify-center">
-                      <Icon name="fish" className="text-white text-xl" />
-                    </div>
-                    <h3 className="font-semibold text-ocean-deep mb-1">Species</h3>
-                    <p className="text-xs text-gray-500">15K+ tracked</p>
-                  </CardContent>
-                </Card>
-              </Link>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.6 }}
-            >
-              <Link href="/observe">
-                <Card hover interactive className="text-center">
-                  <CardContent>
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 mx-auto mb-3 flex items-center justify-center">
-                      <Icon name="camera" className="text-white text-xl" />
-                    </div>
-                    <h3 className="font-semibold text-ocean-deep mb-1">Observe</h3>
-                    <p className="text-xs text-gray-500">Add sighting</p>
-                  </CardContent>
-                </Card>
-              </Link>
-            </motion.div>
-          </div>
-
-          {/* Featured MPAs List */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-          >
-            <Card>
-              <div className="flex items-center justify-between mb-4">
-                <CardTitle className="mb-0">Featured MPAs</CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => setShowMap(true)}>
-                  <Icon name="arrow-right" size="sm" />
-                  View All
+            {/* CTA Buttons */}
+            <div className="flex items-center gap-3">
+              <a href="https://www.balean.org/projects/68bfe9252ee300914fd4542a" target="_blank" rel="noopener noreferrer" className="hidden sm:block">
+                <Button variant="secondary" size="sm">
+                  <i className="fi fi-rr-heart" />
+                  Support Us
                 </Button>
-              </div>
-              <CardContent>
-                <div className="space-y-3">
-                  {mpas.slice(0, 5).map((mpa, index) => (
-                    <Link key={mpa.id} href={`/mpa/${mpa.id}`}>
-                      <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.8 + index * 0.1 }}
-                        className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <CircularProgress
-                              value={mpa.healthScore}
-                              size="sm"
-                              color={getHealthColor(mpa.healthScore)}
-                              showPercentage={false}
-                            />
-                          </div>
-                          <div>
-                            <div className="font-medium text-ocean-deep">{mpa.name}</div>
-                            <div className="text-xs text-gray-500 flex items-center gap-1">
-                              <Icon name="marker" size="sm" />
-                              {mpa.country}
-                            </div>
-                          </div>
-                        </div>
-                        <Icon name="angle-right" className="text-gray-400 group-hover:text-ocean-primary transition-colors" />
-                      </motion.div>
-                    </Link>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-      </div>
-    </main>
-    </>
-  );
-}
+              </a>
+              <Link href="/ocean-pulse-app">
+                <Button variant="primary" size="sm">
+                  <i className="fi fi-rr-rocket-lunch" />
+                  Launch App
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </nav>
 
-// Main export wrapped in Suspense for useSearchParams
-export default function Home() {
-  return (
-    <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
-      <HomeContent />
-    </Suspense>
+      {/* Hero Section */}
+      <section
+        ref={heroRef}
+        className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden"
+      >
+        {/* Animated Background */}
+        <div className="absolute inset-0 bg-balean-navy">
+          {/* Gradient orbs */}
+          <motion.div
+            className="absolute top-1/4 -left-20 w-96 h-96 bg-balean-cyan/20 rounded-full blur-3xl"
+            animate={{
+              x: [0, 50, 0],
+              y: [0, 30, 0],
+            }}
+            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <motion.div
+            className="absolute bottom-1/4 -right-20 w-96 h-96 bg-balean-coral/20 rounded-full blur-3xl"
+            animate={{
+              x: [0, -50, 0],
+              y: [0, -30, 0],
+            }}
+            transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <motion.div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-balean-yellow/10 rounded-full blur-3xl"
+            animate={{
+              scale: [1, 1.2, 1],
+            }}
+            transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+          />
+
+          {/* Wave pattern */}
+          <svg
+            className="absolute bottom-0 left-0 right-0 w-full h-auto"
+            viewBox="0 0 1440 320"
+            preserveAspectRatio="none"
+          >
+            <path
+              fill="rgba(255,255,255,0.05)"
+              d="M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,138.7C672,128,768,160,864,181.3C960,203,1056,213,1152,197.3C1248,181,1344,139,1392,117.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
+            />
+          </svg>
+        </div>
+
+        {/* Hero Content */}
+        <motion.div
+          style={{ y: heroY, opacity: heroOpacity }}
+          className="relative z-10 container-app text-center text-white"
+        >
+          <motion.div
+            initial="initial"
+            animate="animate"
+            variants={staggerContainer}
+            className="max-w-4xl mx-auto"
+          >
+            {/* Badge */}
+            <motion.div variants={fadeInUp} className="mb-6">
+              <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium border border-white/10">
+                <span className="w-2 h-2 bg-balean-cyan rounded-full animate-pulse" />
+                Powered by OBIS Ocean Data
+              </span>
+            </motion.div>
+
+            {/* Headline */}
+            <motion.h1
+              variants={fadeInUp}
+              className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-tight mb-6"
+            >
+              Monitor Our Oceans.
+              <br />
+              <span className="bg-gradient-to-r from-balean-cyan via-balean-yellow to-balean-coral bg-clip-text text-transparent">
+                Protect Our Future.
+              </span>
+            </motion.h1>
+
+            {/* Subheadline */}
+            <motion.p
+              variants={fadeInUp}
+              className="text-lg sm:text-xl text-white/80 max-w-2xl mx-auto mb-10"
+            >
+              Ocean PULSE connects you with real-time marine protected area data,
+              species tracking, and community observations to drive ocean conservation.
+            </motion.p>
+
+            {/* CTA Buttons */}
+            <motion.div
+              variants={fadeInUp}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            >
+              <Link href="/ocean-pulse-app">
+                <Button variant="yellow" size="lg">
+                  <i className="fi fi-rr-rocket-lunch" />
+                  Get Started Free
+                </Button>
+              </Link>
+              <Link href="#features">
+                <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white hover:text-balean-navy">
+                  <i className="fi fi-rr-play" />
+                  See How It Works
+                </Button>
+              </Link>
+            </motion.div>
+
+            {/* Stats Preview */}
+            <motion.div
+              variants={fadeInUp}
+              className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6"
+            >
+              {stats.map((stat, index) => (
+                <div key={index} className="text-center">
+                  <div className="text-3xl md:text-4xl font-display text-balean-yellow mb-1">
+                    {stat.value}
+                  </div>
+                  <div className="text-sm text-white/60">{stat.label}</div>
+                </div>
+              ))}
+            </motion.div>
+          </motion.div>
+        </motion.div>
+
+        {/* Scroll indicator */}
+        <motion.div
+          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <i className="fi fi-rr-angle-down text-white/40 text-2xl" />
+        </motion.div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="section-spacing bg-balean-off-white">
+        <div className="container-app">
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, margin: '-100px' }}
+            variants={staggerContainer}
+            className="text-center mb-16"
+          >
+            <motion.span
+              variants={fadeInUp}
+              className="inline-block px-4 py-1 bg-balean-cyan/10 text-balean-cyan text-sm font-medium rounded-full mb-4"
+            >
+              Features
+            </motion.span>
+            <motion.h2
+              variants={fadeInUp}
+              className="font-display text-3xl md:text-4xl lg:text-5xl text-balean-navy mb-4"
+            >
+              Everything You Need for
+              <br />
+              Ocean Conservation
+            </motion.h2>
+            <motion.p
+              variants={fadeInUp}
+              className="text-balean-gray-400 text-lg max-w-2xl mx-auto"
+            >
+              A comprehensive platform built for researchers, conservationists,
+              and ocean enthusiasts to monitor and protect marine ecosystems.
+            </motion.p>
+          </motion.div>
+
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, margin: '-50px' }}
+            variants={staggerContainer}
+            className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
+            {features.map((feature, index) => (
+              <motion.div key={index} variants={fadeInUp}>
+                <Card
+                  variant="elevated"
+                  hover
+                  glow={feature.color as 'cyan' | 'coral' | 'yellow'}
+                  className="h-full"
+                >
+                  <div
+                    className={`
+                      w-14 h-14 rounded-2xl flex items-center justify-center mb-5
+                      ${feature.color === 'cyan' ? 'bg-balean-cyan/10 text-balean-cyan' : ''}
+                      ${feature.color === 'coral' ? 'bg-balean-coral/10 text-balean-coral' : ''}
+                      ${feature.color === 'yellow' ? 'bg-balean-yellow/20 text-balean-yellow-dark' : ''}
+                    `}
+                  >
+                    <i className={`${feature.icon} text-2xl`} />
+                  </div>
+                  <h3 className="font-display text-xl text-balean-navy mb-2">
+                    {feature.title}
+                  </h3>
+                  <CardContent className="text-balean-gray-400">
+                    {feature.description}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section className="section-spacing bg-white">
+        <div className="container-app">
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, margin: '-100px' }}
+            variants={staggerContainer}
+            className="text-center mb-16"
+          >
+            <motion.span
+              variants={fadeInUp}
+              className="inline-block px-4 py-1 bg-balean-coral/10 text-balean-coral text-sm font-medium rounded-full mb-4"
+            >
+              How It Works
+            </motion.span>
+            <motion.h2
+              variants={fadeInUp}
+              className="font-display text-3xl md:text-4xl lg:text-5xl text-balean-navy mb-4"
+            >
+              Simple. Powerful. Impactful.
+            </motion.h2>
+          </motion.div>
+
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+            className="grid md:grid-cols-3 gap-8 md:gap-12"
+          >
+            {[
+              {
+                step: '01',
+                title: 'Explore MPAs',
+                description: 'Browse the interactive map to discover Marine Protected Areas near you or anywhere in the world.',
+                icon: 'fi-rr-map',
+              },
+              {
+                step: '02',
+                title: 'Record Observations',
+                description: 'Document species sightings, habitat conditions, and environmental changes with photos and GPS.',
+                icon: 'fi-rr-camera',
+              },
+              {
+                step: '03',
+                title: 'Track Impact',
+                description: 'Watch health scores update with community data and see the collective impact of conservation efforts.',
+                icon: 'fi-rr-chart-mixed',
+              },
+            ].map((item, index) => (
+              <motion.div
+                key={index}
+                variants={fadeInUp}
+                className="relative text-center"
+              >
+                {/* Connector line */}
+                {index < 2 && (
+                  <div className="hidden md:block absolute top-12 left-1/2 w-full h-0.5 bg-gradient-to-r from-balean-cyan to-balean-coral opacity-20" />
+                )}
+
+                <div className="relative">
+                  <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-balean-navy flex items-center justify-center relative">
+                    <i className={`${item.icon} text-4xl text-white`} />
+                    <span className="absolute -top-2 -right-2 w-8 h-8 bg-balean-yellow rounded-full flex items-center justify-center text-balean-navy font-bold text-sm">
+                      {item.step}
+                    </span>
+                  </div>
+                  <h3 className="font-display text-xl text-balean-navy mb-3">
+                    {item.title}
+                  </h3>
+                  <p className="text-balean-gray-400">
+                    {item.description}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Testimonials Section - Hidden for now, re-enable when ready */}
+      {/* <section className="section-spacing bg-balean-navy text-white overflow-hidden">
+        <div className="container-app">
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+            className="text-center mb-16"
+          >
+            <motion.span
+              variants={fadeInUp}
+              className="inline-block px-4 py-1 bg-white/10 text-balean-yellow text-sm font-medium rounded-full mb-4"
+            >
+              Testimonials
+            </motion.span>
+            <motion.h2
+              variants={fadeInUp}
+              className="font-display text-3xl md:text-4xl lg:text-5xl mb-4"
+            >
+              Trusted by Ocean Scientists
+            </motion.h2>
+          </motion.div>
+
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+            className="grid md:grid-cols-3 gap-6"
+          >
+            {testimonials.map((testimonial, index) => (
+              <motion.div
+                key={index}
+                variants={fadeInUp}
+                className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10"
+              >
+                <i className="fi fi-rr-quote-right text-3xl text-balean-cyan/40 mb-4 block" />
+                <p className="text-white/90 text-lg mb-6 leading-relaxed">
+                  "{testimonial.quote}"
+                </p>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-balean-cyan to-balean-coral flex items-center justify-center text-white font-bold">
+                    {testimonial.author.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="font-semibold">{testimonial.author}</div>
+                    <div className="text-sm text-white/60">
+                      {testimonial.role}, {testimonial.org}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section> */}
+
+      {/* CTA Section */}
+      <section className="section-spacing bg-balean-off-white relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-balean-cyan/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-balean-coral/5 rounded-full blur-3xl" />
+        </div>
+
+        <div className="container-app relative z-10">
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+            className="max-w-3xl mx-auto text-center"
+          >
+            <motion.h2
+              variants={fadeInUp}
+              className="font-display text-3xl md:text-4xl lg:text-5xl text-balean-navy mb-6"
+            >
+              Ready to Make a Difference?
+            </motion.h2>
+            <motion.p
+              variants={fadeInUp}
+              className="text-balean-gray-400 text-lg mb-10"
+            >
+              Join thousands of researchers, conservationists, and ocean lovers
+              using Ocean PULSE to monitor and protect our marine ecosystems.
+            </motion.p>
+            <motion.div
+              variants={fadeInUp}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            >
+              <Link href="/ocean-pulse-app">
+                <Button variant="primary" size="lg">
+                  <i className="fi fi-rr-rocket-lunch" />
+                  Launch Ocean PULSE
+                </Button>
+              </Link>
+              <a href="https://www.balean.org/projects/68bfe9252ee300914fd4542a" target="_blank" rel="noopener noreferrer">
+                <Button variant="secondary" size="lg">
+                  <i className="fi fi-rr-heart" />
+                  Support Us
+                </Button>
+              </a>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-balean-navy text-white py-12">
+        <div className="container-app">
+          <div className="grid md:grid-cols-4 gap-8 mb-12">
+            {/* Brand */}
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-balean-cyan via-balean-coral to-balean-yellow flex items-center justify-center shadow-lg">
+                  <i className="fi fi-rr-whale text-white text-lg" />
+                </div>
+                <div>
+                  <span className="font-display text-lg tracking-tight">Ocean PULSE</span>
+                  <p className="text-xs text-white/50">by Balean</p>
+                </div>
+              </div>
+              <p className="text-white/60 max-w-sm">
+                A digital platform for ocean awareness, interaction, and impact.
+                Built to connect the global community with marine conservation.
+              </p>
+            </div>
+
+            {/* Links */}
+            <div>
+              <h4 className="font-semibold mb-4">Product</h4>
+              <ul className="space-y-2 text-white/60">
+                <li><Link href="/ocean-pulse-app" className="hover:text-white transition-colors">App</Link></li>
+                <li><Link href="#features" className="hover:text-white transition-colors">Features</Link></li>
+                <li><a href="#" className="hover:text-white transition-colors">API</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-4">Resources</h4>
+              <ul className="space-y-2 text-white/60">
+                <li><a href="#" className="hover:text-white transition-colors">Documentation</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Privacy</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Terms</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-white/40 text-sm">
+              2025 Balean. All rights reserved.
+            </p>
+            <div className="flex items-center gap-4">
+              <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+                <i className="fi fi-brands-twitter text-lg" />
+              </a>
+              <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+                <i className="fi fi-brands-instagram text-lg" />
+              </a>
+              <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+                <i className="fi fi-brands-linkedin text-lg" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }

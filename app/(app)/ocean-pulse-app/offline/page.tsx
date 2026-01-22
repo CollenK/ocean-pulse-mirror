@@ -58,8 +58,8 @@ export default function OfflinePage() {
       {showClearConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" data-testid="clear-cache-modal">
           <div className="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl">
-            <h3 className="text-lg font-bold text-navy-600 mb-2">Clear Cache?</h3>
-            <p className="text-gray-600 mb-4">
+            <h3 className="text-lg font-bold text-balean-navy mb-2">Clear Cache?</h3>
+            <p className="text-balean-gray-500 mb-4">
               Clear all cached data? This cannot be undone.
             </p>
             <div className="flex gap-3">
@@ -83,7 +83,7 @@ export default function OfflinePage() {
         </div>
       )}
 
-      <main className="min-h-screen p-6 pb-24 bg-gray-50">
+      <main className="min-h-screen p-6 pb-24 bg-balean-off-white">
       <div className="max-w-screen-xl mx-auto">
         <div className="mb-6">
           <Button
@@ -95,10 +95,10 @@ export default function OfflinePage() {
             ← Back
           </Button>
 
-          <h1 className="text-3xl font-bold text-navy-600 mb-2">
-            💾 Offline Data
+          <h1 className="text-3xl font-bold text-balean-navy mb-2 flex items-center gap-2">
+            <Icon name="download" size="lg" /> Offline Data
           </h1>
-          <p className="text-gray-600">
+          <p className="text-balean-gray-500">
             Manage cached MPAs for offline access
           </p>
         </div>
@@ -109,38 +109,38 @@ export default function OfflinePage() {
           <CardContent>
             <div className="mb-4">
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-600">Used:</span>
+                <span className="text-balean-gray-500">Used:</span>
                 <span className="font-semibold">
                   {formatBytes(storage.usage)} / {formatBytes(storage.quota)}
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
+              <div className="w-full bg-balean-gray-200 rounded-full h-3">
                 <div
                   className={`h-3 rounded-full transition-all ${
                     storage.percentUsed > 80
                       ? 'bg-red-500'
                       : storage.percentUsed > 50
                       ? 'bg-yellow-500'
-                      : 'bg-cyan-500'
+                      : 'bg-balean-cyan'
                   }`}
                   style={{ width: `${Math.min(storage.percentUsed, 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-balean-gray-400 mt-1">
                 {storage.percentUsed.toFixed(1)}% used
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-cyan-600">{mpas.length}</p>
-                <p className="text-sm text-gray-600">Cached MPAs</p>
+              <div className="text-center p-3 bg-balean-off-white rounded-lg">
+                <p className="text-2xl font-bold text-balean-cyan">{mpas.length}</p>
+                <p className="text-sm text-balean-gray-500">Cached MPAs</p>
               </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-navy-600">
+              <div className="text-center p-3 bg-balean-off-white rounded-lg">
+                <p className="text-2xl font-bold text-balean-navy">
                   {formatBytes(storage.usage)}
                 </p>
-                <p className="text-sm text-gray-600">Data Stored</p>
+                <p className="text-sm text-balean-gray-500">Data Stored</p>
               </div>
             </div>
 
@@ -160,13 +160,13 @@ export default function OfflinePage() {
           <CardTitle>Cached MPAs ({mpas.length})</CardTitle>
           <CardContent>
             {loading ? (
-              <p className="text-center text-gray-500 py-8">Loading...</p>
+              <p className="text-center text-balean-gray-400 py-8">Loading...</p>
             ) : mpas.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-500 mb-4">
+                <p className="text-balean-gray-400 mb-4">
                   No MPAs cached yet
                 </p>
-                <Link href="/">
+                <Link href="/ocean-pulse-app">
                   <Button>Browse MPAs</Button>
                 </Link>
               </div>
@@ -175,16 +175,16 @@ export default function OfflinePage() {
                 {mpas.map((mpa) => (
                   <div
                     key={mpa.id}
-                    className="p-4 bg-gray-50 rounded-lg flex items-start justify-between gap-4"
+                    className="p-4 bg-balean-off-white rounded-lg flex items-start justify-between gap-4"
                   >
                     <div className="flex-1">
                       <Link
-                        href={`/mpa/${mpa.id}`}
-                        className="font-semibold text-navy-600 hover:text-cyan-600 transition-colors"
+                        href={`/ocean-pulse-app/mpa/${mpa.id}`}
+                        className="font-semibold text-balean-navy hover:text-balean-cyan transition-colors"
                       >
                         {mpa.name}
                       </Link>
-                      <p className="text-sm text-gray-600 mb-2">{mpa.country}</p>
+                      <p className="text-sm text-balean-gray-500 mb-2">{mpa.country}</p>
                       <div className="flex gap-2">
                         <HealthBadge score={mpa.healthScore} size="sm" />
                         <Badge variant="info" size="sm">
@@ -210,7 +210,7 @@ export default function OfflinePage() {
         <Card className="mt-6">
           <CardTitle>About Offline Data</CardTitle>
           <CardContent>
-            <div className="space-y-2 text-sm text-gray-700">
+            <div className="space-y-2 text-sm text-balean-gray-600">
               <p>
                 ✓ MPAs are automatically cached when you view them
               </p>

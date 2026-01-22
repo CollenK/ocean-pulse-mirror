@@ -51,12 +51,12 @@ export default function NearbyPage() {
         refreshing={refreshing}
         canRefresh={canRefresh}
       />
-      <main ref={containerRef} className="min-h-screen p-6 pb-24 bg-gray-50">
+      <main ref={containerRef} className="min-h-screen p-6 pb-24 bg-balean-off-white">
         <div className="max-w-screen-xl mx-auto">
-        <h1 className="text-3xl font-bold text-navy-600 mb-2 flex items-center gap-2">
+        <h1 className="text-3xl font-bold text-balean-navy mb-2 flex items-center gap-2">
           <Icon name="marker" size="lg" /> Nearby MPAs
         </h1>
-        <p className="text-gray-600 mb-6">
+        <p className="text-balean-gray-500 mb-6">
           Find Marine Protected Areas near your location
         </p>
 
@@ -75,15 +75,15 @@ export default function NearbyPage() {
             <CardContent>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Latitude:</span>
+                  <span className="text-balean-gray-500">Latitude:</span>
                   <span className="font-mono text-sm">{position.latitude.toFixed(6)}°</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Longitude:</span>
+                  <span className="text-balean-gray-500">Longitude:</span>
                   <span className="font-mono text-sm">{position.longitude.toFixed(6)}°</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Accuracy:</span>
+                  <span className="text-balean-gray-500">Accuracy:</span>
                   <span className="text-sm">±{position.accuracy.toFixed(0)}m</span>
                 </div>
               </div>
@@ -98,8 +98,8 @@ export default function NearbyPage() {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-700">Max Distance:</span>
-                  <span className="font-semibold text-cyan-600">{maxDistance} km</span>
+                  <span className="text-balean-gray-500">Max Distance:</span>
+                  <span className="font-semibold text-balean-cyan">{maxDistance} km</span>
                 </div>
                 <input
                   type="range"
@@ -108,9 +108,9 @@ export default function NearbyPage() {
                   step="50"
                   value={maxDistance}
                   onChange={(e) => setMaxDistance(Number(e.target.value))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                  className="w-full h-2 bg-balean-gray-200 rounded-lg appearance-none cursor-pointer accent-balean-cyan"
                 />
-                <div className="flex justify-between text-xs text-gray-500">
+                <div className="flex justify-between text-xs text-balean-gray-400">
                   <span>50 km</span>
                   <span>2000 km</span>
                 </div>
@@ -123,10 +123,10 @@ export default function NearbyPage() {
         {position && (
           <>
             {nearbyMPAs.length > 0 && nearbyMPAs[0].distance > 1000 && (
-              <Card className="mb-4 bg-blue-50 border-blue-200">
+              <Card className="mb-4 bg-balean-yellow/10 border-balean-yellow/30">
                 <CardContent>
-                  <p className="text-sm text-blue-800 flex items-start gap-2">
-                    <Icon name="lightbulb" className="flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-balean-navy flex items-start gap-2">
+                    <Icon name="lightbulb" className="flex-shrink-0 mt-0.5 text-balean-yellow-dark" />
                     <span><strong>Tip:</strong> The nearest MPA is {nearbyMPAs[0].distance.toFixed(0)} km away. Marine Protected Areas may be sparse in your region. Consider exploring the map to see all available MPAs.</span>
                   </p>
                 </CardContent>
@@ -140,11 +140,11 @@ export default function NearbyPage() {
               <CardContent>
               {nearbyMPAs.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="mb-4"><Icon name="search" className="text-6xl text-gray-400" /></div>
-                  <p className="text-lg font-semibold text-gray-700 mb-2">
+                  <div className="mb-4"><Icon name="search" className="text-6xl text-balean-gray-300" /></div>
+                  <p className="text-lg font-semibold text-balean-gray-500 mb-2">
                     No MPAs Nearby
                   </p>
-                  <p className="text-gray-500 mb-6">
+                  <p className="text-balean-gray-400 mb-6">
                     No Marine Protected Areas found within {maxDistance} km of your location
                   </p>
                   <div className="space-y-3">
@@ -168,22 +168,22 @@ export default function NearbyPage() {
                   {nearbyMPAs.map((mpa) => (
                     <Link
                       key={mpa.id}
-                      href={`/mpa/${mpa.id}`}
+                      href={`/ocean-pulse-app/mpa/${mpa.id}`}
                       className="block"
                     >
-                      <div className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 hover:border-cyan-300">
+                      <div className="p-4 bg-balean-gray-50 rounded-lg hover:bg-balean-gray-100 transition-colors border border-balean-gray-200 hover:border-balean-cyan">
                         <div className="flex items-start justify-between gap-4 mb-3">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-navy-600 mb-1">
+                            <h3 className="font-semibold text-balean-navy mb-1">
                               {mpa.name}
                             </h3>
-                            <p className="text-sm text-gray-600">{mpa.country}</p>
+                            <p className="text-sm text-balean-gray-500">{mpa.country}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold text-cyan-600">
+                            <p className="text-lg font-bold text-balean-cyan">
                               {formatDistance(mpa.distance)}
                             </p>
-                            <p className="text-xs text-gray-500">away</p>
+                            <p className="text-xs text-balean-gray-400">away</p>
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -210,8 +210,8 @@ export default function NearbyPage() {
           <Card>
             <CardContent>
               <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-cyan-500 mb-4" />
-                <p className="text-gray-600">Getting your location...</p>
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-balean-cyan mb-4" />
+                <p className="text-balean-gray-500">Getting your location...</p>
               </div>
             </CardContent>
           </Card>

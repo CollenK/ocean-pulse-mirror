@@ -33,10 +33,10 @@ const TrackingHeatmap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-[500px] rounded-xl bg-gray-100 flex items-center justify-center">
+      <div className="h-[500px] rounded-xl bg-balean-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-ocean-primary mb-2" />
-          <p className="text-sm text-gray-500">Loading map...</p>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-balean-gray-200 border-t-balean-cyan mb-2" />
+          <p className="text-sm text-balean-gray-400">Loading map...</p>
         </div>
       </div>
     )
@@ -180,10 +180,10 @@ export default function MPADetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen p-6 pb-24 bg-gray-50">
+      <main className="min-h-screen p-6 pb-24 bg-balean-off-white">
         <div className="max-w-screen-xl mx-auto">
           <div className="mb-4">
-            <div className="h-10 w-32 bg-gray-200 animate-pulse rounded" />
+            <div className="h-10 w-32 bg-balean-gray-200 animate-pulse rounded" />
           </div>
           <MPACardSkeleton />
           <div className="mt-4">
@@ -196,16 +196,16 @@ export default function MPADetailPage() {
 
   if (error || !mpa) {
     return (
-      <main className="min-h-screen p-6 pb-24 bg-gray-50">
+      <main className="min-h-screen p-6 pb-24 bg-balean-off-white">
         <div className="max-w-screen-xl mx-auto">
           <Card>
             <CardTitle>Error</CardTitle>
             <CardContent>
-              <p className="text-gray-600 mb-4">
+              <p className="text-balean-gray-500 mb-4">
                 {error || 'MPA not found'}
               </p>
               <Button onClick={() => router.push('/')} variant="secondary">
-                ← Back to Home
+                <Icon name="angle-left" size="sm" /> Back to Home
               </Button>
             </CardContent>
           </Card>
@@ -217,7 +217,7 @@ export default function MPADetailPage() {
   return (
     <main className="min-h-screen pb-32">
       {/* Modern Hero Header with Gradient */}
-      <div className="bg-gradient-to-br from-ocean-primary via-ocean-accent to-cyan-400 pt-4 pb-16 px-6">
+      <div className="bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-6">
         <div className="max-w-screen-xl mx-auto">
           {/* Top bar with back button and user menu */}
           <div className="flex items-center justify-between mb-4">
@@ -306,30 +306,34 @@ export default function MPADetailPage() {
             className="text-center shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
             interactive
             hover
-            onClick={() => !compositeHealth.loading && setShowHealthModal(true)}
+            onClick={() => setShowHealthModal(true)}
           >
             <CardContent className="py-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-ocean-primary to-ocean-accent mx-auto mb-2 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-balean-cyan to-balean-cyan-dark mx-auto mb-2 flex items-center justify-center">
                 <Icon name="heart-rate" className="text-white text-xl" />
               </div>
               {compositeHealth.loading && compositeHealth.score === 0 ? (
                 <>
                   <div className="h-9 flex items-center justify-center">
-                    <div className="animate-pulse bg-gray-200 rounded w-12 h-8" />
+                    <div className="animate-pulse bg-balean-gray-200 rounded w-12 h-8" />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Calculating...</p>
+                  <p className="text-xs text-balean-gray-400 mt-1">Calculating...</p>
+                  <p className="text-xs text-balean-cyan mt-1 flex items-center justify-center gap-1">
+                    <Icon name="info" size="sm" />
+                    Tap for details
+                  </p>
                 </>
               ) : (
                 <>
-                  <p className="text-3xl font-bold text-ocean-deep">{compositeHealth.score}</p>
-                  <p className="text-xs text-gray-500 mt-1">Health Score</p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-3xl font-bold text-balean-navy">{compositeHealth.score}</p>
+                  <p className="text-xs text-balean-gray-400 mt-1">Health Score</p>
+                  <p className="text-xs text-balean-gray-300">
                     {compositeHealth.dataSourcesAvailable}/{compositeHealth.source === 'backend' ? '5' : '3'} sources
                     {compositeHealth.backendAvailable && (
-                      <span className="ml-1 text-green-600" title="Using Copernicus satellite data">*</span>
+                      <span className="ml-1 text-healthy" title="Using Copernicus satellite data">*</span>
                     )}
                   </p>
-                  <p className="text-xs text-ocean-primary mt-1 flex items-center justify-center gap-1">
+                  <p className="text-xs text-balean-cyan mt-1 flex items-center justify-center gap-1">
                     <Icon name="info" size="sm" />
                     Tap for details
                   </p>
@@ -340,33 +344,33 @@ export default function MPADetailPage() {
 
           <Card className="text-center shadow-lg hover:shadow-xl transition-shadow">
             <CardContent className="py-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 mx-auto mb-2 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-balean-coral to-balean-coral-dark mx-auto mb-2 flex items-center justify-center">
                 <Icon name="fish" className="text-white text-xl" />
               </div>
-              <p className="text-3xl font-bold text-ocean-deep">
+              <p className="text-3xl font-bold text-balean-navy">
                 {mpa.speciesCount.toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Species</p>
+              <p className="text-xs text-balean-gray-400 mt-1">Species</p>
             </CardContent>
           </Card>
 
           <Card className="text-center shadow-lg hover:shadow-xl transition-shadow">
             <CardContent className="py-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 mx-auto mb-2 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-healthy to-healthy-light mx-auto mb-2 flex items-center justify-center">
                 <Icon name="map" className="text-white text-xl" />
               </div>
-              <p className="text-3xl font-bold text-ocean-deep">{formatArea(mpa.area)}</p>
-              <p className="text-xs text-gray-500 mt-1">Area</p>
+              <p className="text-3xl font-bold text-balean-navy">{formatArea(mpa.area)}</p>
+              <p className="text-xs text-balean-gray-400 mt-1">Area</p>
             </CardContent>
           </Card>
 
           <Card className="text-center shadow-lg hover:shadow-xl transition-shadow">
             <CardContent className="py-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 mx-auto mb-2 flex items-center justify-center">
-                <Icon name="calendar" className="text-white text-xl" />
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-balean-yellow to-balean-yellow-dark mx-auto mb-2 flex items-center justify-center">
+                <Icon name="calendar" className="text-balean-navy text-xl" />
               </div>
-              <p className="text-3xl font-bold text-ocean-deep">{mpa.establishedYear}</p>
-              <p className="text-xs text-gray-500 mt-1">Established</p>
+              <p className="text-3xl font-bold text-balean-navy">{mpa.establishedYear}</p>
+              <p className="text-xs text-balean-gray-400 mt-1">Established</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -376,11 +380,11 @@ export default function MPADetailPage() {
           <CollapsibleCard
             title="About this MPA"
             icon="info-circle"
-            iconColor="text-ocean-primary"
+            iconColor="text-balean-cyan"
             defaultOpen={true}
             className="mb-4"
           >
-            <p className="text-gray-700 leading-relaxed">{mpa.description}</p>
+            <p className="text-balean-gray-500 leading-relaxed">{mpa.description}</p>
           </CollapsibleCard>
         )}
 
@@ -389,12 +393,12 @@ export default function MPADetailPage() {
           <CollapsibleCard
             title="Protection & Regulations"
             icon="shield-check"
-            iconColor="text-blue-600"
+            iconColor="text-info"
             defaultOpen={false}
             className="mb-4"
           >
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-              <p className="text-gray-700 leading-relaxed">{mpa.regulations}</p>
+            <div className="bg-info/10 border-l-4 border-info p-4 rounded">
+              <p className="text-balean-gray-500 leading-relaxed">{mpa.regulations}</p>
             </div>
           </CollapsibleCard>
         )}
@@ -403,24 +407,24 @@ export default function MPADetailPage() {
         <CollapsibleCard
           title="Location"
           icon="map-marker"
-          iconColor="text-green-600"
+          iconColor="text-healthy"
           defaultOpen={false}
           className="mb-4"
         >
           <div className="space-y-2">
             <div>
-              <span className="font-semibold text-gray-700">Center: </span>
-              <span className="text-gray-600">
+              <span className="font-semibold text-balean-gray-500">Center: </span>
+              <span className="text-balean-gray-400">
                 {mpa.center[0].toFixed(4)}°, {mpa.center[1].toFixed(4)}°
               </span>
             </div>
             <div>
-              <span className="font-semibold text-gray-700">Country: </span>
-              <span className="text-gray-600">{mpa.country}</span>
+              <span className="font-semibold text-balean-gray-500">Country: </span>
+              <span className="text-balean-gray-400">{mpa.country}</span>
             </div>
           </div>
           <div className="mt-4">
-            <Link href={`/?lat=${mpa.center[0]}&lng=${mpa.center[1]}&zoom=6&mpa=${mpa.id}`}>
+            <Link href={`/ocean-pulse-app?lat=${mpa.center[0]}&lng=${mpa.center[1]}&zoom=6&mpa=${mpa.id}`}>
               <Button fullWidth>View on Map</Button>
             </Link>
           </div>
@@ -430,7 +434,7 @@ export default function MPADetailPage() {
         <CollapsibleCard
           title="Live Reports"
           icon="camera"
-          iconColor="text-blue-600"
+          iconColor="text-balean-cyan"
           defaultOpen={false}
           badge={
             mpaObservations.length > 0 && (
@@ -446,7 +450,7 @@ export default function MPADetailPage() {
         <CollapsibleCard
           title="Indicator Species"
           icon="leaf"
-          iconColor="text-emerald-600"
+          iconColor="text-healthy"
           defaultOpen={false}
           badge={
             indicatorSpecies.length > 0 && (
@@ -457,12 +461,12 @@ export default function MPADetailPage() {
         >
           {speciesLoading ? (
             <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-emerald-500 mb-4" />
-              <p className="text-gray-600">Loading indicator species...</p>
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-healthy mb-4" />
+              <p className="text-balean-gray-500">Loading indicator species...</p>
             </div>
           ) : indicatorSpecies.length > 0 ? (
             <>
-              <p className="text-gray-600 mb-4">
+              <p className="text-balean-gray-500 mb-4">
                 These species serve as key markers for assessing ecosystem health.
               </p>
 
@@ -492,7 +496,7 @@ export default function MPADetailPage() {
                 {indicatorSpecies.slice(0, showAllSpecies ? indicatorSpecies.length : 5).map((sp) => (
                   <Link
                     key={sp.id}
-                    href={`/indicator-species/${sp.id}`}
+                    href={`/ocean-pulse-app/indicator-species/${sp.id}`}
                     className="block"
                   >
                     <SpeciesCard species={sp} compact />
@@ -512,14 +516,14 @@ export default function MPADetailPage() {
             </>
           ) : (
             <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
-                <Icon name="leaf" className="text-gray-400 text-3xl" />
+              <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
+                <Icon name="leaf" className="text-balean-gray-300 text-3xl" />
               </div>
-              <p className="text-gray-600 mb-2 font-medium">No indicator species identified</p>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-balean-gray-500 mb-2 font-medium">No indicator species identified</p>
+              <p className="text-sm text-balean-gray-400 mb-4">
                 No indicator species match this MPA's ecosystem type
               </p>
-              <Link href="/indicator-species">
+              <Link href="/ocean-pulse-app/indicator-species">
                 <Button variant="secondary">
                   <Icon name="leaf" size="sm" />
                   Browse Indicator Species
@@ -533,7 +537,7 @@ export default function MPADetailPage() {
         <CollapsibleCard
           title="Population Trends"
           icon="arrow-trend-up"
-          iconColor="text-purple-600"
+          iconColor="text-balean-coral"
           defaultOpen={false}
           badge={
             abundanceSummary && abundanceSummary.speciesTrends.length > 0 && (
@@ -550,14 +554,14 @@ export default function MPADetailPage() {
         >
           {abundanceLoading ? (
             <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
-              <p className="text-gray-600 mb-2">Analyzing indicator species abundance data...</p>
-              <p className="text-sm text-gray-500 mb-4">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-balean-cyan mb-4" />
+              <p className="text-balean-gray-500 mb-2">Analyzing indicator species abundance data...</p>
+              <p className="text-sm text-balean-gray-400 mb-4">
                 Filtering for ecosystem-relevant indicator species
               </p>
-              <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
+              <div className="mt-4 w-full bg-balean-gray-200 rounded-full h-2 max-w-md mx-auto">
                 <motion.div
-                  className="bg-gradient-to-r from-ocean-primary to-ocean-accent h-2 rounded-full"
+                  className="bg-gradient-to-r from-balean-cyan to-balean-cyan-light h-2 rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: `${abundanceProgress}%` }}
                   transition={{ duration: 0.3 }}
@@ -567,24 +571,24 @@ export default function MPADetailPage() {
           ) : abundanceSummary && abundanceSummary.speciesTrends.length > 0 ? (
             <>
               {/* Overall indicator species health summary */}
-              <div className="mb-6 p-4 bg-gradient-to-br from-ocean-primary/10 to-ocean-accent/10 rounded-xl">
+              <div className="mb-6 p-4 bg-gradient-to-br from-balean-cyan/10 to-balean-cyan-light/10 rounded-xl">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Indicator Species Health</p>
-                    <p className="text-3xl font-bold text-ocean-deep">
+                    <p className="text-sm text-balean-gray-500 mb-1">Indicator Species Health</p>
+                    <p className="text-3xl font-bold text-balean-navy">
                       {abundanceSummary.overallBiodiversity.healthScore}
-                      <span className="text-lg text-gray-500">/100</span>
+                      <span className="text-lg text-balean-gray-400">/100</span>
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-balean-gray-400 mt-1">
                       Based on {abundanceSummary.speciesTrends.length} indicator species
                     </p>
                   </div>
                   <div className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
                     abundanceSummary.overallBiodiversity.trendDirection === 'increasing'
-                      ? 'bg-green-100 text-green-700'
+                      ? 'bg-healthy/10 text-healthy'
                       : abundanceSummary.overallBiodiversity.trendDirection === 'stable'
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'bg-orange-100 text-orange-700'
+                      ? 'bg-info/10 text-info'
+                      : 'bg-warning/10 text-warning'
                   }`}>
                     <Icon name={
                       abundanceSummary.overallBiodiversity.trendDirection === 'increasing'
@@ -601,12 +605,12 @@ export default function MPADetailPage() {
               </div>
 
               {/* Data quality indicator */}
-              <div className="mb-4 p-3 bg-emerald-50 border-l-4 border-emerald-500 rounded">
+              <div className="mb-4 p-3 bg-healthy/10 border-l-4 border-healthy rounded">
                 <div className="flex items-start gap-2">
-                  <Icon name="leaf" size="sm" className="text-emerald-600 mt-0.5" />
-                  <div className="text-sm text-gray-700">
+                  <Icon name="leaf" size="sm" className="text-healthy mt-0.5" />
+                  <div className="text-sm text-balean-gray-500">
                     <p className="font-medium mb-1">Indicator Species Data</p>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-balean-gray-400">
                       {abundanceSummary.dataQuality.recordsWithAbundance.toLocaleString()} occurrence records
                       for indicator species from OBIS (10-year analysis)
                     </p>
@@ -637,11 +641,11 @@ export default function MPADetailPage() {
             </>
           ) : (
             <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
-                <Icon name="chart-line" className="text-gray-400 text-3xl" />
+              <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
+                <Icon name="chart-line" className="text-balean-gray-300 text-3xl" />
               </div>
-              <p className="text-gray-600 mb-2 font-medium">No indicator species abundance data</p>
-              <p className="text-sm text-gray-500">
+              <p className="text-balean-gray-500 mb-2 font-medium">No indicator species abundance data</p>
+              <p className="text-sm text-balean-gray-400">
                 No abundance records found for indicator species in this MPA
               </p>
             </div>
@@ -652,7 +656,7 @@ export default function MPADetailPage() {
         <CollapsibleCard
           title="Habitat Quality"
           icon="flask"
-          iconColor="text-cyan-600"
+          iconColor="text-balean-cyan"
           defaultOpen={false}
           badge={
             environmentalSummary && environmentalSummary.parameters.length > 0 && (
@@ -669,14 +673,14 @@ export default function MPADetailPage() {
         >
           {environmentalLoading ? (
             <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
-              <p className="text-gray-600 mb-2">Analyzing environmental conditions...</p>
-              <p className="text-sm text-gray-500 mb-4">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-balean-cyan mb-4" />
+              <p className="text-balean-gray-500 mb-2">Analyzing environmental conditions...</p>
+              <p className="text-sm text-balean-gray-400 mb-4">
                 Temperature, salinity, pH, and more
               </p>
-              <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
+              <div className="mt-4 w-full bg-balean-gray-200 rounded-full h-2 max-w-md mx-auto">
                 <motion.div
-                  className="bg-gradient-to-r from-ocean-primary to-ocean-accent h-2 rounded-full"
+                  className="bg-gradient-to-r from-balean-cyan to-balean-cyan-light h-2 rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: `${environmentalProgress}%` }}
                   transition={{ duration: 0.3 }}
@@ -686,15 +690,15 @@ export default function MPADetailPage() {
           ) : environmentalSummary && environmentalSummary.parameters.length > 0 ? (
             <>
               {/* Habitat quality score */}
-              <div className="mb-6 p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
+              <div className="mb-6 p-4 bg-gradient-to-br from-balean-cyan/10 to-balean-cyan-light/10 rounded-xl border border-balean-cyan/20">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Habitat Quality Score</p>
-                    <p className="text-3xl font-bold text-ocean-deep">
+                    <p className="text-sm text-balean-gray-500 mb-1">Habitat Quality Score</p>
+                    <p className="text-3xl font-bold text-balean-navy">
                       {environmentalSummary.habitatQualityScore}
-                      <span className="text-lg text-gray-500">/100</span>
+                      <span className="text-lg text-balean-gray-400">/100</span>
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-balean-gray-400 mt-1">
                       Based on {environmentalSummary.parameters.length} environmental parameters
                     </p>
                   </div>
@@ -706,9 +710,9 @@ export default function MPADetailPage() {
                         'triangle-exclamation'
                       }
                       className={`text-3xl ${
-                        environmentalSummary.habitatQualityScore >= 80 ? 'text-green-500' :
-                        environmentalSummary.habitatQualityScore >= 60 ? 'text-yellow-500' :
-                        'text-orange-500'
+                        environmentalSummary.habitatQualityScore >= 80 ? 'text-healthy' :
+                        environmentalSummary.habitatQualityScore >= 60 ? 'text-warning' :
+                        'text-critical'
                       }`}
                     />
                   </div>
@@ -716,12 +720,12 @@ export default function MPADetailPage() {
               </div>
 
               {/* Data quality indicator */}
-              <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+              <div className="mb-4 p-3 bg-info/10 border-l-4 border-info rounded">
                 <div className="flex items-start gap-2">
-                  <Icon name="info" size="sm" className="text-blue-600 mt-0.5" />
-                  <div className="text-sm text-gray-700">
+                  <Icon name="info" size="sm" className="text-info mt-0.5" />
+                  <div className="text-sm text-balean-gray-500">
                     <p className="font-medium mb-1">Environmental Monitoring Data</p>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-balean-gray-400">
                       {environmentalSummary.dataQuality.measurementsCount.toLocaleString()} measurements
                       across {environmentalSummary.parameters.length} parameters from OBIS-ENV-DATA
                     </p>
@@ -734,11 +738,11 @@ export default function MPADetailPage() {
             </>
           ) : (
             <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
-                <Icon name="flask" className="text-gray-400 text-3xl" />
+              <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
+                <Icon name="flask" className="text-balean-gray-300 text-3xl" />
               </div>
-              <p className="text-gray-600 mb-2 font-medium">No environmental data available</p>
-              <p className="text-sm text-gray-500">
+              <p className="text-balean-gray-500 mb-2 font-medium">No environmental data available</p>
+              <p className="text-sm text-balean-gray-400">
                 This MPA may not have environmental measurements in the OBIS database yet
               </p>
             </div>
@@ -749,7 +753,7 @@ export default function MPADetailPage() {
         <CollapsibleCard
           title="Satellite Tracking"
           icon="satellite"
-          iconColor="text-indigo-600"
+          iconColor="text-balean-coral"
           defaultOpen={false}
           badge={
             trackingSummary && trackingSummary.trackedIndividuals > 0 && (
@@ -762,14 +766,14 @@ export default function MPADetailPage() {
         >
           {trackingLoading ? (
             <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-ocean-primary mb-4" />
-              <p className="text-gray-600 mb-2">Searching Movebank for tracking data...</p>
-              <p className="text-sm text-gray-500 mb-4">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-balean-cyan mb-4" />
+              <p className="text-balean-gray-500 mb-2">Searching Movebank for tracking data...</p>
+              <p className="text-sm text-balean-gray-400 mb-4">
                 Finding GPS/satellite telemetry studies near this MPA
               </p>
-              <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
+              <div className="mt-4 w-full bg-balean-gray-200 rounded-full h-2 max-w-md mx-auto">
                 <motion.div
-                  className="bg-gradient-to-r from-ocean-primary to-ocean-accent h-2 rounded-full"
+                  className="bg-gradient-to-r from-balean-cyan to-balean-cyan-light h-2 rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: `${trackingProgress}%` }}
                   transition={{ duration: 0.3 }}
@@ -784,12 +788,12 @@ export default function MPADetailPage() {
               </div>
 
               {/* Data source attribution */}
-              <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+              <div className="mb-4 p-3 bg-info/10 border-l-4 border-info rounded">
                 <div className="flex items-start gap-2">
-                  <Icon name="satellite" size="sm" className="text-blue-600 mt-0.5" />
-                  <div className="text-sm text-gray-700">
+                  <Icon name="satellite" size="sm" className="text-info mt-0.5" />
+                  <div className="text-sm text-balean-gray-500">
                     <p className="font-medium mb-1">Real Telemetry Data from Movebank</p>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-balean-gray-400">
                       GPS/satellite tracking data from tagged animals in scientific studies
                     </p>
                   </div>
@@ -805,11 +809,11 @@ export default function MPADetailPage() {
             </>
           ) : (
             <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
-                <Icon name="satellite" className="text-gray-400 text-3xl" />
+              <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
+                <Icon name="satellite" className="text-balean-gray-300 text-3xl" />
               </div>
-              <p className="text-gray-600 mb-2 font-medium">No satellite tracking data available</p>
-              <p className="text-sm text-gray-500">
+              <p className="text-balean-gray-500 mb-2 font-medium">No satellite tracking data available</p>
+              <p className="text-sm text-balean-gray-400">
                 No GPS/satellite telemetry studies found for marine species in this area on Movebank
               </p>
             </div>

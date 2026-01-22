@@ -84,14 +84,14 @@ export default function IndicatorSpeciesDetailPage() {
       <main id="main-content" className="min-h-screen pb-32">
         <div className="max-w-screen-xl mx-auto px-6 py-12">
           <Card className="text-center py-16">
-            <Icon name="alert-circle" size="xl" className="text-gray-300 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-600 mb-2">Species Not Found</h1>
-            <p className="text-gray-500 mb-6">
+            <Icon name="alert-circle" size="xl" className="text-balean-gray-300 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-balean-gray-500 mb-2">Species Not Found</h1>
+            <p className="text-balean-gray-400 mb-6">
               The indicator species you're looking for doesn't exist.
             </p>
             <Link
-              href="/indicator-species"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-ocean-primary text-white rounded-lg hover:bg-ocean-dark transition-colors"
+              href="/ocean-pulse-app/indicator-species"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-balean-cyan text-white rounded-lg hover:bg-balean-cyan-dark transition-colors"
             >
               <Icon name="arrow-left" size="sm" />
               Back to Species Browser
@@ -123,7 +123,7 @@ export default function IndicatorSpeciesDetailPage() {
             className="mb-6"
           >
             <Link
-              href="/indicator-species"
+              href="/ocean-pulse-app/indicator-species"
               className="inline-flex items-center gap-2 text-white/80 hover:text-white transition-colors"
             >
               <Icon name="arrow-left" size="sm" />
@@ -191,7 +191,7 @@ export default function IndicatorSpeciesDetailPage() {
               <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Conservation Status */}
-                  <div className="p-4 bg-gray-50 rounded-xl">
+                  <div className="p-4 bg-balean-gray-50 rounded-xl">
                     <div className="flex items-center gap-3 mb-2">
                       <div
                         className="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -200,16 +200,16 @@ export default function IndicatorSpeciesDetailPage() {
                         <Icon name="shield" size="sm" className="text-white" />
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        <p className="text-xs text-balean-gray-400 uppercase tracking-wide">
                           IUCN Status
                         </p>
-                        <p className="font-semibold text-gray-800">{statusInfo.name}</p>
+                        <p className="font-semibold text-balean-navy">{statusInfo.name}</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Sensitivity */}
-                  <div className="p-4 bg-gray-50 rounded-xl">
+                  <div className="p-4 bg-balean-gray-50 rounded-xl">
                     <div className="flex items-center gap-3 mb-2">
                       <div
                         className="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -218,33 +218,33 @@ export default function IndicatorSpeciesDetailPage() {
                         <Icon name="gauge" size="sm" className="text-white" />
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        <p className="text-xs text-balean-gray-400 uppercase tracking-wide">
                           Sensitivity
                         </p>
-                        <p className="font-semibold text-gray-800">{sensitivityInfo.label}</p>
+                        <p className="font-semibold text-balean-navy">{sensitivityInfo.label}</p>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-600">{sensitivityInfo.description}</p>
+                    <p className="text-sm text-balean-gray-500">{sensitivityInfo.description}</p>
                   </div>
 
                   {/* OBIS Taxon ID */}
-                  <div className="p-4 bg-gray-50 rounded-xl">
+                  <div className="p-4 bg-balean-gray-50 rounded-xl">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-ocean-primary flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-lg bg-balean-cyan flex items-center justify-center">
                         <Icon name="database" size="sm" className="text-white" />
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        <p className="text-xs text-balean-gray-400 uppercase tracking-wide">
                           OBIS Taxon ID
                         </p>
-                        <p className="font-semibold text-gray-800">{species.obisTaxonId}</p>
+                        <p className="font-semibold text-balean-navy">{species.obisTaxonId}</p>
                       </div>
                     </div>
                     <a
                       href={`https://obis.org/taxon/${species.obisTaxonId}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sm text-ocean-primary hover:text-ocean-dark"
+                      className="inline-flex items-center gap-1 text-sm text-balean-cyan hover:text-balean-cyan-dark"
                     >
                       View on OBIS
                       <Icon name="external-link" size="sm" />
@@ -252,7 +252,7 @@ export default function IndicatorSpeciesDetailPage() {
                   </div>
 
                   {/* Category */}
-                  <div className="p-4 bg-gray-50 rounded-xl">
+                  <div className="p-4 bg-balean-gray-50 rounded-xl">
                     <div className="flex items-center gap-3 mb-2">
                       <div
                         className="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -265,13 +265,13 @@ export default function IndicatorSpeciesDetailPage() {
                         />
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        <p className="text-xs text-balean-gray-400 uppercase tracking-wide">
                           Category
                         </p>
-                        <p className="font-semibold text-gray-800">{categoryInfo.name}</p>
+                        <p className="font-semibold text-balean-navy">{categoryInfo.name}</p>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-600">{categoryInfo.description}</p>
+                    <p className="text-sm text-balean-gray-500">{categoryInfo.description}</p>
                   </div>
                 </div>
               </CardContent>
@@ -281,7 +281,7 @@ export default function IndicatorSpeciesDetailPage() {
             <Card className="shadow-lg">
               <CardTitle>Ecosystems</CardTitle>
               <CardContent>
-                <p className="text-gray-600 mb-4">
+                <p className="text-balean-gray-500 mb-4">
                   This species is found in the following marine ecosystems:
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -290,18 +290,18 @@ export default function IndicatorSpeciesDetailPage() {
                     return (
                       <div
                         key={eco}
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100"
+                        className="flex items-center gap-3 p-3 bg-balean-gray-50 rounded-xl border border-balean-gray-100"
                       >
                         <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center bg-ocean-primary/10"
+                          className="w-10 h-10 rounded-lg flex items-center justify-center bg-balean-cyan/10"
                         >
                           <Icon
                             name={ECOSYSTEM_ICONS[eco]}
                             size="sm"
-                            className="text-ocean-primary"
+                            className="text-balean-cyan"
                           />
                         </div>
-                        <p className="font-medium text-gray-800">{ecoInfo.name}</p>
+                        <p className="font-medium text-balean-navy">{ecoInfo.name}</p>
                       </div>
                     );
                   })}
@@ -314,40 +314,40 @@ export default function IndicatorSpeciesDetailPage() {
               <CardTitle>Geographic Distribution</CardTitle>
               <CardContent>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="text-center p-3 bg-blue-50 rounded-xl">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                  <div className="text-center p-3 bg-balean-cyan/10 rounded-xl">
+                    <p className="text-xs text-balean-gray-400 uppercase tracking-wide mb-1">
                       South
                     </p>
-                    <p className="text-lg font-bold text-ocean-deep">
+                    <p className="text-lg font-bold text-balean-navy">
                       {species.geographicBounds.south.toFixed(1)}&deg;
                     </p>
                   </div>
-                  <div className="text-center p-3 bg-blue-50 rounded-xl">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                  <div className="text-center p-3 bg-balean-cyan/10 rounded-xl">
+                    <p className="text-xs text-balean-gray-400 uppercase tracking-wide mb-1">
                       North
                     </p>
-                    <p className="text-lg font-bold text-ocean-deep">
+                    <p className="text-lg font-bold text-balean-navy">
                       {species.geographicBounds.north.toFixed(1)}&deg;
                     </p>
                   </div>
-                  <div className="text-center p-3 bg-blue-50 rounded-xl">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                  <div className="text-center p-3 bg-balean-cyan/10 rounded-xl">
+                    <p className="text-xs text-balean-gray-400 uppercase tracking-wide mb-1">
                       West
                     </p>
-                    <p className="text-lg font-bold text-ocean-deep">
+                    <p className="text-lg font-bold text-balean-navy">
                       {species.geographicBounds.west.toFixed(1)}&deg;
                     </p>
                   </div>
-                  <div className="text-center p-3 bg-blue-50 rounded-xl">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                  <div className="text-center p-3 bg-balean-cyan/10 rounded-xl">
+                    <p className="text-xs text-balean-gray-400 uppercase tracking-wide mb-1">
                       East
                     </p>
-                    <p className="text-lg font-bold text-ocean-deep">
+                    <p className="text-lg font-bold text-balean-navy">
                       {species.geographicBounds.east.toFixed(1)}&deg;
                     </p>
                   </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-4 text-center">
+                <p className="text-sm text-balean-gray-400 mt-4 text-center">
                   Geographic bounds indicate the typical range where this species can be found.
                 </p>
               </CardContent>
@@ -368,19 +368,19 @@ export default function IndicatorSpeciesDetailPage() {
                 <ul className="space-y-3">
                   <li className="flex items-start gap-2">
                     <Icon name="check-circle" size="sm" className="text-green-500 mt-0.5" />
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-balean-gray-600">
                       Indicator of {categoryInfo.name.toLowerCase()} ecosystem health
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Icon name="check-circle" size="sm" className="text-green-500 mt-0.5" />
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-balean-gray-600">
                       Found in {species.ecosystems.length} ecosystem type{species.ecosystems.length > 1 ? 's' : ''}
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Icon name="check-circle" size="sm" className="text-green-500 mt-0.5" />
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-balean-gray-600">
                       {species.sensitivityRating === 'high'
                         ? 'Excellent early warning indicator'
                         : species.sensitivityRating === 'medium'
@@ -414,8 +414,8 @@ export default function IndicatorSpeciesDetailPage() {
                     {species.conservationStatus}
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-800">{statusInfo.name}</p>
-                    <p className="text-xs text-gray-500">IUCN Red List</p>
+                    <p className="font-semibold text-balean-navy">{statusInfo.name}</p>
+                    <p className="text-xs text-balean-gray-400">IUCN Red List</p>
                   </div>
                 </div>
               </CardContent>
@@ -426,7 +426,7 @@ export default function IndicatorSpeciesDetailPage() {
               <Card className="shadow-lg">
                 <CardTitle className="text-sm">Related Species</CardTitle>
                 <CardContent>
-                  <p className="text-xs text-gray-500 mb-3">
+                  <p className="text-xs text-balean-gray-400 mb-3">
                     Other {categoryInfo.name.toLowerCase()} species
                   </p>
                   <div className="space-y-2">
@@ -435,23 +435,23 @@ export default function IndicatorSpeciesDetailPage() {
                       return (
                         <Link
                           key={related.id}
-                          href={`/indicator-species/${related.id}`}
-                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors group"
+                          href={`/ocean-pulse-app/indicator-species/${related.id}`}
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-balean-gray-50 transition-colors group"
                         >
                           <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-ocean-primary/10"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-balean-cyan/10"
                           >
                             <Icon
                               name={CATEGORY_ICONS[related.category]}
                               size="sm"
-                              className="text-ocean-primary"
+                              className="text-balean-cyan"
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-800 group-hover:text-ocean-primary truncate">
+                            <p className="text-sm font-medium text-balean-navy group-hover:text-balean-cyan truncate">
                               {related.commonName}
                             </p>
-                            <p className="text-xs text-gray-500 italic truncate">
+                            <p className="text-xs text-balean-gray-400 italic truncate">
                               {related.scientificName}
                             </p>
                           </div>

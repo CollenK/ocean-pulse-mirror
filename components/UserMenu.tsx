@@ -36,16 +36,27 @@ export function UserMenu() {
     );
   }
 
-  // Not authenticated - show login button
+  // Not authenticated - show support and login buttons
   if (!isAuthenticated) {
     return (
-      <button
-        onClick={() => router.push('/login')}
-        className="flex items-center gap-2 px-4 py-2 bg-ocean-primary text-white rounded-full text-sm font-medium hover:bg-ocean-primary/90 transition-colors"
-      >
-        <Icon name="sign-in-alt" size="sm" />
-        <span className="hidden sm:inline">Sign in</span>
-      </button>
+      <div className="flex items-center gap-2">
+        <a
+          href="https://www.balean.org/projects/68bfe9252ee300914fd4542a"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-full text-sm font-medium hover:bg-white/30 backdrop-blur-sm transition-colors"
+        >
+          <Icon name="heart" size="sm" />
+          <span className="hidden sm:inline">Support Us</span>
+        </a>
+        <button
+          onClick={() => router.push('/login')}
+          className="flex items-center gap-2 px-4 py-2 bg-ocean-primary text-white rounded-full text-sm font-medium hover:bg-ocean-primary/90 transition-colors"
+        >
+          <Icon name="sign-in-alt" size="sm" />
+          <span className="hidden sm:inline">Sign in</span>
+        </button>
+      </div>
     );
   }
 
@@ -54,7 +65,17 @@ export function UserMenu() {
   const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url;
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="flex items-center gap-2">
+      <a
+        href="https://www.balean.org/projects/68bfe9252ee300914fd4542a"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-full text-sm font-medium hover:bg-white/30 backdrop-blur-sm transition-colors"
+      >
+        <Icon name="heart" size="sm" />
+        <span className="hidden sm:inline">Support Us</span>
+      </a>
+      <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 p-1.5 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm transition-colors"
@@ -94,7 +115,7 @@ export function UserMenu() {
           <div className="py-2">
             <button
               onClick={() => {
-                router.push('/saved');
+                router.push('/ocean-pulse-app/saved');
                 setIsOpen(false);
               }}
               className="w-full flex items-center gap-3 px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
@@ -105,7 +126,7 @@ export function UserMenu() {
 
             <button
               onClick={() => {
-                router.push('/profile');
+                router.push('/ocean-pulse-app/profile');
                 setIsOpen(false);
               }}
               className="w-full flex items-center gap-3 px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
@@ -127,6 +148,7 @@ export function UserMenu() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

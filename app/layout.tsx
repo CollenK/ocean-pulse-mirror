@@ -9,14 +9,14 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: {
-    default: 'Ocean PULSE - Marine Protected Area Monitor',
+    default: 'Ocean PULSE by Balean - Marine Protected Area Monitor',
     template: '%s | Ocean PULSE',
   },
-  description: 'Real-time MPA health monitoring and species tracking. Explore marine protected areas worldwide, discover marine species, and contribute to ocean conservation.',
-  keywords: ['marine protected areas', 'MPA', 'ocean conservation', 'marine species', 'OBIS', 'biodiversity', 'ocean health', 'PWA'],
-  authors: [{ name: 'Ocean PULSE Team' }],
-  creator: 'Ocean PULSE',
-  publisher: 'Ocean PULSE',
+  description: 'Real-time MPA health monitoring and species tracking. Explore marine protected areas worldwide, discover marine species, and contribute to ocean conservation with Balean.',
+  keywords: ['marine protected areas', 'MPA', 'ocean conservation', 'marine species', 'OBIS', 'biodiversity', 'ocean health', 'PWA', 'Balean'],
+  authors: [{ name: 'Balean' }],
+  creator: 'Balean',
+  publisher: 'Balean',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -26,22 +26,22 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://oceanpulse.app',
-    title: 'Ocean PULSE - Marine Protected Area Monitor',
-    description: 'Real-time MPA health monitoring and species tracking',
+    url: 'https://oceanpulse.balean.org',
+    title: 'Ocean PULSE by Balean - Marine Protected Area Monitor',
+    description: 'Real-time MPA health monitoring and species tracking. Connect with the global ocean conservation community.',
     siteName: 'Ocean PULSE',
     images: [
       {
         url: '/icons/icon-512x512.png',
         width: 512,
         height: 512,
-        alt: 'Ocean PULSE Logo',
+        alt: 'Ocean PULSE by Balean',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Ocean PULSE - Marine Protected Area Monitor',
+    title: 'Ocean PULSE by Balean - Marine Protected Area Monitor',
     description: 'Real-time MPA health monitoring and species tracking',
     images: ['/icons/icon-512x512.png'],
   },
@@ -76,12 +76,29 @@ export default function RootLayout({
         <link rel="icon" href="/icons/icon-192x192.png" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <meta name="theme-color" content="#002557" />
-        {/* Inter Font */}
+
+        {/* Lato Font - Primary body font */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap"
+          rel="stylesheet"
+        />
+
         {/* Flaticon UIcons */}
-        <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/2.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css" />
+        <link
+          rel="stylesheet"
+          href="https://cdn-uicons.flaticon.com/2.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css"
+        />
+        <link
+          rel="stylesheet"
+          href="https://cdn-uicons.flaticon.com/2.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css"
+        />
+        <link
+          rel="stylesheet"
+          href="https://cdn-uicons.flaticon.com/2.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css"
+        />
+
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -92,6 +109,11 @@ export default function RootLayout({
               description: 'Real-time MPA health monitoring and species tracking. Explore marine protected areas worldwide and discover marine species.',
               applicationCategory: 'UtilityApplication',
               operatingSystem: 'Any',
+              creator: {
+                '@type': 'Organization',
+                name: 'Balean',
+                url: 'https://balean.org',
+              },
               offers: {
                 '@type': 'Offer',
                 price: '0',
@@ -115,7 +137,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="antialiased bg-gray-50" suppressHydrationWarning>
+      <body className="antialiased" suppressHydrationWarning>
         <a href="#main-content" className="skip-to-content">
           Skip to main content
         </a>

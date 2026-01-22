@@ -62,7 +62,7 @@
       "name": "Find Nearby MPAs",
       "short_name": "Nearby",
       "description": "Find MPAs near your location",
-      "url": "/nearby",
+      "url": "/ocean-pulse-app/nearby",
       "icons": [
         {
           "src": "/icons/icon-96x96.png",
@@ -74,7 +74,7 @@
       "name": "Add Observation",
       "short_name": "Observe",
       "description": "Log a species observation",
-      "url": "/observe",
+      "url": "/ocean-pulse-app/observe",
       "icons": [
         {
           "src": "/icons/icon-96x96.png",

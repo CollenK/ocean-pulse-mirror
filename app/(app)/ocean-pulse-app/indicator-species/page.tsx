@@ -86,13 +86,13 @@ export default function IndicatorSpeciesPage() {
   }, [filteredSpecies]);
 
   const handleSpeciesClick = (species: IndicatorSpecies) => {
-    router.push(`/indicator-species/${species.id}`);
+    router.push(`/ocean-pulse-app/indicator-species/${species.id}`);
   };
 
   return (
     <main id="main-content" className="min-h-screen pb-32">
       {/* Hero Header */}
-      <div className="bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 pt-8 pb-12 px-6 mb-6">
+      <div className="bg-gradient-to-br from-healthy via-balean-cyan to-balean-navy pt-8 pb-12 px-6 mb-6">
         <div className="max-w-screen-xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -178,10 +178,10 @@ export default function IndicatorSpeciesPage() {
                             className="w-3 h-3 rounded-full flex-shrink-0"
                             style={{ backgroundColor: info.color }}
                           />
-                          <span className="text-xs text-gray-600 flex-1 truncate">
+                          <span className="text-xs text-balean-gray-500 flex-1 truncate">
                             {info.name}
                           </span>
-                          <span className="text-xs font-medium text-gray-700">
+                          <span className="text-xs font-medium text-balean-gray-600">
                             {stats.filtered}/{stats.total}
                           </span>
                         </div>
@@ -203,7 +203,7 @@ export default function IndicatorSpeciesPage() {
             {/* Results Header */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <h2 className="text-lg font-semibold text-ocean-deep">
+                <h2 className="text-lg font-semibold text-balean-navy">
                   {loading ? 'Loading...' : `${filteredSpecies.length} Species`}
                 </h2>
                 {filteredSpecies.length !== INDICATOR_SPECIES.length && (
@@ -212,13 +212,13 @@ export default function IndicatorSpeciesPage() {
               </div>
 
               {/* View Toggle */}
-              <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+              <div className="flex items-center gap-2 bg-balean-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`p-2 rounded-md transition-colors ${
                     viewMode === 'grid'
-                      ? 'bg-white text-ocean-primary shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'bg-white text-balean-cyan shadow-sm'
+                      : 'text-balean-gray-400 hover:text-balean-gray-600'
                   }`}
                   aria-label="Grid view"
                 >
@@ -228,8 +228,8 @@ export default function IndicatorSpeciesPage() {
                   onClick={() => setViewMode('list')}
                   className={`p-2 rounded-md transition-colors ${
                     viewMode === 'list'
-                      ? 'bg-white text-ocean-primary shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'bg-white text-balean-cyan shadow-sm'
+                      : 'text-balean-gray-400 hover:text-balean-gray-600'
                   }`}
                   aria-label="List view"
                 >
@@ -255,7 +255,7 @@ export default function IndicatorSpeciesPage() {
                         style={{ backgroundColor: `${info.color}15`, color: info.color }}
                       >
                         <span className="font-bold">{status}</span>
-                        <span className="text-gray-600">({count})</span>
+                        <span className="text-balean-gray-500">({count})</span>
                       </div>
                     );
                   })}
@@ -283,11 +283,11 @@ export default function IndicatorSpeciesPage() {
             {/* No Results */}
             {!loading && filteredSpecies.length === 0 && (
               <Card className="text-center py-12">
-                <Icon name="search" size="xl" className="text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                <Icon name="search" size="xl" className="text-balean-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-balean-gray-500 mb-2">
                   No species match your filters
                 </h3>
-                <p className="text-gray-500 mb-4">
+                <p className="text-balean-gray-400 mb-4">
                   Try adjusting your category or conservation status filters
                 </p>
                 <button
@@ -296,7 +296,7 @@ export default function IndicatorSpeciesPage() {
                     setSelectedStatuses([]);
                     setSearchQuery('');
                   }}
-                  className="px-4 py-2 bg-ocean-primary text-white rounded-lg hover:bg-ocean-dark transition-colors"
+                  className="px-4 py-2 bg-balean-cyan text-white rounded-lg hover:bg-balean-cyan-dark transition-colors"
                 >
                   Reset Filters
                 </button>
@@ -316,7 +316,7 @@ export default function IndicatorSpeciesPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <p className="text-gray-700">
+                  <p className="text-balean-gray-600">
                     Indicator species are organisms whose presence, absence, or abundance
                     reflects a specific environmental condition. In marine ecosystems,
                     these species help scientists assess the overall health and stability
@@ -336,14 +336,14 @@ export default function IndicatorSpeciesPage() {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <h4 className="font-semibold text-ocean-deep">Species Categories</h4>
+                  <h4 className="font-semibold text-balean-navy">Species Categories</h4>
                   <div className="space-y-2">
                     {Object.values(SpeciesCategory).slice(0, 4).map((category) => {
                       const info = CATEGORY_INFO[category];
                       return (
                         <div
                           key={category}
-                          className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg"
+                          className="flex items-start gap-3 p-3 bg-balean-gray-50 rounded-lg"
                         >
                           <div
                             className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -352,8 +352,8 @@ export default function IndicatorSpeciesPage() {
                             <Icon name="star" size="sm" className="text-white" />
                           </div>
                           <div>
-                            <h5 className="font-medium text-gray-800 text-sm">{info.name}</h5>
-                            <p className="text-xs text-gray-500 line-clamp-2">{info.description}</p>
+                            <h5 className="font-medium text-balean-navy text-sm">{info.name}</h5>
+                            <p className="text-xs text-balean-gray-400 line-clamp-2">{info.description}</p>
                           </div>
                         </div>
                       );

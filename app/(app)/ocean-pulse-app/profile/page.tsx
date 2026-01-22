@@ -20,7 +20,7 @@ export default function ProfilePage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push('/login?redirect=/profile');
+      router.push('/login?redirect=/ocean-pulse-app/profile');
     }
   }, [authLoading, isAuthenticated, router]);
 
@@ -57,7 +57,7 @@ export default function ProfilePage() {
   if (authLoading) {
     return (
       <main className="min-h-screen pb-32">
-        <div className="bg-gradient-to-br from-ocean-primary via-ocean-accent to-cyan-400 pt-4 pb-16 px-6">
+        <div className="bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-6">
           <div className="max-w-screen-xl mx-auto">
             <div className="flex justify-end mb-4">
               <div className="w-9 h-9 rounded-full bg-white/20 animate-pulse" />
@@ -80,7 +80,7 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen pb-32">
       {/* Header */}
-      <div className="bg-gradient-to-br from-ocean-primary via-ocean-accent to-cyan-400 pt-4 pb-16 px-6">
+      <div className="bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-6">
         <div className="max-w-screen-xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <Button
@@ -133,22 +133,22 @@ export default function ProfilePage() {
         >
           <Card className="shadow-lg">
             <CardTitle className="flex items-center gap-2">
-              <Icon name="chart-line" className="text-ocean-primary" />
+              <Icon name="chart-line" className="text-balean-cyan" />
               Activity Stats
             </CardTitle>
             <CardContent>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="p-4 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl">
                   <p className="text-3xl font-bold text-red-500">{savedMPAIds.length}</p>
-                  <p className="text-sm text-gray-600">Saved MPAs</p>
+                  <p className="text-sm text-balean-gray-500">Saved MPAs</p>
                 </div>
                 <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl">
-                  <p className="text-3xl font-bold text-ocean-primary">0</p>
-                  <p className="text-sm text-gray-600">Observations</p>
+                  <p className="text-3xl font-bold text-balean-cyan">0</p>
+                  <p className="text-sm text-balean-gray-500">Observations</p>
                 </div>
                 <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
                   <p className="text-3xl font-bold text-green-500">0</p>
-                  <p className="text-sm text-gray-600">Species Found</p>
+                  <p className="text-sm text-balean-gray-500">Species Found</p>
                 </div>
               </div>
             </CardContent>
@@ -163,7 +163,7 @@ export default function ProfilePage() {
         >
           <Card className="shadow-lg">
             <CardTitle className="flex items-center gap-2">
-              <Icon name="user" className="text-ocean-primary" />
+              <Icon name="user" className="text-balean-cyan" />
               Profile Settings
             </CardTitle>
             <CardContent>
@@ -181,7 +181,7 @@ export default function ProfilePage() {
 
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="displayName" className="block text-sm font-medium text-balean-gray-600 mb-1">
                     Display Name
                   </label>
                   <input
@@ -189,22 +189,22 @@ export default function ProfilePage() {
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean-primary focus:border-ocean-primary outline-none transition-colors"
+                    className="w-full px-4 py-2 border border-balean-gray-300 rounded-lg focus:ring-2 focus:ring-balean-cyan focus:border-balean-cyan outline-none transition-colors"
                     placeholder="Enter your display name"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-balean-gray-600 mb-1">
                     Email
                   </label>
                   <input
                     type="email"
                     value={user?.email || ''}
                     disabled
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                    className="w-full px-4 py-2 border border-balean-gray-200 rounded-lg bg-balean-gray-50 text-balean-gray-400 cursor-not-allowed"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                  <p className="text-xs text-balean-gray-400 mt-1">Email cannot be changed</p>
                 </div>
 
                 <Button
@@ -237,15 +237,15 @@ export default function ProfilePage() {
         >
           <Card className="shadow-lg">
             <CardTitle className="flex items-center gap-2">
-              <Icon name="shield-check" className="text-ocean-primary" />
+              <Icon name="shield-check" className="text-balean-cyan" />
               Account
             </CardTitle>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <div className="flex items-center justify-between py-3 border-b border-balean-gray-100">
                   <div>
-                    <p className="font-medium text-gray-900">Sign-in Method</p>
-                    <p className="text-sm text-gray-500">Google Account</p>
+                    <p className="font-medium text-balean-navy">Sign-in Method</p>
+                    <p className="text-sm text-balean-gray-400">Google Account</p>
                   </div>
                   <div className="flex items-center gap-2 text-green-600">
                     <Icon name="check-circle" size="sm" />
@@ -253,10 +253,10 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <div className="flex items-center justify-between py-3 border-b border-balean-gray-100">
                   <div>
-                    <p className="font-medium text-gray-900">Member Since</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="font-medium text-balean-navy">Member Since</p>
+                    <p className="text-sm text-balean-gray-400">
                       {user?.created_at
                         ? new Date(user.created_at).toLocaleDateString('en-US', {
                             year: 'numeric',
@@ -270,8 +270,8 @@ export default function ProfilePage() {
 
                 <div className="flex items-center justify-between py-3">
                   <div>
-                    <p className="font-medium text-gray-900">Last Sign In</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="font-medium text-balean-navy">Last Sign In</p>
+                    <p className="text-sm text-balean-gray-400">
                       {user?.last_sign_in_at
                         ? new Date(user.last_sign_in_at).toLocaleDateString('en-US', {
                             year: 'numeric',
@@ -297,36 +297,36 @@ export default function ProfilePage() {
         >
           <Card className="shadow-lg">
             <CardTitle className="flex items-center gap-2">
-              <Icon name="settings" className="text-ocean-primary" />
+              <Icon name="settings" className="text-balean-cyan" />
               Settings
             </CardTitle>
             <CardContent>
               <div className="space-y-1">
                 <Link
-                  href="/offline"
-                  className="flex items-center justify-between w-full px-3 py-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  href="/ocean-pulse-app/offline"
+                  className="flex items-center justify-between w-full px-3 py-3 rounded-lg hover:bg-balean-gray-50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <Icon name="download" className="text-gray-400" />
+                    <Icon name="download" className="text-balean-gray-300" />
                     <div>
-                      <span className="font-medium text-gray-900">Offline Data</span>
-                      <span className="text-gray-500 text-sm block">Manage cached MPAs</span>
+                      <span className="font-medium text-balean-navy">Offline Data</span>
+                      <span className="text-balean-gray-400 text-sm block">Manage cached MPAs</span>
                     </div>
                   </div>
-                  <Icon name="angle-right" className="text-gray-400" />
+                  <Icon name="angle-right" className="text-balean-gray-300" />
                 </Link>
                 <Link
-                  href="/saved"
-                  className="flex items-center justify-between w-full px-3 py-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  href="/ocean-pulse-app/saved"
+                  className="flex items-center justify-between w-full px-3 py-3 rounded-lg hover:bg-balean-gray-50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <Icon name="heart" className="text-gray-400" />
+                    <Icon name="heart" className="text-balean-gray-300" />
                     <div>
-                      <span className="font-medium text-gray-900">Saved MPAs</span>
-                      <span className="text-gray-500 text-sm block">{savedMPAIds.length} saved</span>
+                      <span className="font-medium text-balean-navy">Saved MPAs</span>
+                      <span className="text-balean-gray-400 text-sm block">{savedMPAIds.length} saved</span>
                     </div>
                   </div>
-                  <Icon name="angle-right" className="text-gray-400" />
+                  <Icon name="angle-right" className="text-balean-gray-300" />
                 </Link>
               </div>
             </CardContent>
@@ -355,7 +355,7 @@ export default function ProfilePage() {
         </motion.div>
 
         {/* Version */}
-        <div className="text-center text-gray-500 py-4">
+        <div className="text-center text-balean-gray-400 py-4">
           <p className="text-sm">Ocean PULSE v1.0.0</p>
         </div>
       </div>

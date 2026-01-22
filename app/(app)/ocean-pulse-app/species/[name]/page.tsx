@@ -32,10 +32,10 @@ export default function SpeciesDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen p-6 pb-24 bg-gray-50">
+      <main className="min-h-screen p-6 pb-24 bg-balean-off-white">
         <div className="max-w-screen-xl mx-auto">
           <div className="mb-4">
-            <div className="h-10 w-32 bg-gray-200 animate-pulse rounded" />
+            <div className="h-10 w-32 bg-balean-gray-200 animate-pulse rounded" />
           </div>
           <MPACardSkeleton />
           <div className="mt-4">
@@ -48,12 +48,12 @@ export default function SpeciesDetailPage() {
 
   if (error || !species) {
     return (
-      <main className="min-h-screen p-6 pb-24 bg-gray-50">
+      <main className="min-h-screen p-6 pb-24 bg-balean-off-white">
         <div className="max-w-screen-xl mx-auto">
           <Card>
             <CardTitle>Error</CardTitle>
             <CardContent>
-              <p className="text-gray-600 mb-4">
+              <p className="text-balean-gray-500 mb-4">
                 {error || 'Species not found'}
               </p>
               <Button onClick={() => router.back()} variant="secondary">
@@ -70,9 +70,9 @@ export default function SpeciesDetailPage() {
   const taxonomy = formatTaxonomy(species);
 
   return (
-    <main className="min-h-screen pb-24 bg-gray-50">
+    <main className="min-h-screen pb-24 bg-balean-off-white">
       {/* Hero Header */}
-      <div className="bg-gradient-to-br from-ocean-500 to-navy-600 text-white p-6 pb-12">
+      <div className="bg-gradient-to-br from-balean-cyan to-balean-navy text-white p-6 pb-12">
         <div className="max-w-screen-xl mx-auto">
           <Button
             onClick={() => router.back()}
@@ -123,51 +123,51 @@ export default function SpeciesDetailPage() {
             <div className="space-y-3">
               {species.kingdom && (
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-600">Kingdom:</span>
+                  <span className="text-balean-gray-500">Kingdom:</span>
                   <span className="font-semibold">{species.kingdom}</span>
                 </div>
               )}
               {species.phylum && (
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-600">Phylum:</span>
+                  <span className="text-balean-gray-500">Phylum:</span>
                   <span className="font-semibold">{species.phylum}</span>
                 </div>
               )}
               {species.class && (
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-600">Class:</span>
+                  <span className="text-balean-gray-500">Class:</span>
                   <span className="font-semibold">{species.class}</span>
                 </div>
               )}
               {species.order && (
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-600">Order:</span>
+                  <span className="text-balean-gray-500">Order:</span>
                   <span className="font-semibold">{species.order}</span>
                 </div>
               )}
               {species.family && (
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-600">Family:</span>
+                  <span className="text-balean-gray-500">Family:</span>
                   <span className="font-semibold">{species.family}</span>
                 </div>
               )}
               {species.genus && (
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-600">Genus:</span>
+                  <span className="text-balean-gray-500">Genus:</span>
                   <span className="font-semibold italic">{species.genus}</span>
                 </div>
               )}
               {species.species && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Species:</span>
+                  <span className="text-balean-gray-500">Species:</span>
                   <span className="font-semibold italic">{species.species}</span>
                 </div>
               )}
             </div>
 
             {taxonomy && (
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
+              <div className="mt-4 p-3 bg-balean-cyan/10 rounded-lg">
+                <p className="text-sm text-balean-navy">
                   <strong>Classification:</strong> {taxonomy}
                 </p>
               </div>
@@ -181,15 +181,15 @@ export default function SpeciesDetailPage() {
             <CardTitle>Observation Data</CardTitle>
             <CardContent>
               <div className="text-center p-4">
-                <p className="text-4xl font-bold text-cyan-600 mb-2">
+                <p className="text-4xl font-bold text-balean-cyan mb-2">
                   {species.records.toLocaleString()}
                 </p>
-                <p className="text-gray-600">
+                <p className="text-balean-gray-500">
                   Recorded Observations in OBIS Database
                 </p>
               </div>
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-700">
+              <div className="mt-4 p-4 bg-balean-off-white rounded-lg">
+                <p className="text-sm text-balean-gray-600">
                   This species has been observed and documented {species.records.toLocaleString()} times
                   by researchers and citizen scientists around the world, contributing to our
                   understanding of marine biodiversity.
@@ -205,8 +205,8 @@ export default function SpeciesDetailPage() {
           <CardContent>
             <div className="space-y-4">
               <div>
-                <h3 className="font-semibold text-gray-700 mb-2">Data Source</h3>
-                <p className="text-sm text-gray-600">
+                <h3 className="font-semibold text-balean-gray-600 mb-2">Data Source</h3>
+                <p className="text-sm text-balean-gray-500">
                   Species information provided by the Ocean Biodiversity Information System (OBIS),
                   a global open-access data and information clearing-house on marine biodiversity
                   for science, conservation and sustainable development.
@@ -214,12 +214,12 @@ export default function SpeciesDetailPage() {
               </div>
 
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-gray-600">Learn more:</span>
+                <span className="text-balean-gray-500">Learn more:</span>
                 <a
                   href={`https://obis.org/taxon/${species.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-cyan-600 hover:text-cyan-700 underline"
+                  className="text-balean-cyan hover:text-balean-cyan-dark underline"
                 >
                   View on OBIS →
                 </a>

@@ -67,7 +67,7 @@ export default function SpeciesSearchPage() {
   return (
     <main id="main-content" className="min-h-screen pb-32">
       {/* Modern Hero Header with Gradient */}
-      <div className="bg-gradient-to-br from-blue-400 via-indigo-500 to-purple-500 pt-8 pb-12 px-6 mb-6">
+      <div className="bg-gradient-to-br from-balean-cyan via-balean-navy to-balean-coral pt-8 pb-12 px-6 mb-6">
         <div className="max-w-screen-xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -99,7 +99,7 @@ export default function SpeciesSearchPage() {
             <CardContent>
               <div className="relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <Icon name="search" className="text-gray-400" />
+                  <Icon name="search" className="text-balean-gray-300" />
                 </div>
                 <Input
                   type="text"
@@ -112,12 +112,12 @@ export default function SpeciesSearchPage() {
                 />
                 {loading && (
                   <div className="absolute right-4 top-1/2 -translate-y-1/2" aria-live="polite" aria-atomic="true">
-                    <div className="w-5 h-5 border-2 border-ocean-primary border-t-transparent rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-balean-cyan border-t-transparent rounded-full animate-spin" />
                     <span className="sr-only">Searching...</span>
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-2 flex items-center gap-2">
+              <p className="text-xs text-balean-gray-400 mt-2 flex items-center gap-2">
                 <Icon name="info" size="sm" />
                 Type at least 2 characters to search
               </p>
@@ -142,11 +142,11 @@ export default function SpeciesSearchPage() {
               <CardContent>
                 {results.length === 0 ? (
                   <div className="text-center py-8">
-                    <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
-                      <Icon name="search" className="text-gray-400 text-3xl" />
+                    <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
+                      <Icon name="search" className="text-balean-gray-300 text-3xl" />
                     </div>
-                    <p className="text-gray-600 mb-2 font-medium">No species found</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-balean-gray-500 mb-2 font-medium">No species found</p>
+                    <p className="text-sm text-balean-gray-400">
                       Try searching with a different term or check your spelling
                     </p>
                   </div>
@@ -160,17 +160,17 @@ export default function SpeciesSearchPage() {
                         transition={{ delay: index * 0.05 }}
                       >
                         <Link
-                          href={`/species/${encodeURIComponent(species.scientificName)}`}
+                          href={`/ocean-pulse-app/species/${encodeURIComponent(species.scientificName)}`}
                           className="block"
                         >
-                          <div className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all duration-300 border border-gray-200 hover:border-ocean-primary hover:shadow-md group">
+                          <div className="p-4 bg-balean-gray-50 rounded-xl hover:bg-balean-gray-100 transition-all duration-300 border border-balean-gray-200 hover:border-balean-cyan hover:shadow-md group">
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1">
-                                <h3 className="font-semibold text-ocean-deep mb-1 group-hover:text-ocean-primary transition-colors">
+                                <h3 className="font-semibold text-balean-navy mb-1 group-hover:text-balean-cyan transition-colors">
                                   {getCommonName(species)}
                                 </h3>
                                 {species.vernacularName && (
-                                  <p className="text-sm text-gray-600 italic mb-2">
+                                  <p className="text-sm text-balean-gray-500 italic mb-2">
                                     {species.scientificName}
                                   </p>
                                 )}
@@ -193,7 +193,7 @@ export default function SpeciesSearchPage() {
                                   )}
                                 </div>
                               </div>
-                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-balean-cyan to-balean-cyan-dark flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                                 <Icon name={getSpeciesIcon(species)} className="text-white text-xl" />
                               </div>
                             </div>
@@ -227,17 +227,17 @@ export default function SpeciesSearchPage() {
                       transition={{ delay: 0.4 + index * 0.05 }}
                     >
                       <Link
-                        href={`/species/${encodeURIComponent(species.scientificName)}`}
+                        href={`/ocean-pulse-app/species/${encodeURIComponent(species.scientificName)}`}
                         className="block"
                       >
-                        <div className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all duration-300 border border-gray-200 hover:border-ocean-primary hover:shadow-md group">
+                        <div className="p-4 bg-balean-gray-50 rounded-xl hover:bg-balean-gray-100 transition-all duration-300 border border-balean-gray-200 hover:border-balean-cyan hover:shadow-md group">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
-                              <h3 className="font-semibold text-ocean-deep mb-1 group-hover:text-ocean-primary transition-colors">
+                              <h3 className="font-semibold text-balean-navy mb-1 group-hover:text-balean-cyan transition-colors">
                                 {getCommonName(species)}
                               </h3>
                               {species.vernacularName && (
-                                <p className="text-sm text-gray-600 italic mb-2">
+                                <p className="text-sm text-balean-gray-500 italic mb-2">
                                   {species.scientificName}
                                 </p>
                               )}
@@ -254,7 +254,7 @@ export default function SpeciesSearchPage() {
                                 )}
                               </div>
                             </div>
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-balean-cyan to-balean-cyan-dark flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                               <Icon name={getSpeciesIcon(species)} className="text-white text-xl" />
                             </div>
                           </div>
@@ -278,27 +278,27 @@ export default function SpeciesSearchPage() {
             <CardTitle>About Species Data</CardTitle>
             <CardContent>
               <div className="space-y-4">
-                <p className="text-gray-700">
+                <p className="text-balean-gray-600">
                   Species data is provided by the <strong>Ocean Biodiversity Information System (OBIS)</strong>,
                   a global database of marine biodiversity observations.
                 </p>
-                <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-ocean-primary to-ocean-accent flex items-center justify-center flex-shrink-0">
+                <div className="flex items-start gap-3 p-4 bg-balean-cyan/10 rounded-xl border border-balean-cyan/20">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-balean-cyan to-balean-cyan-light flex items-center justify-center flex-shrink-0">
                     <Icon name="globe" className="text-white" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-balean-gray-600">
                       OBIS contains data from over <strong>3,500 datasets</strong> representing millions of observations
                       of over <strong>120,000 marine species</strong>.
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-4 bg-green-50 rounded-xl border border-green-100">
+                <div className="flex items-start gap-3 p-4 bg-healthy/10 rounded-xl border border-healthy/20">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center flex-shrink-0">
                     <Icon name="users" className="text-white" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-balean-gray-600">
                       Data is contributed by researchers, institutions, and citizen scientists worldwide
                       to support marine conservation and research.
                     </p>

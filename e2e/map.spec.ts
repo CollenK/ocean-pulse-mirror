@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 /**
  * Map Functionality Tests
- * Tests the Leaflet map component and interactions
+ * Tests the MapLibre GL map component and interactions
  */
 
 test.describe('Map - Basic Functionality', () => {
@@ -14,25 +14,24 @@ test.describe('Map - Basic Functionality', () => {
   });
 
   test('map container renders', async ({ page }) => {
-    const mapContainer = page.locator('.leaflet-container');
+    const mapContainer = page.locator('.maplibregl-map');
     await expect(mapContainer).toBeVisible();
   });
 
-  test('map tiles load', async ({ page }) => {
-    // Wait for tiles to load
+  test('map canvas loads', async ({ page }) => {
+    // Wait for map to initialize
     await page.waitForTimeout(3000);
 
-    // Tiles should be present
-    const tiles = page.locator('.leaflet-tile');
-    const count = await tiles.count();
-    expect(count).toBeGreaterThan(0);
+    // MapLibre uses canvas for rendering
+    const canvas = page.locator('.maplibregl-canvas');
+    await expect(canvas).toBeVisible();
   });
 
   test('map shows MPA markers', async ({ page }) => {
     await page.waitForTimeout(3000);
 
-    // Custom markers or default markers
-    const markers = page.locator('.leaflet-marker-icon, .custom-marker, [class*="marker"]');
+    // Custom MPA markers with .mpa-marker class
+    const markers = page.locator('.mpa-marker');
     const count = await markers.count();
     expect(count).toBeGreaterThan(0);
   });
@@ -62,16 +61,15 @@ test.describe('Map - Zoom Controls', () => {
   test('zoom in button works', async ({ page }) => {
     const zoomInBtn = page.locator('button:has-text("+")').first();
 
-    // Get initial zoom state
-    const initialTileCount = await page.locator('.leaflet-tile').count();
+    // Map should be visible before zoom
+    const mapContainer = page.locator('.maplibregl-map');
+    await expect(mapContainer).toBeVisible();
 
     await zoomInBtn.click();
     await page.waitForTimeout(1000);
 
-    // After zoom, tiles should reload
-    const newTileCount = await page.locator('.leaflet-tile').count();
-    // Tile count might change after zoom
-    expect(newTileCount).toBeGreaterThan(0);
+    // Map should still be functional after zoom
+    await expect(mapContainer).toBeVisible();
   });
 
   test('zoom out button works', async ({ page }) => {
@@ -86,7 +84,7 @@ test.describe('Map - Zoom Controls', () => {
     await page.waitForTimeout(1000);
 
     // Map should still be functional
-    const mapContainer = page.locator('.leaflet-container');
+    const mapContainer = page.locator('.maplibregl-map');
     await expect(mapContainer).toBeVisible();
   });
 });
@@ -99,27 +97,27 @@ test.describe('Map - Marker Interactions', () => {
   });
 
   test('clicking marker shows popup', async ({ page }) => {
-    const marker = page.locator('.leaflet-marker-icon, .custom-marker').first();
+    const marker = page.locator('.mpa-marker').first();
 
     if (await marker.count() > 0) {
       await marker.click();
       await page.waitForTimeout(500);
 
       // Popup should appear
-      const popup = page.locator('.leaflet-popup');
+      const popup = page.locator('.maplibregl-popup');
       await expect(popup).toBeVisible();
     }
   });
 
   test('popup shows MPA information', async ({ page }) => {
-    const marker = page.locator('.leaflet-marker-icon, .custom-marker').first();
+    const marker = page.locator('.mpa-marker').first();
 
     if (await marker.count() > 0) {
       await marker.click();
       await page.waitForTimeout(500);
 
       // Popup content should have MPA info
-      const popupContent = page.locator('.leaflet-popup-content');
+      const popupContent = page.locator('.maplibregl-popup-content');
       await expect(popupContent).toBeVisible();
 
       // Should contain MPA name or details
@@ -129,26 +127,26 @@ test.describe('Map - Marker Interactions', () => {
   });
 
   test('popup has View Details link', async ({ page }) => {
-    const marker = page.locator('.leaflet-marker-icon, .custom-marker').first();
+    const marker = page.locator('.mpa-marker').first();
 
     if (await marker.count() > 0) {
       await marker.click();
       await page.waitForTimeout(500);
 
       // View Details button/link
-      const viewDetails = page.locator('.leaflet-popup a[href*="/mpa/"]').or(page.locator('.leaflet-popup').locator('text=/view details/i'));
+      const viewDetails = page.locator('.maplibregl-popup a[href*="/mpa/"]').or(page.locator('.maplibregl-popup').locator('text=/view details/i'));
       await expect(viewDetails.first()).toBeVisible();
     }
   });
 
   test('clicking View Details navigates to MPA page', async ({ page }) => {
-    const marker = page.locator('.leaflet-marker-icon, .custom-marker').first();
+    const marker = page.locator('.mpa-marker').first();
 
     if (await marker.count() > 0) {
       await marker.click();
       await page.waitForTimeout(500);
 
-      const viewDetailsLink = page.locator('.leaflet-popup a[href*="/mpa/"]').first();
+      const viewDetailsLink = page.locator('.maplibregl-popup a[href*="/mpa/"]').first();
       if (await viewDetailsLink.count() > 0) {
         await viewDetailsLink.click();
         await expect(page).toHaveURL(/\/mpa\//);
@@ -156,22 +154,26 @@ test.describe('Map - Marker Interactions', () => {
     }
   });
 
-  test('popup closes when clicking map', async ({ page }) => {
-    const marker = page.locator('.leaflet-marker-icon, .custom-marker').first();
+  test('popup closes when clicking close button', async ({ page }) => {
+    const marker = page.locator('.mpa-marker').first();
 
     if (await marker.count() > 0) {
       await marker.click();
       await page.waitForTimeout(500);
 
       // Popup should be visible
-      const popup = page.locator('.leaflet-popup');
+      const popup = page.locator('.maplibregl-popup');
       await expect(popup).toBeVisible();
 
-      // Click on map (not on popup)
-      await page.click('.leaflet-container', { position: { x: 50, y: 50 } });
-      await page.waitForTimeout(500);
+      // Click close button
+      const closeBtn = page.locator('.maplibregl-popup-close-button');
+      if (await closeBtn.count() > 0) {
+        await closeBtn.click();
+        await page.waitForTimeout(500);
 
-      // Popup should close (or at least not error)
+        // Popup should close
+        await expect(popup).not.toBeVisible();
+      }
     }
   });
 });
@@ -184,10 +186,7 @@ test.describe('Map - Pan and Drag', () => {
   });
 
   test('map can be dragged', async ({ page }) => {
-    const mapContainer = page.locator('.leaflet-container');
-
-    // Get initial state
-    const initialPos = await mapContainer.boundingBox();
+    const mapContainer = page.locator('.maplibregl-map');
 
     // Drag the map
     await page.mouse.move(640, 360);
@@ -202,7 +201,7 @@ test.describe('Map - Pan and Drag', () => {
   });
 
   test('map stays within bounds', async ({ page }) => {
-    const mapContainer = page.locator('.leaflet-container');
+    const mapContainer = page.locator('.maplibregl-map');
 
     // Try to drag far off
     await page.mouse.move(640, 360);
@@ -224,11 +223,8 @@ test.describe('Map - Focus on MPA from URL', () => {
     await page.waitForTimeout(3000);
 
     // Map should be visible and centered
-    const mapContainer = page.locator('.leaflet-container');
+    const mapContainer = page.locator('.maplibregl-map');
     await expect(mapContainer).toBeVisible();
-
-    // The map should be zoomed in (not showing whole world)
-    // We can check by looking at zoom level indicators or tile count
   });
 });
 
@@ -240,10 +236,13 @@ test.describe('Map - MPA Boundaries', () => {
   });
 
   test('MPA boundaries are rendered', async ({ page }) => {
-    // Look for rectangle/polygon boundaries
-    const boundaries = page.locator('.leaflet-interactive, .leaflet-overlay-pane path, rect');
-    const count = await boundaries.count();
-    expect(count).toBeGreaterThan(0);
+    // MapLibre renders boundaries on canvas, check canvas is present
+    const canvas = page.locator('.maplibregl-canvas');
+    await expect(canvas).toBeVisible();
+
+    // Also check that the map loaded properly
+    const mapContainer = page.locator('.maplibregl-map');
+    await expect(mapContainer).toBeVisible();
   });
 });
 
@@ -272,7 +271,7 @@ test.describe('Map - Visual Regression', () => {
     await page.click('text=Interactive Map');
     await page.waitForTimeout(3000);
 
-    const marker = page.locator('.leaflet-marker-icon, .custom-marker').first();
+    const marker = page.locator('.mpa-marker').first();
     if (await marker.count() > 0) {
       await marker.click();
       await page.waitForTimeout(500);

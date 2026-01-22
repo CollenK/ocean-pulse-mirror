@@ -38,16 +38,16 @@ function SignInPrompt() {
   const router = useRouter();
 
   return (
-    <main className="min-h-screen pb-24 bg-gray-50">
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
+    <main className="min-h-screen pb-24 bg-balean-off-white">
+      <div className="sticky top-0 z-40 bg-white border-b border-balean-gray-200">
         <div className="p-4">
           <div className="max-w-2xl mx-auto flex items-center justify-between">
-            <h1 className="text-xl font-bold text-gray-900">Submit New Report</h1>
+            <h1 className="text-xl font-bold text-balean-navy">Submit New Report</h1>
             <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-balean-gray-100 rounded-lg transition-colors"
             >
-              <span className="text-xl text-gray-500">×</span>
+              <span className="text-xl text-balean-gray-400">×</span>
             </button>
           </div>
         </div>
@@ -57,15 +57,15 @@ function SignInPrompt() {
         <Card>
           <CardContent>
             <div className="text-center py-8 space-y-6">
-              <div className="w-20 h-20 mx-auto bg-cyan-100 rounded-full flex items-center justify-center">
-                <Icon name="lock" className="text-4xl text-cyan-600" />
+              <div className="w-20 h-20 mx-auto bg-balean-cyan/20 rounded-full flex items-center justify-center">
+                <Icon name="lock" className="text-4xl text-balean-cyan" />
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-xl font-bold text-balean-navy">
                   Sign in to add observations
                 </h2>
-                <p className="text-gray-600 max-w-md mx-auto">
+                <p className="text-balean-gray-500 max-w-md mx-auto">
                   You need to be signed in to submit observations. Your contributions help build
                   community-driven health scores for marine protected areas.
                 </p>
@@ -86,7 +86,7 @@ function SignInPrompt() {
 
               <button
                 onClick={() => router.back()}
-                className="text-sm text-gray-500 hover:text-gray-700"
+                className="text-sm text-balean-gray-400 hover:text-balean-gray-600"
               >
                 Go back
               </button>
@@ -312,11 +312,11 @@ function ObservePageContent() {
   // Loading state
   if (authLoading) {
     return (
-      <main className="min-h-screen pb-24 bg-gray-50">
-        <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <main className="min-h-screen pb-24 bg-balean-off-white">
+        <div className="sticky top-0 z-40 bg-white border-b border-balean-gray-200">
           <div className="p-4">
             <div className="max-w-2xl mx-auto">
-              <h1 className="text-xl font-bold text-gray-900">Submit New Report</h1>
+              <h1 className="text-xl font-bold text-balean-navy">Submit New Report</h1>
             </div>
           </div>
         </div>
@@ -324,7 +324,7 @@ function ObservePageContent() {
           <Card>
             <CardContent>
               <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-cyan-500 border-t-transparent" />
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-balean-cyan border-t-transparent" />
               </div>
             </CardContent>
           </Card>
@@ -341,20 +341,20 @@ function ObservePageContent() {
   const reportTypeInfo = data.reportType ? REPORT_TYPES[data.reportType] : null;
 
   return (
-    <main className="min-h-screen pb-24 bg-gray-50">
+    <main className="min-h-screen pb-24 bg-balean-off-white">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <div className="sticky top-0 z-40 bg-white border-b border-balean-gray-200">
         <div className="p-4">
           <div className="max-w-2xl mx-auto flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Submit New Report</h1>
-              <p className="text-sm text-gray-500">Help us monitor ocean health by sharing your observations</p>
+              <h1 className="text-xl font-bold text-balean-navy">Submit New Report</h1>
+              <p className="text-sm text-balean-gray-400">Help us monitor ocean health by sharing your observations</p>
             </div>
             <button
               onClick={handleCancel}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-balean-gray-100 rounded-lg transition-colors"
             >
-              <span className="text-2xl text-gray-400 hover:text-gray-600">×</span>
+              <span className="text-2xl text-balean-gray-300 hover:text-balean-gray-500">×</span>
             </button>
           </div>
         </div>
@@ -363,7 +363,7 @@ function ObservePageContent() {
       <div className="max-w-2xl mx-auto p-6 space-y-6">
         {/* Report Type */}
         <section data-error={!!errors.reportType}>
-          <label className="block text-sm font-semibold text-gray-900 mb-3">
+          <label className="block text-sm font-semibold text-balean-navy mb-3">
             Report Type <span className="text-red-500">*</span>
           </label>
           <ReportTypeSelector
@@ -377,7 +377,7 @@ function ObservePageContent() {
 
         {/* Location (MPA Selection) */}
         <section data-error={!!errors.mpaId}>
-          <label className="block text-sm font-semibold text-gray-900 mb-2">
+          <label className="block text-sm font-semibold text-balean-navy mb-2">
             Location <span className="text-red-500">*</span>
           </label>
           <MPASearchSelect
@@ -389,7 +389,7 @@ function ObservePageContent() {
           {errors.mpaId ? (
             <p className="mt-2 text-sm text-red-600">{errors.mpaId}</p>
           ) : (
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-balean-gray-400">
               Search or select the MPA where you made your observation
             </p>
           )}
@@ -397,13 +397,13 @@ function ObservePageContent() {
 
         {/* Species Info - Only show for species sighting */}
         {data.reportType === 'species_sighting' && (
-          <section className="space-y-4 p-4 bg-cyan-50 rounded-xl border border-cyan-100">
-            <h3 className="font-semibold text-cyan-900 flex items-center gap-2">
+          <section className="space-y-4 p-4 bg-balean-cyan/10 rounded-xl border border-balean-cyan/20">
+            <h3 className="font-semibold text-balean-navy flex items-center gap-2">
               <Icon name="fish" /> Species Details
             </h3>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-balean-gray-600 mb-2">
                 Species Name
               </label>
               <Input
@@ -415,13 +415,13 @@ function ObservePageContent() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-balean-gray-600 mb-2">
                   Species Type
                 </label>
                 <select
                   value={data.speciesType}
                   onChange={(e) => setData(prev => ({ ...prev, speciesType: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 bg-white"
+                  className="w-full px-4 py-2 border border-balean-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-balean-cyan bg-white"
                 >
                   <option value="fish">Fish</option>
                   <option value="mammal">Mammal</option>
@@ -434,7 +434,7 @@ function ObservePageContent() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-balean-gray-600 mb-2">
                   Quantity
                 </label>
                 <Input
@@ -450,7 +450,7 @@ function ObservePageContent() {
 
         {/* Description */}
         <section>
-          <label className="block text-sm font-semibold text-gray-900 mb-2">
+          <label className="block text-sm font-semibold text-balean-navy mb-2">
             Description
           </label>
           <Textarea
@@ -464,7 +464,7 @@ function ObservePageContent() {
 
         {/* Photo Evidence */}
         <section>
-          <label className="block text-sm font-semibold text-gray-900 mb-3">
+          <label className="block text-sm font-semibold text-balean-navy mb-3">
             Photo Evidence
           </label>
           <PhotoUploader
@@ -483,8 +483,8 @@ function ObservePageContent() {
         </section>
 
         {/* Sync Notice */}
-        <div className="p-4 bg-cyan-50 border border-cyan-100 rounded-xl">
-          <p className="text-sm text-cyan-800">
+        <div className="p-4 bg-balean-cyan/10 border border-balean-cyan/20 rounded-xl">
+          <p className="text-sm text-balean-navy">
             Your observation will be saved to our database. If you&apos;re offline, it will be stored locally and synced when you reconnect.
             {data.healthScoreAssessment && data.mpaId && (
               <> Your health score will contribute to the MPA&apos;s community rating.</>
@@ -529,11 +529,11 @@ function ObservePageContent() {
 // Loading fallback
 function ObservePageFallback() {
   return (
-    <main className="min-h-screen pb-24 bg-gray-50">
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
+    <main className="min-h-screen pb-24 bg-balean-off-white">
+      <div className="sticky top-0 z-40 bg-white border-b border-balean-gray-200">
         <div className="p-4">
           <div className="max-w-2xl mx-auto">
-            <h1 className="text-xl font-bold text-gray-900">Submit New Report</h1>
+            <h1 className="text-xl font-bold text-balean-navy">Submit New Report</h1>
           </div>
         </div>
       </div>
@@ -541,7 +541,7 @@ function ObservePageFallback() {
         <Card>
           <CardContent>
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-cyan-500 border-t-transparent" />
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-balean-cyan border-t-transparent" />
             </div>
           </CardContent>
         </Card>
