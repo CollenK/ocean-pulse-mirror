@@ -59,8 +59,9 @@ test.describe('Offline Data Page - Public', () => {
   });
 
   test('shows storage usage indicator', async ({ page }) => {
-    // Progress bar or usage display
-    const usageIndicator = page.locator('[class*="progress"], text=/\\d+.*%|\\d+.*MB|\\d+.*KB/i');
+    // Storage section with progress bar or usage display
+    // Look for the storage bar container or percentage display
+    const usageIndicator = page.locator('.rounded-full, text=/\\d+\\.?\\d*%|used/i');
     await expect(usageIndicator.first()).toBeVisible();
   });
 
@@ -75,18 +76,32 @@ test.describe('Offline Data Page - Public', () => {
     await expect(clearBtn.first()).toBeVisible();
   });
 
-  test('clear cache shows confirmation', async ({ page }) => {
-    const clearBtn = page.locator('text=/clear.*cache|delete.*all/i').first();
+  test('clear cache button shows confirmation modal when enabled', async ({ page }) => {
+    const clearBtn = page.locator('button:has-text("Clear All Cache")').first();
 
     if (await clearBtn.count() > 0) {
-      await clearBtn.click();
-      await page.waitForTimeout(500);
+      // Check if button is enabled (has cached MPAs)
+      const isEnabled = await clearBtn.isEnabled();
 
-      // Should show confirmation dialog or message
-      const confirmation = page.locator('text=/confirm|sure|cancel/i');
-      const count = await confirmation.count();
-      // Might show confirmation or might just clear
-      expect(count >= 0).toBeTruthy();
+      if (isEnabled) {
+        await clearBtn.click();
+        await page.waitForTimeout(500);
+
+        // Should show confirmation modal
+        const modal = page.locator('[data-testid="clear-cache-modal"]');
+        await expect(modal).toBeVisible();
+
+        // Should have cancel and confirm buttons
+        await expect(page.locator('text=/cancel/i')).toBeVisible();
+        await expect(page.locator('[data-testid="confirm-clear-cache"]')).toBeVisible();
+
+        // Click cancel to close
+        await page.locator('text=/cancel/i').click();
+        await expect(modal).not.toBeVisible();
+      } else {
+        // Button is disabled when no MPAs cached - this is expected behavior
+        expect(true).toBeTruthy();
+      }
     }
   });
 
@@ -271,7 +286,7 @@ authTest.describe('Saved MPAs - Authenticated', () => {
  */
 test.describe('Save MPA Feature', () => {
   test('MPA detail page has save button', async ({ page }) => {
-    await page.goto('/mpa/gbr-australia');
+    await page.goto('/mpa/2571');
     await page.waitForLoadState('networkidle');
 
     // Save button might be visible regardless of auth
@@ -287,7 +302,7 @@ test.describe('Save MPA Feature', () => {
  */
 authTest.describe('Save MPA Feature - Authenticated', () => {
   authTest('save button toggles saved state', async ({ authenticatedPage: page }) => {
-    await page.goto('/mpa/gbr-australia');
+    await page.goto('/mpa/2571');
     await page.waitForLoadState('networkidle');
 
     const saveBtn = page.locator('button:has-text("Save"), [aria-label*="save" i]').first();

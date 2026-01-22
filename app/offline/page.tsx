@@ -20,6 +20,7 @@ export default function OfflinePage() {
   const [mpas, setMpas] = useState<MPA[]>([]);
   const [loading, setLoading] = useState(true);
   const [storage, setStorage] = useState({ usage: 0, quota: 0, percentUsed: 0 });
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -36,11 +37,14 @@ export default function OfflinePage() {
     loadData();
   }, []);
 
-  const handleClearAll = async () => {
-    if (confirm('Clear all cached data? This cannot be undone.')) {
-      await clearAllCache();
-      loadData();
-    }
+  const handleClearAll = () => {
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearAll = async () => {
+    await clearAllCache();
+    setShowClearConfirm(false);
+    loadData();
   };
 
   const handleDeleteMPA = async (mpaId: string) => {
@@ -49,7 +53,37 @@ export default function OfflinePage() {
   };
 
   return (
-    <main className="min-h-screen p-6 pb-24 bg-gray-50">
+    <>
+      {/* Clear Cache Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" data-testid="clear-cache-modal">
+          <div className="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl">
+            <h3 className="text-lg font-bold text-navy-600 mb-2">Clear Cache?</h3>
+            <p className="text-gray-600 mb-4">
+              Clear all cached data? This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => setShowClearConfirm(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={confirmClearAll}
+                className="flex-1"
+                data-testid="confirm-clear-cache"
+              >
+                Confirm
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="min-h-screen p-6 pb-24 bg-gray-50">
       <div className="max-w-screen-xl mx-auto">
         <div className="mb-6">
           <Button
@@ -194,5 +228,6 @@ export default function OfflinePage() {
         </Card>
       </div>
     </main>
+    </>
   );
 }

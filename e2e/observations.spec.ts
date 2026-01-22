@@ -39,7 +39,7 @@ test.describe('Observe Page - Unauthenticated', () => {
 
 test.describe('Live Reports Section in MPA Detail', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/mpa/gbr-australia');
+    await page.goto('/mpa/2571');
     await page.waitForLoadState('networkidle');
   });
 
@@ -72,7 +72,7 @@ test.describe('Live Reports Section in MPA Detail', () => {
 
 test.describe('Observation Card Display', () => {
   test('observation cards show correct information', async ({ page }) => {
-    await page.goto('/mpa/gbr-australia');
+    await page.goto('/mpa/2571');
     await page.waitForLoadState('networkidle');
 
     // Expand Live Reports
@@ -196,7 +196,7 @@ authTest.describe('Observation Form - Authenticated', () => {
 
 authTest.describe('Observation Card Actions - Authenticated', () => {
   authTest('edit button appears on own observations', async ({ authenticatedPage: page }) => {
-    await page.goto('/mpa/gbr-australia');
+    await page.goto('/mpa/2571');
     await page.waitForLoadState('networkidle');
     await page.click('text=/live reports/i');
     await page.waitForTimeout(1000);
@@ -209,7 +209,7 @@ authTest.describe('Observation Card Actions - Authenticated', () => {
   });
 
   authTest('delete button appears on own observations', async ({ authenticatedPage: page }) => {
-    await page.goto('/mpa/gbr-australia');
+    await page.goto('/mpa/2571');
     await page.waitForLoadState('networkidle');
     await page.click('text=/live reports/i');
     await page.waitForTimeout(1000);
@@ -222,7 +222,7 @@ authTest.describe('Observation Card Actions - Authenticated', () => {
   });
 
   authTest('delete shows confirmation dialog', async ({ authenticatedPage: page }) => {
-    await page.goto('/mpa/gbr-australia');
+    await page.goto('/mpa/2571');
     await page.waitForLoadState('networkidle');
     await page.click('text=/live reports/i');
     await page.waitForTimeout(1000);

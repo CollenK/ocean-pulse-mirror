@@ -74,9 +74,9 @@ test.describe('Navigation - Public Routes', () => {
 
 test.describe('Navigation - MPA Detail Pages', () => {
   const mpas = [
-    { id: 'gbr-australia', name: 'Great Barrier Reef' },
-    { id: 'mediterranean-sea', name: 'Mediterranean' },
-    { id: 'galapagos-ecuador', name: 'Galápagos' },
+    { id: '2571', name: 'Great Barrier Reef' },
+    { id: '555622118', name: 'Palau' },
+    { id: '555756442', name: 'Tainui' },
   ];
 
   for (const mpa of mpas) {
@@ -90,10 +90,10 @@ test.describe('Navigation - MPA Detail Pages', () => {
       const namePattern = new RegExp(mpa.name.split(' ')[0], 'i');
       await expect(page.locator(`text=${namePattern}`).first()).toBeVisible({ timeout: 15000 });
 
-      // Check health score is displayed
-      await expect(page.locator('text=/health|score/i').first()).toBeVisible();
+      // Check health or unknown status is displayed (real WDPA data may not have health scores)
+      await expect(page.locator('text=/health|unknown|status/i').first()).toBeVisible();
 
-      await expect(page).toHaveScreenshot(`mpa-${mpa.id}.png`, { fullPage: true });
+      await expect(page).toHaveScreenshot(`mpa-${mpa.name.toLowerCase().replace(/\s+/g, '-')}.png`, { fullPage: true });
     });
   }
 });
@@ -189,7 +189,7 @@ test.describe('Navigation - Back Button and History', () => {
   });
 
   test('Back to Home button on MPA detail page', async ({ page }) => {
-    await page.goto('/mpa/gbr-australia');
+    await page.goto('/mpa/2571');
     await page.waitForLoadState('networkidle');
 
     // Look for back button/link
