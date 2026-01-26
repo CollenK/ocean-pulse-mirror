@@ -47,6 +47,7 @@ export function PhotoUploader({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // Detect mobile device
   useEffect(() => {
@@ -240,9 +241,12 @@ export function PhotoUploader({
       setCameraError('Failed to process image. Please try again.');
     } finally {
       setIsProcessing(false);
-      // Reset file input
+      // Reset file inputs
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
+      }
+      if (cameraInputRef.current) {
+        cameraInputRef.current.value = '';
       }
     }
   }, [maxSizeMB, onChange]);
@@ -254,19 +258,45 @@ export function PhotoUploader({
     setCameraError(null);
   }, [onChange]);
 
-  // Trigger file input
+  // Trigger file input for gallery
   const triggerFileInput = () => {
     fileInputRef.current?.click();
   };
 
+  // Trigger camera input (native camera on mobile)
+  const triggerCameraInput = () => {
+    cameraInputRef.current?.click();
+  };
+
+  // Handle take photo - use native camera on mobile, getUserMedia on desktop
+  const handleTakePhoto = () => {
+    if (isMobile) {
+      // On mobile, use the native camera input for better compatibility
+      triggerCameraInput();
+    } else {
+      // On desktop, use getUserMedia for in-browser camera
+      startCamera();
+    }
+  };
+
   return (
     <div className="space-y-3">
-      {/* Hidden file input */}
+      {/* Hidden file input for gallery (no capture attribute) */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        capture={isMobile ? 'environment' : undefined}
+        onChange={handleFileSelect}
+        className="hidden"
+        disabled={disabled}
+      />
+
+      {/* Hidden file input for camera capture on mobile */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
         onChange={handleFileSelect}
         className="hidden"
         disabled={disabled}
@@ -367,46 +397,40 @@ export function PhotoUploader({
           {/* Action Buttons */}
           {!isProcessing && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Camera Button - Show on all devices but with different behavior */}
+              {/* Camera Button - Use native camera on mobile, getUserMedia on desktop */}
               <button
                 type="button"
-                onClick={startCamera}
-                disabled={disabled || cameraPermission === 'denied'}
+                onClick={handleTakePhoto}
+                disabled={disabled || (!isMobile && cameraPermission === 'denied')}
                 className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed transition-all ${
-                  cameraPermission === 'denied'
+                  !isMobile && cameraPermission === 'denied'
                     ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
                     : 'border-cyan-300 bg-cyan-50 hover:border-cyan-400 hover:bg-cyan-100'
                 }`}
               >
-                <span className="text-3xl mb-2">📷</span>
-                <span className="font-medium text-gray-700">Take Photo</span>
+                <Icon name="camera" className="text-3xl text-cyan-600 mb-2" />
+                <span className="font-medium text-gray-700">Use Camera</span>
                 <span className="text-xs text-gray-500 mt-1">
-                  {cameraPermission === 'denied' ? 'Permission denied' : 'Use device camera'}
+                  {!isMobile && cameraPermission === 'denied' ? 'Permission denied' : 'Take a new photo'}
                 </span>
               </button>
 
-              {/* Upload Button */}
+              {/* Upload Button - Opens gallery/file picker */}
               <button
                 type="button"
                 onClick={triggerFileInput}
                 disabled={disabled}
                 className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100 transition-all"
               >
-                <span className="text-3xl mb-2">📁</span>
-                <span className="font-medium text-gray-700">Upload Photo</span>
+                <Icon name="picture" className="text-3xl text-gray-500 mb-2" />
+                <span className="font-medium text-gray-700">Attach Image</span>
                 <span className="text-xs text-gray-500 mt-1">
-                  From device storage
+                  From photo library
                 </span>
               </button>
             </div>
           )}
 
-          {/* Mobile Direct Capture */}
-          {isMobile && !isProcessing && (
-            <p className="text-xs text-gray-500 text-center">
-              Tip: &quot;Upload Photo&quot; will also allow you to take a new photo on mobile devices
-            </p>
-          )}
         </div>
       )}
     </div>

@@ -46,8 +46,8 @@ export function UserMenu() {
           rel="noopener noreferrer"
           className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-full text-sm font-medium hover:bg-white/30 backdrop-blur-sm transition-colors"
         >
-          <Icon name="heart" size="sm" />
-          <span className="hidden sm:inline">Support Us</span>
+          <Icon name="hand-holding-heart" size="sm" />
+          <span className="hidden sm:inline">Support</span>
         </a>
         <button
           onClick={() => router.push('/login')}
@@ -72,8 +72,8 @@ export function UserMenu() {
         rel="noopener noreferrer"
         className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-full text-sm font-medium hover:bg-white/30 backdrop-blur-sm transition-colors"
       >
-        <Icon name="heart" size="sm" />
-        <span className="hidden sm:inline">Support Us</span>
+        <Icon name="hand-holding-heart" size="sm" />
+        <span className="hidden sm:inline">Support</span>
       </a>
       <div className="relative" ref={menuRef}>
       <button

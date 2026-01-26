@@ -217,7 +217,7 @@ export default function MPADetailPage() {
   return (
     <main className="min-h-screen pb-32">
       {/* Modern Hero Header with Gradient */}
-      <div className="bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-6">
+      <div className="bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-4 sm:px-6">
         <div className="max-w-screen-xl mx-auto">
           {/* Top bar with back button and user menu */}
           <div className="flex items-center justify-between mb-4">
@@ -225,7 +225,7 @@ export default function MPADetailPage() {
               onClick={() => router.back()}
               variant="ghost"
               size="sm"
-              className="text-white/90 hover:text-white hover:bg-white/20 border-none"
+              className="text-white/90 hover:text-white hover:bg-white/20 border-none -ml-2"
             >
               <Icon name="angle-left" size="sm" />
               Back
@@ -240,36 +240,29 @@ export default function MPADetailPage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-
-            <div className="flex items-start justify-between gap-6 mb-6">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <Icon name="map-marker" className="text-white text-3xl" />
-                  </div>
-                  <div>
-                    <h1 className="text-3xl font-bold text-white mb-1">{mpa.name}</h1>
-                    <p className="text-white/80 flex items-center gap-2">
-                      <Icon name="marker" size="sm" />
-                      {mpa.country} • Est. {mpa.establishedYear}
-                    </p>
-                  </div>
-                </div>
+            {/* Mobile: Stack vertically, Desktop: Side by side */}
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6 mb-6">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 break-words">{mpa.name}</h1>
+                <p className="text-white/80 flex items-center gap-2 text-sm sm:text-base">
+                  <Icon name="marker" size="sm" />
+                  {mpa.country} • Est. {mpa.establishedYear}
+                </p>
               </div>
 
               {compositeHealth.loading && compositeHealth.score === 0 ? (
-                <div className="w-24 h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
-                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-white/30 border-t-white" />
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 self-center sm:self-start">
+                  <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-4 border-white/30 border-t-white" />
                 </div>
               ) : (
-                <div className="flex-shrink-0 relative">
+                <div className="flex-shrink-0 relative self-center sm:self-start">
                   <CircularProgress
                     value={compositeHealth.score}
-                    size="xl"
+                    size="lg"
                     color={getHealthColor(compositeHealth.score)}
                   />
                   {compositeHealth.confidence !== 'high' && (
-                    <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center" title={`${compositeHealth.dataSourcesAvailable}/3 data sources`}>
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-yellow-500 flex items-center justify-center" title={`${compositeHealth.dataSourcesAvailable}/3 data sources`}>
                       <Icon name="info" className="text-white text-xs" />
                     </div>
                   )}
@@ -294,7 +287,7 @@ export default function MPADetailPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-screen-xl mx-auto px-6 -mt-10">
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 -mt-10">
         {/* Stats Grid */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
