@@ -95,7 +95,7 @@ export function Modal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-balean-navy/60 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-balean-navy/60 backdrop-blur-sm z-[60]"
             onClick={handleBackdropClick}
             aria-hidden="true"
           />
@@ -112,7 +112,7 @@ export function Modal({
             className={`
               fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
               w-[calc(100%-2rem)] ${sizeClasses[size]}
-              rounded-2xl shadow-2xl z-50
+              rounded-2xl shadow-2xl z-[60]
               max-h-[85vh] overflow-hidden flex flex-col
               ${styles.container}
             `}
