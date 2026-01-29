@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useSavedMPAs } from '@/hooks/useSavedMPAs';
 import { Card, CardContent, CardTitle, Button, Badge, Icon } from '@/components/ui';
-import { UserMenu } from '@/components/UserMenu';
+import { storeAuthRedirect } from '@/lib/auth-redirect';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -20,6 +20,7 @@ export default function ProfilePage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
+      storeAuthRedirect('/ocean-pulse-app/profile');
       router.push('/login?redirect=/ocean-pulse-app/profile');
     }
   }, [authLoading, isAuthenticated, router]);
@@ -50,7 +51,7 @@ export default function ProfilePage() {
 
   const handleSignOut = async () => {
     await signOut();
-    router.push('/');
+    router.push('/ocean-pulse-app');
   };
 
   // Show loading while checking auth
@@ -59,9 +60,6 @@ export default function ProfilePage() {
       <main className="min-h-screen pb-32">
         <div className="bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-6">
           <div className="max-w-screen-xl mx-auto">
-            <div className="flex justify-end mb-4">
-              <div className="w-9 h-9 rounded-full bg-white/20 animate-pulse" />
-            </div>
             <div className="h-8 w-48 bg-white/20 rounded animate-pulse" />
           </div>
         </div>
@@ -82,19 +80,6 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-6">
         <div className="max-w-screen-xl mx-auto">
-          <div className="flex items-center justify-between mb-4">
-            <Button
-              onClick={() => router.back()}
-              variant="ghost"
-              size="sm"
-              className="text-white/90 hover:text-white hover:bg-white/20 border-none"
-            >
-              <Icon name="angle-left" size="sm" />
-              Back
-            </Button>
-            <UserMenu />
-          </div>
-
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

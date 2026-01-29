@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MPA } from '@/types';
 import { fetchAllMPAs } from '@/lib/mpa-service';
 import { usePullToRefresh, PullToRefreshIndicator } from '@/hooks/usePullToRefresh';
-import { UserMenu } from '@/components/UserMenu';
+import { useSavedMPAs } from '@/hooks/useSavedMPAs';
 import dynamic from 'next/dynamic';
 import { MapFilterPanel, MapFilters, DEFAULT_FILTERS, filterMPAs } from '@/components/Map/MapFilterPanel';
 
@@ -90,6 +90,7 @@ function HomeContent() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<MapFilters>(DEFAULT_FILTERS);
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const { savedMPAIds } = useSavedMPAs();
   const searchParams = useSearchParams();
 
   // Check for map navigation params from MPA detail page
@@ -99,7 +100,7 @@ function HomeContent() {
   const focusMpaId = searchParams.get('mpa');
 
   // Filter MPAs based on current filters
-  const filteredMpas = useMemo(() => filterMPAs(mpas, filters), [mpas, filters]);
+  const filteredMpas = useMemo(() => filterMPAs(mpas, filters, savedMPAIds), [mpas, filters, savedMPAIds]);
 
   const loadMPAs = useCallback(async () => {
     setLoading(true);
@@ -136,25 +137,9 @@ function HomeContent() {
     const activeFilterCount = Object.values(filters).flat().length;
 
     return (
-      <main id="main-content" className="h-screen overflow-hidden">
-        {/* Header Bar - fixed height of 64px */}
-        <header className="h-16 bg-balean-navy px-4 flex items-center justify-between z-[1002] relative">
-          <div className="flex items-center gap-3">
-            <Link href="/ocean-pulse-app" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-balean-cyan via-balean-coral to-balean-yellow flex items-center justify-center shadow-lg">
-                <i className="fi fi-rr-whale text-white text-lg" />
-              </div>
-              <div>
-                <h1 className="font-display text-lg text-white tracking-tight">Ocean PULSE</h1>
-                <p className="text-xs text-white/50">by Balean</p>
-              </div>
-            </Link>
-          </div>
-          <UserMenu />
-        </header>
-
-        {/* Map Container - calc height minus header */}
-        <div className="relative" style={{ height: 'calc(100vh - 64px)' }}>
+      <main id="main-content" className="overflow-hidden" style={{ height: 'calc(100vh - 64px)' }}>
+        {/* Map Container - fills remaining height below shared AppHeader */}
+        <div className="relative h-full">
           {/* Top toolbar for filters */}
           <div className={`absolute top-4 z-[1001] transition-all duration-300 flex items-center gap-2 ${filterPanelOpen ? 'left-[21rem]' : 'left-4'}`}>
             {/* Filter toggle button - only show when panel is closed */}
@@ -183,6 +168,7 @@ function HomeContent() {
             onFiltersChange={setFilters}
             isOpen={filterPanelOpen}
             onToggle={() => setFilterPanelOpen(!filterPanelOpen)}
+            savedMPAIds={savedMPAIds}
           />
 
           <MobileMap
@@ -213,20 +199,6 @@ function HomeContent() {
           </div>
 
           <div className="relative container-app pt-4 pb-8">
-            {/* Top bar */}
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-balean-cyan via-balean-coral to-balean-yellow flex items-center justify-center shadow-lg">
-                  <i className="fi fi-rr-whale text-white text-lg" />
-                </div>
-                <div>
-                  <h1 className="font-display text-lg text-white tracking-tight">Ocean PULSE</h1>
-                  <p className="text-xs text-white/50">by Balean</p>
-                </div>
-              </div>
-              <UserMenu />
-            </div>
-
             {/* Welcome text */}
             <motion.div
               initial="initial"

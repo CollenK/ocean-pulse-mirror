@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Icon } from '@/components/Icon';
+import { storeAuthRedirect } from '@/lib/auth-redirect';
 
 export function UserMenu() {
   const { user, profile, isAuthenticated, loading, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -26,7 +28,7 @@ export function UserMenu() {
   const handleSignOut = async () => {
     await signOut();
     setIsOpen(false);
-    router.push('/');
+    router.push('/ocean-pulse-app');
   };
 
   // Loading state
@@ -50,7 +52,10 @@ export function UserMenu() {
           <span className="hidden sm:inline">Support</span>
         </a>
         <button
-          onClick={() => router.push('/login')}
+          onClick={() => {
+            storeAuthRedirect(pathname);
+            router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-ocean-primary text-white rounded-full text-sm font-medium hover:bg-ocean-primary/90 transition-colors"
         >
           <Icon name="sign-in-alt" size="sm" />

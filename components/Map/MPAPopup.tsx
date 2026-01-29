@@ -28,12 +28,17 @@ export function MPAPopup({ mpa, onClose, mapRef }: MPAPopupProps) {
     const screenPoint = map.project([lng, lat]);
     const container = map.getContainer();
     const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
 
-    // Check if marker is in the left third, right third, or middle
     const leftThreshold = containerWidth * 0.33;
     const rightThreshold = containerWidth * 0.67;
+    // Popup card is roughly 200px tall; show below if marker is near top
+    const topThreshold = containerHeight * 0.25;
 
-    if (screenPoint.x < leftThreshold) {
+    if (screenPoint.y < topThreshold) {
+      // Marker is near the top - show popup below
+      return { anchor: 'top', offset: [0, 16] };
+    } else if (screenPoint.x < leftThreshold) {
       // Marker is on the left side - show popup to the right
       return { anchor: 'left', offset: [16, 0] };
     } else if (screenPoint.x > rightThreshold) {

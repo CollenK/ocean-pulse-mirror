@@ -92,7 +92,7 @@ export default function IndicatorSpeciesPage() {
   return (
     <main id="main-content" className="min-h-screen pb-32">
       {/* Hero Header */}
-      <div className="bg-gradient-to-br from-healthy via-balean-cyan to-balean-navy pt-8 pb-12 px-6 mb-6">
+      <div className="bg-gradient-to-br from-healthy via-balean-cyan to-balean-navy pt-4 pb-8 px-6 mb-4">
         <div className="max-w-screen-xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

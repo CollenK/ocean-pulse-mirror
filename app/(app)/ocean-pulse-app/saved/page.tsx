@@ -7,8 +7,8 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useSavedMPAs } from '@/hooks/useSavedMPAs';
 import { Card, CardContent, Button, Icon, CircularProgress, getHealthColor } from '@/components/ui';
-import { UserMenu } from '@/components/UserMenu';
 import { fetchMPAById } from '@/lib/mpa-service';
+import { storeAuthRedirect } from '@/lib/auth-redirect';
 import type { MPA } from '@/types';
 
 export default function SavedMPAsPage() {
@@ -21,37 +21,49 @@ export default function SavedMPAsPage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
+      storeAuthRedirect('/ocean-pulse-app/saved');
       router.push('/login?redirect=/ocean-pulse-app/saved');
     }
   }, [authLoading, isAuthenticated, router]);
 
   // Load MPA details for saved IDs
   useEffect(() => {
+    // Wait until saved MPAs have finished loading
+    if (savedLoading) return;
+
     if (savedMPAIds.length === 0) {
       setMpas([]);
       return;
     }
+
+    let cancelled = false;
 
     const loadMPAs = async () => {
       setLoadingMPAs(true);
       const loadedMPAs: MPA[] = [];
 
       for (const id of savedMPAIds) {
+        if (cancelled) return;
         const mpa = await fetchMPAById(id);
         if (mpa) {
           loadedMPAs.push(mpa);
         }
       }
 
-      setMpas(loadedMPAs);
-      setLoadingMPAs(false);
+      if (!cancelled) {
+        setMpas(loadedMPAs);
+        setLoadingMPAs(false);
+      }
     };
 
     loadMPAs();
-  }, [savedMPAIds]);
 
-  const handleRemove = async (mpaId: string) => {
-    await removeSave(mpaId);
+    return () => { cancelled = true; };
+  }, [savedMPAIds, savedLoading]);
+
+  const handleRemove = async (mpa: MPA) => {
+    // Use the database UUID for the delete operation
+    await removeSave(mpa.dbId || mpa.id);
   };
 
   // Show loading while checking auth
@@ -60,9 +72,6 @@ export default function SavedMPAsPage() {
       <main className="min-h-screen pb-32">
         <div className="bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-6">
           <div className="max-w-screen-xl mx-auto">
-            <div className="flex justify-end mb-4">
-              <div className="w-9 h-9 rounded-full bg-white/20 animate-pulse" />
-            </div>
             <div className="h-8 w-48 bg-white/20 rounded animate-pulse" />
           </div>
         </div>
@@ -80,19 +89,6 @@ export default function SavedMPAsPage() {
       {/* Header */}
       <div className="bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-6">
         <div className="max-w-screen-xl mx-auto">
-          <div className="flex items-center justify-between mb-4">
-            <Button
-              onClick={() => router.back()}
-              variant="ghost"
-              size="sm"
-              className="text-white/90 hover:text-white hover:bg-white/20 border-none"
-            >
-              <Icon name="angle-left" size="sm" />
-              Back
-            </Button>
-            <UserMenu />
-          </div>
-
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -178,7 +174,7 @@ export default function SavedMPAsPage() {
                         </div>
                       </Link>
                       <button
-                        onClick={() => handleRemove(mpa.id)}
+                        onClick={() => handleRemove(mpa)}
                         className="p-2 text-balean-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
                         title="Remove from saved"
                       >

@@ -22,7 +22,6 @@ import { SpeciesCard } from '@/components/SpeciesCard';
 import { getIndicatorSpeciesForMPA } from '@/lib/indicator-species';
 import type { IndicatorSpecies } from '@/types/indicator-species';
 import { CATEGORY_INFO } from '@/types/indicator-species';
-import { UserMenu } from '@/components/UserMenu';
 import { SaveMPAButton } from '@/components/SaveMPAButton';
 import { LiveReports } from '@/components/LiveReports';
 import { useObservations } from '@/hooks/useObservations';
@@ -219,21 +218,9 @@ export default function MPADetailPage() {
       {/* Modern Hero Header with Gradient */}
       <div className="bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-4 sm:px-6">
         <div className="max-w-screen-xl mx-auto">
-          {/* Top bar with back button and user menu */}
-          <div className="flex items-center justify-between mb-4">
-            <Button
-              onClick={() => router.back()}
-              variant="ghost"
-              size="sm"
-              className="text-white/90 hover:text-white hover:bg-white/20 border-none -ml-2"
-            >
-              <Icon name="angle-left" size="sm" />
-              Back
-            </Button>
-            <div className="flex items-center gap-2">
-              <SaveMPAButton mpaId={mpa.id} variant="icon" size="md" />
-              <UserMenu />
-            </div>
+          {/* Save button */}
+          <div className="flex justify-end mb-4">
+            <SaveMPAButton mpaId={mpa.id} mpaDbId={mpa.dbId} variant="icon" size="md" />
           </div>
 
           <motion.div

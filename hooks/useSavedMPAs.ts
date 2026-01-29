@@ -131,8 +131,8 @@ export function useSavedMPAs() {
     }
   }, [isSaved, saveMPA, unsaveMPA]);
 
-  // Get array of saved MPA IDs
-  const savedMPAIds = savedMPAs.map(s => s.mpa_id);
+  // Get array of saved MPA IDs (memoized to prevent re-render loops)
+  const savedMPAIds = useMemo(() => savedMPAs.map(s => s.mpa_id), [savedMPAs]);
 
   return {
     savedMPAs,

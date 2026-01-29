@@ -13,7 +13,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: '/ocean-pulse-app', icon: 'fi-rr-home', iconSolid: 'fi-sr-home', label: 'Home' },
+  { href: '/ocean-pulse-app', icon: 'fi-rr-map', iconSolid: 'fi-sr-map', label: 'Map' },
   { href: '/ocean-pulse-app/nearby', icon: 'fi-rr-marker', iconSolid: 'fi-sr-marker', label: 'Nearby' },
   { href: '/ocean-pulse-app/indicator-species', icon: 'fi-rr-fish', iconSolid: 'fi-sr-fish', label: 'Species' },
   { href: '/ocean-pulse-app/observe', icon: 'fi-rr-camera', iconSolid: 'fi-sr-camera', label: 'Observe' },

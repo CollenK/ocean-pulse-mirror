@@ -91,6 +91,7 @@ function transformMPARow(row: any): MPA {
 
   return {
     id: row.external_id || row.id,
+    dbId: row.id,
     name: row.name,
     country: row.country || 'Unknown',
     bounds,

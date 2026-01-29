@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useSavedMPAs } from '@/hooks/useSavedMPAs';
 import { Icon } from '@/components/Icon';
+import { storeAuthRedirect } from '@/lib/auth-redirect';
 
 interface SaveMPAButtonProps {
   mpaId: string;
+  mpaDbId?: string; // Internal UUID for database operations
   variant?: 'icon' | 'button';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
@@ -14,6 +16,7 @@ interface SaveMPAButtonProps {
 
 export function SaveMPAButton({
   mpaId,
+  mpaDbId,
   variant = 'button',
   size = 'md',
   className = '',
@@ -21,17 +24,21 @@ export function SaveMPAButton({
   const { isAuthenticated, isSaved, toggleSave } = useSavedMPAs();
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
-  const saved = isSaved(mpaId);
+  // Use the database UUID for save operations and checking saved state
+  const dbId = mpaDbId || mpaId;
+  const saved = isSaved(dbId);
 
   const handleClick = async () => {
     if (!isAuthenticated) {
-      router.push('/login');
+      storeAuthRedirect(pathname);
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
 
     setIsLoading(true);
-    await toggleSave(mpaId);
+    await toggleSave(dbId);
     setIsLoading(false);
   };
 

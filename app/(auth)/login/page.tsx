@@ -1,9 +1,10 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Icon } from '@/components/Icon';
+import { storeAuthRedirect } from '@/lib/auth-redirect';
 
 function LoginContent() {
   const [isLoading, setIsLoading] = useState<string | null>(null);
@@ -11,13 +12,24 @@ function LoginContent() {
   const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [signUpSuccess, setSignUpSuccess] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const [isSignUp, setIsSignUp] = useState(searchParams.get('signup') === 'true');
 
   // Get redirect URL from query params, default to interactive map
   const redirectTo = searchParams.get('redirect') || '/ocean-pulse-app';
 
-  const signInWithProvider = async (provider: 'google' | 'github') => {
+  // Store the redirect path in sessionStorage so it survives the OAuth round-trip
+  useEffect(() => {
+    if (redirectTo) {
+      storeAuthRedirect(redirectTo);
+    }
+  }, [redirectTo]);
+
+  const signInWithProvider = async (provider: 'google') => {
     try {
       setIsLoading(provider);
       setError(null);
@@ -26,7 +38,7 @@ function LoginContent() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
@@ -60,6 +72,53 @@ function LoginContent() {
     }
   };
 
+  const signUpWithEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    try {
+      setIsLoading('email');
+
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      // If the user session exists, email confirmation is disabled and they are signed in
+      if (data.session) {
+        router.push(redirectTo);
+        router.refresh();
+      } else {
+        // Email confirmation is required
+        setSignUpSuccess(true);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create account');
+      setIsLoading(null);
+    }
+  };
+
+  const toggleMode = () => {
+    setIsSignUp(!isSignUp);
+    setError(null);
+    setSignUpSuccess(false);
+    setPassword('');
+    setConfirmPassword('');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-ocean-primary/5 via-white to-ocean-accent/5 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -69,10 +128,12 @@ function LoginContent() {
             <Icon name="water" className="text-white text-2xl" />
           </div>
           <h1 className="text-2xl font-bold text-ocean-deep mb-2">
-            Welcome to Ocean PULSE
+            {isSignUp ? 'Create your account' : 'Welcome to Ocean PULSE'}
           </h1>
           <p className="text-gray-600">
-            Sign in to save your favorite MPAs and track ocean health
+            {isSignUp
+              ? 'Sign up to save your favorite MPAs and submit observations'
+              : 'Sign in to save your favorite MPAs and track ocean health'}
           </p>
         </div>
 
@@ -114,22 +175,6 @@ function LoginContent() {
                   </span>
                 </button>
 
-                {/* GitHub Sign In */}
-                <button
-                  onClick={() => signInWithProvider('github')}
-                  disabled={isLoading !== null}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading === 'github' ? (
-                    <div className="w-5 h-5 border-2 border-gray-600 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                    </svg>
-                  )}
-                  <span className="font-medium">Continue with GitHub</span>
-                </button>
-
                 {/* Email Sign In Button */}
                 <button
                   onClick={() => setShowEmailLogin(true)}
@@ -145,57 +190,101 @@ function LoginContent() {
             </>
           ) : (
             <>
-              {/* Email Login Form */}
-              <form onSubmit={signInWithEmail} className="space-y-4">
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ocean-primary focus:border-transparent"
-                  />
+              {/* Email Form */}
+              {signUpSuccess ? (
+                <div className="text-center space-y-4">
+                  <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                    <Icon name="check" className="text-green-600 text-2xl" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Check your email</h3>
+                    <p className="text-sm text-gray-600">
+                      We sent a confirmation link to <strong>{email}</strong>. Please check your inbox and click the link to activate your account.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSignUpSuccess(false);
+                      setIsSignUp(false);
+                      setShowEmailLogin(false);
+                    }}
+                    className="text-sm text-ocean-primary hover:text-ocean-deep transition-colors font-medium"
+                  >
+                    Back to sign in
+                  </button>
                 </div>
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ocean-primary focus:border-transparent"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={isLoading !== null}
-                  className="w-full px-4 py-3 bg-ocean-primary text-white rounded-xl hover:bg-ocean-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                >
-                  {isLoading === 'email' ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
-                  ) : (
-                    'Sign In'
+              ) : (
+                <form onSubmit={isSignUp ? signUpWithEmail : signInWithEmail} className="space-y-4">
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      required
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ocean-primary focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      id="password"
+                      name="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={isSignUp ? 'At least 8 characters' : 'Enter your password'}
+                      required
+                      minLength={isSignUp ? 8 : undefined}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ocean-primary focus:border-transparent"
+                    />
+                  </div>
+                  {isSignUp && (
+                    <div>
+                      <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                        Confirm Password
+                      </label>
+                      <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Re-enter your password"
+                        required
+                        minLength={8}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ocean-primary focus:border-transparent"
+                      />
+                    </div>
                   )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowEmailLogin(false)}
-                  className="w-full text-center text-gray-500 hover:text-gray-700 transition-colors text-sm"
-                >
-                  Back to other options
-                </button>
-              </form>
+                  <button
+                    type="submit"
+                    disabled={isLoading !== null}
+                    className="w-full px-4 py-3 bg-ocean-primary text-white rounded-xl hover:bg-ocean-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  >
+                    {isLoading === 'email' ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
+                    ) : (
+                      isSignUp ? 'Create Account' : 'Sign In'
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailLogin(false)}
+                    className="w-full text-center text-gray-500 hover:text-gray-700 transition-colors text-sm"
+                  >
+                    Back to other options
+                  </button>
+                </form>
+              )}
             </>
           )}
 
@@ -225,9 +314,28 @@ function LoginContent() {
           </button>
         </div>
 
+        {/* Toggle Sign In / Sign Up */}
+        <p className="text-center text-sm text-gray-600 mt-6">
+          {isSignUp ? (
+            <>
+              Already have an account?{' '}
+              <button onClick={toggleMode} className="text-ocean-primary hover:underline font-medium">
+                Sign in
+              </button>
+            </>
+          ) : (
+            <>
+              Don&apos;t have an account?{' '}
+              <button onClick={toggleMode} className="text-ocean-primary hover:underline font-medium">
+                Sign up
+              </button>
+            </>
+          )}
+        </p>
+
         {/* Footer */}
-        <p className="text-center text-sm text-gray-500 mt-6">
-          By signing in, you agree to our{' '}
+        <p className="text-center text-sm text-gray-500 mt-4">
+          By {isSignUp ? 'signing up' : 'signing in'}, you agree to our{' '}
           <a href="#" className="text-ocean-primary hover:underline">
             Terms of Service
           </a>{' '}
@@ -258,7 +366,6 @@ function LoginFallback() {
         </div>
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="space-y-4">
-            <div className="h-12 bg-gray-100 rounded-xl animate-pulse" />
             <div className="h-12 bg-gray-100 rounded-xl animate-pulse" />
             <div className="h-12 bg-gray-100 rounded-xl animate-pulse" />
           </div>

@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef, ty
 import { createBrowserClient } from '@supabase/ssr';
 import type { User, Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Profile } from '@/types/supabase';
+import { consumeAuthRedirect } from '@/lib/auth-redirect';
 
 interface AuthState {
   user: User | null;
@@ -138,6 +139,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             loading: false,
             isAuthenticated: true,
           });
+
+          // On fresh sign-in, redirect to the stored path (if any)
+          if (event === 'SIGNED_IN') {
+            const redirectPath = consumeAuthRedirect();
+            if (redirectPath && redirectPath !== window.location.pathname) {
+              window.location.replace(redirectPath);
+            }
+          }
 
           // Fetch profile in background (don't block auth)
           fetchProfile(session.user.id).then(profile => {

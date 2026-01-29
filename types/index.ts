@@ -1,6 +1,7 @@
 // Core MPA Types
 export interface MPA {
   id: string;
+  dbId?: string; // Internal UUID from database (for foreign key operations)
   name: string;
   country: string;
   bounds: number[][]; // [[lat, lng], [lat, lng]]

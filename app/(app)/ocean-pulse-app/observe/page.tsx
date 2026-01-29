@@ -19,6 +19,7 @@ import {
   getDraft,
 } from '@/lib/offline-storage';
 import { createObservation, uploadObservationPhoto } from '@/lib/observations-service';
+import { storeAuthRedirect } from '@/lib/auth-redirect';
 import { MPA, ReportType, REPORT_TYPES } from '@/types';
 
 interface ObservationData {
@@ -39,20 +40,6 @@ function SignInPrompt() {
 
   return (
     <main className="min-h-screen pb-24 bg-balean-off-white">
-      <div className="sticky top-0 z-40 bg-white border-b border-balean-gray-200">
-        <div className="p-4">
-          <div className="max-w-2xl mx-auto flex items-center justify-between">
-            <h1 className="text-xl font-bold text-balean-navy">Submit New Report</h1>
-            <button
-              onClick={() => router.back()}
-              className="p-2 hover:bg-balean-gray-100 rounded-lg transition-colors"
-            >
-              <span className="text-xl text-balean-gray-400">×</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-2xl mx-auto p-6">
         <Card>
           <CardContent>
@@ -72,12 +59,18 @@ function SignInPrompt() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-sm mx-auto">
-                <Button onClick={() => router.push('/login?redirect=/ocean-pulse-app/observe')} fullWidth>
+                <Button onClick={() => {
+                  storeAuthRedirect('/ocean-pulse-app/observe');
+                  router.push('/login?redirect=/ocean-pulse-app/observe');
+                }} fullWidth>
                   Sign In
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => router.push('/login?redirect=/ocean-pulse-app/observe&signup=true')}
+                  onClick={() => {
+                    storeAuthRedirect('/ocean-pulse-app/observe');
+                    router.push('/login?redirect=/ocean-pulse-app/observe&signup=true');
+                  }}
                   fullWidth
                 >
                   Create Account
@@ -299,27 +292,10 @@ function ObservePageContent() {
     }
   };
 
-  const handleCancel = () => {
-    if (data.reportType || data.photo || data.notes || data.healthScoreAssessment) {
-      if (confirm('You have unsaved changes. Are you sure you want to leave?')) {
-        router.back();
-      }
-    } else {
-      router.back();
-    }
-  };
-
   // Loading state
   if (authLoading) {
     return (
       <main className="min-h-screen pb-24 bg-balean-off-white">
-        <div className="sticky top-0 z-40 bg-white border-b border-balean-gray-200">
-          <div className="p-4">
-            <div className="max-w-2xl mx-auto">
-              <h1 className="text-xl font-bold text-balean-navy">Submit New Report</h1>
-            </div>
-          </div>
-        </div>
         <div className="max-w-2xl mx-auto p-6">
           <Card>
             <CardContent>
@@ -342,25 +318,12 @@ function ObservePageContent() {
 
   return (
     <main className="min-h-screen pb-24 bg-balean-off-white">
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-white border-b border-balean-gray-200">
-        <div className="p-4">
-          <div className="max-w-2xl mx-auto flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-balean-navy">Submit New Report</h1>
-              <p className="text-sm text-balean-gray-400">Help us monitor ocean health by sharing your observations</p>
-            </div>
-            <button
-              onClick={handleCancel}
-              className="p-2 hover:bg-balean-gray-100 rounded-lg transition-colors"
-            >
-              <span className="text-2xl text-balean-gray-300 hover:text-balean-gray-500">×</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-2xl mx-auto p-6 space-y-6">
+        {/* Page Title */}
+        <div>
+          <h1 className="text-xl font-bold text-balean-navy">Submit New Report</h1>
+          <p className="text-sm text-balean-gray-400">Help us monitor ocean health by sharing your observations</p>
+        </div>
         {/* Report Type */}
         <section data-error={!!errors.reportType}>
           <label className="block text-sm font-semibold text-balean-navy mb-3">
@@ -512,14 +475,6 @@ function ObservePageContent() {
           >
             Save Draft
           </Button>
-          <Button
-            variant="ghost"
-            onClick={handleCancel}
-            disabled={submitting || savingDraft}
-            fullWidth
-          >
-            Cancel
-          </Button>
         </div>
       </div>
     </main>
@@ -530,13 +485,6 @@ function ObservePageContent() {
 function ObservePageFallback() {
   return (
     <main className="min-h-screen pb-24 bg-balean-off-white">
-      <div className="sticky top-0 z-40 bg-white border-b border-balean-gray-200">
-        <div className="p-4">
-          <div className="max-w-2xl mx-auto">
-            <h1 className="text-xl font-bold text-balean-navy">Submit New Report</h1>
-          </div>
-        </div>
-      </div>
       <div className="max-w-2xl mx-auto p-6">
         <Card>
           <CardContent>

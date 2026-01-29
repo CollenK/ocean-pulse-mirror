@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MPA } from '@/types';
+import { getCountryName } from '@/lib/country-names';
 
 // Filter types
 export interface MapFilters {
@@ -10,6 +11,7 @@ export interface MapFilters {
   protectionLevel: string[];
   country: string[];
   areaSize: string[];
+  savedOnly: boolean;
 }
 
 export const DEFAULT_FILTERS: MapFilters = {
@@ -17,6 +19,7 @@ export const DEFAULT_FILTERS: MapFilters = {
   protectionLevel: [],
   country: [],
   areaSize: [],
+  savedOnly: false,
 };
 
 // Health status categories
@@ -41,6 +44,7 @@ interface MapFilterPanelProps {
   onFiltersChange: (filters: MapFilters) => void;
   isOpen: boolean;
   onToggle: () => void;
+  savedMPAIds?: string[];
 }
 
 interface FilterSectionProps {
@@ -132,6 +136,7 @@ export function MapFilterPanel({
   onFiltersChange,
   isOpen,
   onToggle,
+  savedMPAIds = [],
 }: MapFilterPanelProps) {
   // Calculate counts for each filter option
   const filterCounts = useMemo(() => {
@@ -183,8 +188,11 @@ export function MapFilterPanel({
     return countryList;
   }, [filterCounts.country]);
 
+  // Array filter keys (excludes boolean filters like savedOnly)
+  type ArrayFilterKey = 'healthStatus' | 'protectionLevel' | 'country' | 'areaSize';
+
   // Toggle filter value
-  const toggleFilter = (category: keyof MapFilters, value: string) => {
+  const toggleFilter = (category: ArrayFilterKey, value: string) => {
     const current = filters[category];
     const updated = current.includes(value)
       ? current.filter((v) => v !== value)
@@ -197,12 +205,32 @@ export function MapFilterPanel({
     onFiltersChange(DEFAULT_FILTERS);
   };
 
-  // Count active filters
-  const activeFilterCount = Object.values(filters).flat().length;
+  // Count of saved MPAs present in the current MPA list
+  const savedCount = useMemo(() => {
+    if (savedMPAIds.length === 0) return 0;
+    const savedSet = new Set(savedMPAIds);
+    return mpas.filter((mpa) => savedSet.has(mpa.dbId || mpa.id)).length;
+  }, [mpas, savedMPAIds]);
+
+  // Count active filters (exclude savedOnly boolean from the array count)
+  const activeFilterCount =
+    filters.healthStatus.length +
+    filters.protectionLevel.length +
+    filters.country.length +
+    filters.areaSize.length +
+    (filters.savedOnly ? 1 : 0);
+
+  // Build saved ID set for fast lookups
+  const savedIdSet = useMemo(() => new Set(savedMPAIds), [savedMPAIds]);
 
   // Calculate filtered count
   const filteredCount = useMemo(() => {
     return mpas.filter((mpa) => {
+      // Saved MPAs filter
+      if (filters.savedOnly) {
+        if (!savedIdSet.has(mpa.dbId || mpa.id)) return false;
+      }
+
       // Health status filter
       if (filters.healthStatus.length > 0) {
         const matchesHealth = filters.healthStatus.some((statusId) => {
@@ -237,7 +265,7 @@ export function MapFilterPanel({
 
       return true;
     }).length;
-  }, [mpas, filters]);
+  }, [mpas, filters, savedIdSet]);
 
   return (
     <>
@@ -284,6 +312,33 @@ export function MapFilterPanel({
 
             {/* Filter Sections */}
             <div className="flex-1 overflow-y-auto">
+              {/* Saved MPAs Toggle */}
+              {savedMPAIds.length > 0 && (
+                <div className="border-b border-balean-gray-100">
+                  <label
+                    htmlFor="saved-only"
+                    className="flex items-center justify-between py-3 px-4 cursor-pointer group hover:bg-balean-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="saved-only"
+                        checked={filters.savedOnly}
+                        onChange={(e) => onFiltersChange({ ...filters, savedOnly: e.target.checked })}
+                        className="w-4 h-4 rounded border-balean-gray-300 text-balean-cyan focus:ring-balean-cyan"
+                      />
+                      <div className="flex items-center gap-2">
+                        <i className="fi fi-rr-heart text-red-400" />
+                        <span className="font-semibold text-balean-navy text-sm group-hover:text-balean-navy transition-colors">
+                          Saved MPAs only
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-xs text-balean-gray-400">{savedCount}</span>
+                  </label>
+                </div>
+              )}
+
               {/* Health Status */}
               <FilterSection title="Health Status" icon="heart-rate" defaultOpen={true}>
                 <div className="space-y-1">
@@ -341,7 +396,7 @@ export function MapFilterPanel({
                     <FilterCheckbox
                       key={country}
                       id={`country-${country}`}
-                      label={country}
+                      label={getCountryName(country)}
                       count={filterCounts.country[country] || 0}
                       checked={filters.country.includes(country)}
                       onChange={() => toggleFilter('country', country)}
@@ -368,8 +423,15 @@ export function MapFilterPanel({
 }
 
 // Export filter helper function for use in parent components
-export function filterMPAs(mpas: MPA[], filters: MapFilters): MPA[] {
+export function filterMPAs(mpas: MPA[], filters: MapFilters, savedMPAIds: string[] = []): MPA[] {
+  const savedIdSet = new Set(savedMPAIds);
+
   return mpas.filter((mpa) => {
+    // Saved MPAs filter
+    if (filters.savedOnly) {
+      if (!savedIdSet.has(mpa.dbId || mpa.id)) return false;
+    }
+
     // Health status filter
     if (filters.healthStatus.length > 0) {
       const matchesHealth = filters.healthStatus.some((statusId) => {
