@@ -5,6 +5,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AnalyticsProvider } from '@/components/AnalyticsProvider'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Providers } from '@/components/Providers'
+import { CookieConsent } from '@/components/CookieConsent'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -148,6 +149,7 @@ export default function RootLayout({
                 <OfflineIndicator />
                 {children}
                 <BottomNav />
+                <CookieConsent />
               </ErrorBoundary>
             </AnalyticsProvider>
           </AuthProvider>

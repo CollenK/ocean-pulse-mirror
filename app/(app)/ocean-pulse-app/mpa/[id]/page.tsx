@@ -25,6 +25,7 @@ import { CATEGORY_INFO } from '@/types/indicator-species';
 import { SaveMPAButton } from '@/components/SaveMPAButton';
 import { LiveReports } from '@/components/LiveReports';
 import { useObservations } from '@/hooks/useObservations';
+import { getCountryName } from '@/lib/country-names';
 
 // Dynamically import TrackingHeatmap with SSR disabled (Leaflet requires window)
 const TrackingHeatmap = dynamic(
@@ -230,11 +231,7 @@ export default function MPADetailPage() {
             {/* Mobile: Stack vertically, Desktop: Side by side */}
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6 mb-6">
               <div className="flex-1 min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 break-words">{mpa.name}</h1>
-                <p className="text-white/80 flex items-center gap-2 text-sm sm:text-base">
-                  <Icon name="marker" size="sm" />
-                  {mpa.country} • Est. {mpa.establishedYear}
-                </p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white break-words">{mpa.name}</h1>
               </div>
 
               {compositeHealth.loading && compositeHealth.score === 0 ? (
@@ -242,20 +239,20 @@ export default function MPADetailPage() {
                   <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-4 border-white/30 border-t-white" />
                 </div>
               ) : (
-                <div className="flex-shrink-0 relative self-center sm:self-start">
+                <div className="flex-shrink-0 self-center sm:self-start">
                   <CircularProgress
                     value={compositeHealth.score}
                     size="lg"
                     color={getHealthColor(compositeHealth.score)}
                   />
-                  {compositeHealth.confidence !== 'high' && (
-                    <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-yellow-500 flex items-center justify-center" title={`${compositeHealth.dataSourcesAvailable}/3 data sources`}>
-                      <Icon name="info" className="text-white text-xs" />
-                    </div>
-                  )}
                 </div>
               )}
             </div>
+
+            <p className="text-white/80 flex items-center justify-center gap-2 text-2xl sm:text-3xl mb-6">
+              <Icon name="marker" size="sm" />
+              {getCountryName(mpa.country)} • Est. {mpa.establishedYear}
+            </p>
 
             <div className="flex flex-wrap gap-2">
               <Badge variant="info" size="md" className="bg-white/20 text-white border-none">
@@ -400,7 +397,7 @@ export default function MPADetailPage() {
             </div>
             <div>
               <span className="font-semibold text-balean-gray-500">Country: </span>
-              <span className="text-balean-gray-400">{mpa.country}</span>
+              <span className="text-balean-gray-400">{getCountryName(mpa.country)}</span>
             </div>
           </div>
           <div className="mt-4">

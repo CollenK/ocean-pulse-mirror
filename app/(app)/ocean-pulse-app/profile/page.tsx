@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSavedMPAs } from '@/hooks/useSavedMPAs';
 import { Card, CardContent, CardTitle, Button, Badge, Icon } from '@/components/ui';
 import { storeAuthRedirect } from '@/lib/auth-redirect';
+import { openCookiePreferences } from '@/components/CookieConsent';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -313,6 +314,19 @@ export default function ProfilePage() {
                   </div>
                   <Icon name="angle-right" className="text-balean-gray-300" />
                 </Link>
+                <button
+                  onClick={() => openCookiePreferences()}
+                  className="flex items-center justify-between w-full px-3 py-3 rounded-lg hover:bg-balean-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon name="lock" className="text-balean-gray-300" />
+                    <div className="text-left">
+                      <span className="font-medium text-balean-navy">Cookie Preferences</span>
+                      <span className="text-balean-gray-400 text-sm block">Manage cookie settings</span>
+                    </div>
+                  </div>
+                  <Icon name="angle-right" className="text-balean-gray-300" />
+                </button>
               </div>
             </CardContent>
           </Card>

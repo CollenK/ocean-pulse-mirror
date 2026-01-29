@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Icon } from '@/components/Icon';
 import { storeAuthRedirect } from '@/lib/auth-redirect';
@@ -336,13 +337,13 @@ function LoginContent() {
         {/* Footer */}
         <p className="text-center text-sm text-gray-500 mt-4">
           By {isSignUp ? 'signing up' : 'signing in'}, you agree to our{' '}
-          <a href="#" className="text-ocean-primary hover:underline">
+          <Link href="/privacy" className="text-ocean-primary hover:underline">
             Terms of Service
-          </a>{' '}
+          </Link>{' '}
           and{' '}
-          <a href="#" className="text-ocean-primary hover:underline">
+          <Link href="/privacy" className="text-ocean-primary hover:underline">
             Privacy Policy
-          </a>
+          </Link>
         </p>
       </div>
     </div>

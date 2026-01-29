@@ -3,6 +3,8 @@
  * Supports Google Analytics, Plausible, and custom analytics providers
  */
 
+import { isAnalyticsConsented } from '@/lib/cookie-consent';
+
 // Analytics event types
 export type AnalyticsEvent = {
   action: string;
@@ -71,13 +73,74 @@ function isAnalyticsEnabled(): boolean {
     return false;
   }
 
-  // Check for user consent (can be managed via cookie/localStorage)
-  const consent = localStorage.getItem('analytics-consent');
-  if (consent === 'false') {
+  // Check GDPR cookie consent
+  if (!isAnalyticsConsented()) {
     return false;
   }
 
   return true;
+}
+
+// --- Google Analytics dynamic loading ---
+
+let gaLoaded = false;
+
+/**
+ * Dynamically load Google Analytics gtag.js.
+ * Only call after the user has consented to analytics cookies.
+ */
+export function loadGoogleAnalytics(): void {
+  if (typeof window === 'undefined') return;
+  if (gaLoaded) return;
+
+  const gaId = process.env.NEXT_PUBLIC_GA_ID;
+  if (!gaId) return;
+
+  // Clear any previous disable flag (in case consent was revoked then re-granted)
+  delete (window as any)[`ga-disable-${gaId}`];
+
+  // Inject the gtag.js script
+  const script = document.createElement('script');
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+  script.async = true;
+  document.head.appendChild(script);
+
+  // Initialize dataLayer and gtag
+  (window as any).dataLayer = (window as any).dataLayer || [];
+  function gtag(...args: unknown[]) {
+    (window as any).dataLayer.push(args);
+  }
+  (window as any).gtag = gtag;
+
+  gtag('js', new Date());
+  gtag('config', gaId, { send_page_view: false });
+
+  gaLoaded = true;
+}
+
+/**
+ * Disable Google Analytics and clear its cookies.
+ * Called when the user revokes analytics consent.
+ */
+export function disableGoogleAnalytics(): void {
+  if (typeof window === 'undefined') return;
+
+  const gaId = process.env.NEXT_PUBLIC_GA_ID;
+  if (gaId) {
+    (window as any)[`ga-disable-${gaId}`] = true;
+  }
+
+  // Remove GA cookies
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const name = cookie.split('=')[0].trim();
+    if (name.startsWith('_ga') || name.startsWith('_gid') || name.startsWith('_gat')) {
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    }
+  }
+
+  gaLoaded = false;
 }
 
 /**
