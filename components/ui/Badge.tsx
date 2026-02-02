@@ -77,7 +77,7 @@ export function HealthBadge({ score, size = 'md', showScore = true, className = 
     if (score >= 70) {
       return {
         variant: 'healthy' as BadgeVariant,
-        label: 'Healthy',
+        label: 'Good',
         icon: <i className="fi fi-rr-check-circle text-xs" />,
       };
     }
@@ -90,7 +90,7 @@ export function HealthBadge({ score, size = 'md', showScore = true, className = 
     }
     return {
       variant: 'at-risk' as BadgeVariant,
-      label: 'At Risk',
+      label: 'Needs Attention',
       icon: <i className="fi fi-rr-exclamation text-xs" />,
     };
   };

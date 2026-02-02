@@ -135,7 +135,7 @@ export function HealthScoreModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Health Score Breakdown" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title="Estimated Health Score" size="md">
       {/* Overall Score */}
       <div className="flex items-center justify-center mb-6">
         <div className="relative">
@@ -165,15 +165,16 @@ export function HealthScoreModal({
 
       {/* Explanation */}
       <p className="text-sm text-gray-600 text-center mb-6">
-        The composite health score is calculated from multiple real-time data sources
-        and community observations, each weighted by their importance to ecosystem health.
+        This is a composite estimate derived from multiple data sources
+        and community observations, each weighted by their relevance to ecosystem health.
+        Results may vary as new data becomes available.
       </p>
 
       {/* Data Sources */}
       <div className="space-y-3">
         <DataSourceCard
           name="Population Trends"
-          description="10-year population trends of indicator species from OBIS data"
+          description="Estimated 10-year population trends of indicator species from OBIS data"
           icon="arrow-trend-up"
           iconColor="text-purple-600"
           score={breakdown.populationTrends.score}
@@ -183,7 +184,7 @@ export function HealthScoreModal({
 
         <DataSourceCard
           name="Habitat Quality"
-          description="Environmental conditions including temperature, salinity, and pH from OBIS-ENV-DATA"
+          description="Environmental conditions including temperature, salinity, and pH based on available OBIS-ENV-DATA"
           icon="flask"
           iconColor="text-cyan-600"
           score={breakdown.habitatQuality.score}
@@ -246,8 +247,9 @@ export function HealthScoreModal({
       {/* Footer Note */}
       <div className="mt-6 pt-4 border-t border-gray-100">
         <p className="text-xs text-gray-500 text-center">
-          Scientific data sources are dynamically weighted based on availability.
-          Community observations contribute up to 10% of the overall score.
+          All scores are preliminary estimates. Scientific data sources are dynamically
+          weighted based on availability. Community observations contribute up to 10%
+          of the overall score.
         </p>
       </div>
     </Modal>

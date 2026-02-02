@@ -74,7 +74,9 @@ export function EnvironmentalMetricCard({ parameter }: EnvironmentalMetricCardPr
           </h3>
         </div>
         <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor()}`}>
-          {parameter.threshold?.status || 'normal'}
+          {parameter.threshold?.status === 'critical' ? 'critical' :
+           parameter.threshold?.status === 'warning' ? 'warning' :
+           'within range'}
         </span>
       </div>
 
@@ -114,9 +116,12 @@ export function EnvironmentalMetricCard({ parameter }: EnvironmentalMetricCardPr
         </div>
         <div className={`flex items-center gap-1 text-xs font-medium ${getTrendColor()}`}>
           <Icon name={getTrendIcon()} size="sm" />
-          <span className="capitalize">{parameter.trend}</span>
+          <span className="capitalize">Est. {parameter.trend}</span>
         </div>
       </div>
+
+      {/* Data note */}
+      <p className="text-[10px] text-gray-400 mt-2">Based on available monitoring data</p>
 
       {/* Threshold Warning */}
       {parameter.threshold && parameter.threshold.status !== 'normal' && (
@@ -129,8 +134,8 @@ export function EnvironmentalMetricCard({ parameter }: EnvironmentalMetricCardPr
             <Icon name="triangle-exclamation" size="sm" className="text-yellow-600 mt-0.5" />
             <p className="text-gray-700">
               {parameter.threshold.status === 'critical'
-                ? 'Critical: Value outside safe range'
-                : 'Warning: Value approaching threshold'}
+                ? 'Value appears outside typical range based on available data'
+                : 'Value may be approaching threshold based on available data'}
             </p>
           </div>
         </motion.div>

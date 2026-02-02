@@ -27,7 +27,7 @@ const HEALTH_STATUS_OPTIONS = [
   { id: 'excellent', label: 'Excellent', range: [80, 100], color: 'bg-healthy' },
   { id: 'good', label: 'Good', range: [60, 79], color: 'bg-balean-cyan' },
   { id: 'moderate', label: 'Moderate', range: [40, 59], color: 'bg-warning' },
-  { id: 'poor', label: 'Poor', range: [0, 39], color: 'bg-critical' },
+  { id: 'poor', label: 'Needs Attention', range: [0, 39], color: 'bg-critical' },
 ];
 
 // Area size categories (km²)
@@ -340,7 +340,8 @@ export function MapFilterPanel({
               )}
 
               {/* Health Status */}
-              <FilterSection title="Health Status" icon="heart-rate" defaultOpen={true}>
+              <FilterSection title="Estimated Health" icon="heart-rate" defaultOpen={true}>
+                <p className="text-xs text-balean-gray-400 mb-2">Based on available data</p>
                 <div className="space-y-1">
                   {HEALTH_STATUS_OPTIONS.map((opt) => (
                     <FilterCheckbox

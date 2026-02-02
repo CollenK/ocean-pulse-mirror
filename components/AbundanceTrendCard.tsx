@@ -29,9 +29,9 @@ export function AbundanceTrendCard({ trend }: AbundanceTrendCardProps) {
   };
 
   const trendLabels = {
-    increasing: 'Increasing',
-    stable: 'Stable',
-    decreasing: 'Decreasing',
+    increasing: 'Est. Increasing',
+    stable: 'Est. Stable',
+    decreasing: 'Est. Decreasing',
     insufficient_data: 'Insufficient Data',
   };
 
@@ -160,6 +160,9 @@ export function AbundanceTrendCard({ trend }: AbundanceTrendCardProps) {
           </span>
         </div>
       </div>
+
+      {/* Data note */}
+      <p className="text-[10px] text-gray-400 mt-2">Trend based on available occurrence records</p>
 
       {/* Status Badge */}
       <div className="mt-3">

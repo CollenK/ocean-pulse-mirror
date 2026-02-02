@@ -309,7 +309,15 @@ export default function MPADetailPage() {
               ) : (
                 <>
                   <p className="text-3xl font-bold text-balean-navy">{compositeHealth.score}</p>
-                  <p className="text-xs text-balean-gray-400 mt-1">Health Score</p>
+                  <p className="text-xs text-balean-gray-400 mt-1">Estimated Health</p>
+                  <p className={`text-xs mt-0.5 ${
+                    compositeHealth.confidence === 'high' ? 'text-green-500' :
+                    compositeHealth.confidence === 'medium' ? 'text-yellow-500' :
+                    'text-orange-500'
+                  }`}>
+                    {compositeHealth.confidence === 'high' ? 'High' :
+                     compositeHealth.confidence === 'medium' ? 'Medium' : 'Low'} confidence
+                  </p>
                   <p className="text-xs text-balean-gray-300">
                     {compositeHealth.dataSourcesAvailable}/{
                       Object.keys(compositeHealth.breakdown).length
@@ -559,13 +567,13 @@ export default function MPADetailPage() {
               <div className="mb-6 p-4 bg-gradient-to-br from-balean-cyan/10 to-balean-cyan-light/10 rounded-xl">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
-                    <p className="text-sm text-balean-gray-500 mb-1">Indicator Species Health</p>
+                    <p className="text-sm text-balean-gray-500 mb-1">Estimated Species Health</p>
                     <p className="text-3xl font-bold text-balean-navy">
                       {abundanceSummary.overallBiodiversity.healthScore}
                       <span className="text-lg text-balean-gray-400">/100</span>
                     </p>
                     <p className="text-xs text-balean-gray-400 mt-1">
-                      Based on {abundanceSummary.speciesTrends.length} indicator species
+                      Based on {abundanceSummary.speciesTrends.length} indicator species from available data
                     </p>
                   </div>
                   <div className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
@@ -678,7 +686,7 @@ export default function MPADetailPage() {
               <div className="mb-6 p-4 bg-gradient-to-br from-balean-cyan/10 to-balean-cyan-light/10 rounded-xl border border-balean-cyan/20">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
-                    <p className="text-sm text-balean-gray-500 mb-1">Habitat Quality Score</p>
+                    <p className="text-sm text-balean-gray-500 mb-1">Estimated Habitat Quality</p>
                     <p className="text-3xl font-bold text-balean-navy">
                       {environmentalSummary.habitatQualityScore}
                       <span className="text-lg text-balean-gray-400">/100</span>
