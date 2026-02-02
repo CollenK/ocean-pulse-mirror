@@ -19,6 +19,7 @@ export {
   ConservationBadge,
   ReportTypeBadge,
 } from './Badge';
+export { InfoTip } from './InfoTip';
 export { Input, Textarea, SearchInput } from './Input';
 export {
   Skeleton,

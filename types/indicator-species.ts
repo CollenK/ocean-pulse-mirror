@@ -204,13 +204,13 @@ export const CATEGORY_INFO: Record<SpeciesCategory, CategoryInfo> = {
 /**
  * Conservation status display info
  */
-export const CONSERVATION_STATUS_INFO: Record<ConservationStatus, { name: string; color: string }> = {
-  [ConservationStatus.LEAST_CONCERN]: { name: 'Least Concern', color: '#10B981' },
-  [ConservationStatus.NEAR_THREATENED]: { name: 'Near Threatened', color: '#84CC16' },
-  [ConservationStatus.VULNERABLE]: { name: 'Vulnerable', color: '#F59E0B' },
-  [ConservationStatus.ENDANGERED]: { name: 'Endangered', color: '#F97316' },
-  [ConservationStatus.CRITICALLY_ENDANGERED]: { name: 'Critically Endangered', color: '#EF4444' },
-  [ConservationStatus.DATA_DEFICIENT]: { name: 'Data Deficient', color: '#6B7280' },
+export const CONSERVATION_STATUS_INFO: Record<ConservationStatus, { name: string; color: string; description: string }> = {
+  [ConservationStatus.LEAST_CONCERN]: { name: 'Least Concern', color: '#10B981', description: 'Population is stable and widespread. Not currently at risk of decline.' },
+  [ConservationStatus.NEAR_THREATENED]: { name: 'Near Threatened', color: '#84CC16', description: 'Close to qualifying as threatened. May need conservation attention soon.' },
+  [ConservationStatus.VULNERABLE]: { name: 'Vulnerable', color: '#F59E0B', description: 'Faces a high risk of extinction in the wild due to habitat loss or other threats.' },
+  [ConservationStatus.ENDANGERED]: { name: 'Endangered', color: '#F97316', description: 'Faces a very high risk of extinction. Populations are declining significantly.' },
+  [ConservationStatus.CRITICALLY_ENDANGERED]: { name: 'Critically Endangered', color: '#EF4444', description: 'Faces an extremely high risk of extinction. Immediate conservation action needed.' },
+  [ConservationStatus.DATA_DEFICIENT]: { name: 'Data Deficient', color: '#6B7280', description: 'Not enough data to assess extinction risk. More research is needed.' },
 };
 
 /**

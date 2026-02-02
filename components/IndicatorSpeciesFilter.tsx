@@ -185,13 +185,13 @@ export function IndicatorSpeciesFilter({
               </div>
             </div>
 
-            {/* Conservation Status Filter */}
+            {/* Conservation Status Filter & Legend */}
             {showStatusFilter && onStatusChange && (
               <div className="px-4 pb-4 border-t border-gray-100 pt-3">
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
                   Conservation Status
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="space-y-1">
                   {Object.values(ConservationStatus).map((status) => {
                     const info = CONSERVATION_STATUS_INFO[status];
                     const isSelected = selectedStatuses.includes(status);
@@ -199,18 +199,30 @@ export function IndicatorSpeciesFilter({
                     return (
                       <motion.button
                         key={status}
-                        whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => toggleStatus(status)}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                        className={`w-full flex items-start gap-2.5 px-2.5 py-2 rounded-lg text-left transition-all border ${
                           isSelected
-                            ? 'text-white border-transparent'
-                            : 'text-gray-600 border-gray-200 hover:border-gray-300 bg-white'
+                            ? 'border-current bg-opacity-10'
+                            : 'border-transparent hover:bg-gray-50'
                         }`}
-                        style={isSelected ? { backgroundColor: info.color, borderColor: info.color } : {}}
+                        style={isSelected ? { color: info.color, backgroundColor: `${info.color}10`, borderColor: `${info.color}40` } : {}}
                         aria-pressed={isSelected}
                       >
-                        {status}
+                        <div
+                          className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-white mt-0.5"
+                          style={{ backgroundColor: info.color }}
+                        >
+                          {status}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-semibold ${isSelected ? '' : 'text-gray-700'}`}>
+                            {info.name}
+                          </p>
+                          <p className="text-[10px] text-gray-400 leading-snug mt-0.5">
+                            {info.description}
+                          </p>
+                        </div>
                       </motion.button>
                     );
                   })}

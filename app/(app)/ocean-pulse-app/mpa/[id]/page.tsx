@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { MPA } from '@/types';
 import { fetchMPAById, formatArea } from '@/lib/mpa-service';
 import { cacheMPA, getCachedMPA, isMPACached } from '@/lib/offline-storage';
-import { Card, CardTitle, CardContent, CollapsibleCard, Button, Badge, Icon, CircularProgress, getHealthColor } from '@/components/ui';
+import { Card, CardTitle, CardContent, CollapsibleCard, Button, Badge, Icon, InfoTip, CircularProgress, getHealthColor } from '@/components/ui';
 import { MPACardSkeleton } from '@/components/ui';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -309,7 +309,10 @@ export default function MPADetailPage() {
               ) : (
                 <>
                   <p className="text-3xl font-bold text-balean-navy">{compositeHealth.score}</p>
-                  <p className="text-xs text-balean-gray-400 mt-1">Estimated Health</p>
+                  <p className="text-xs text-balean-gray-400 mt-1 flex items-center justify-center gap-1">
+                    Estimated Health
+                    <InfoTip text="A composite score (0-100) derived from species population trends, habitat quality, and environmental data. Higher scores indicate healthier ecosystems." />
+                  </p>
                   <p className={`text-xs mt-0.5 ${
                     compositeHealth.confidence === 'high' ? 'text-green-500' :
                     compositeHealth.confidence === 'medium' ? 'text-yellow-500' :

@@ -7,7 +7,7 @@
 
 import { motion } from 'framer-motion';
 import { AbundanceTrend } from '@/types/obis-abundance';
-import { Icon } from './ui';
+import { Icon, InfoTip } from './ui';
 
 interface AbundanceTrendCardProps {
   trend: AbundanceTrend;
@@ -123,7 +123,7 @@ export function AbundanceTrendCard({ trend }: AbundanceTrendCardProps) {
 
       {/* Trend Summary */}
       <div className="flex items-center justify-between text-xs mb-3">
-        <div>
+        <div className="flex items-center gap-1">
           <span className="text-gray-500">Change: </span>
           <span className={`font-semibold ${
             trend.changePercent > 0 ? 'text-green-600' :
@@ -131,6 +131,7 @@ export function AbundanceTrendCard({ trend }: AbundanceTrendCardProps) {
           }`}>
             {trend.changePercent > 0 ? '+' : ''}{trend.changePercent.toFixed(1)}%
           </span>
+          <InfoTip text="Estimated percentage change in occurrence records over the observed period. Positive values suggest population growth." />
         </div>
 
         <div className="flex items-center gap-1">
@@ -142,6 +143,7 @@ export function AbundanceTrendCard({ trend }: AbundanceTrendCardProps) {
           }`}>
             {trend.confidence}
           </span>
+          <InfoTip text="Based on data point count and consistency. High confidence requires many consistent data points over multiple years." />
         </div>
       </div>
 

@@ -148,7 +148,7 @@ export function HealthScoreModal({
       </div>
 
       {/* Confidence Badge */}
-      <div className="flex justify-center mb-6">
+      <div className="flex justify-center mb-2">
         <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${confidenceInfo[confidence].bg}`}>
           <Icon
             name={confidence === 'high' ? 'circle-check' : confidence === 'medium' ? 'circle-exclamation' : 'triangle-exclamation'}
@@ -162,6 +162,9 @@ export function HealthScoreModal({
           </span>
         </div>
       </div>
+      <p className="text-[11px] text-gray-400 text-center mb-6">
+        Confidence reflects how many data sources contribute to this score. More sources means a more reliable estimate.
+      </p>
 
       {/* Explanation */}
       <p className="text-sm text-gray-600 text-center mb-6">

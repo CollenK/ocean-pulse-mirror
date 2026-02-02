@@ -253,9 +253,12 @@ export default function IndicatorSpeciesPage() {
                         key={status}
                         className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
                         style={{ backgroundColor: `${info.color}15`, color: info.color }}
+                        title={`${info.name}: ${info.description}`}
                       >
                         <span className="font-bold">{status}</span>
-                        <span className="text-balean-gray-500">({count})</span>
+                        <span className="text-balean-gray-500">
+                          {info.name} ({count})
+                        </span>
                       </div>
                     );
                   })}

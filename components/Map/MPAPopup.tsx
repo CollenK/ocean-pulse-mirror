@@ -67,6 +67,7 @@ export function MPAPopup({ mpa, onClose, mapRef }: MPAPopupProps) {
 
         <div className="mb-3">
           <HealthBadge score={mpa.healthScore} size="sm" />
+          <p className="text-[10px] text-balean-gray-400 mt-1">Estimated from species, habitat, and environmental data</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-sm mb-3">

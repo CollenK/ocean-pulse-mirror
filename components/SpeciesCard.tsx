@@ -36,9 +36,9 @@ const CATEGORY_ICONS: Record<SpeciesCategory, string> = {
 
 // Sensitivity rating display
 const SENSITIVITY_INFO = {
-  low: { label: 'Low Sensitivity', color: '#10B981', icon: 'clock' },
-  medium: { label: 'Medium Sensitivity', color: '#F59E0B', icon: 'clock' },
-  high: { label: 'High Sensitivity', color: '#EF4444', icon: 'clock' },
+  low: { label: 'Low Sensitivity', color: '#10B981', icon: 'clock', description: 'Tolerant to environmental changes. Population shifts occur over years.' },
+  medium: { label: 'Medium Sensitivity', color: '#F59E0B', icon: 'clock', description: 'Moderate sensitivity to stress. Population changes noticeable over months.' },
+  high: { label: 'High Sensitivity', color: '#EF4444', icon: 'clock', description: 'Highly sensitive to environmental changes. Responds within weeks, making it a strong early warning indicator.' },
 };
 
 export function SpeciesCard({
@@ -133,7 +133,7 @@ export function SpeciesCard({
         <div
           className="px-2.5 py-1 rounded-full text-xs font-medium text-white"
           style={{ backgroundColor: statusInfo.color }}
-          title={statusInfo.name}
+          title={`${statusInfo.name}: ${statusInfo.description}`}
         >
           {species.conservationStatus}
         </div>
@@ -150,15 +150,20 @@ export function SpeciesCard({
         </p>
 
         {/* Sensitivity Rating */}
-        <div className="flex items-center gap-2 mb-3">
-          <Icon
-            name="gauge"
-            size="sm"
-            className="text-ocean-primary"
-          />
-          <span className="text-xs text-gray-600">
-            {sensitivityInfo.label}
-          </span>
+        <div className="mb-3">
+          <div className="flex items-center gap-2">
+            <Icon
+              name="gauge"
+              size="sm"
+              className="text-ocean-primary"
+            />
+            <span className="text-xs text-gray-600">
+              {sensitivityInfo.label}
+            </span>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-0.5 ml-6">
+            {sensitivityInfo.description}
+          </p>
         </div>
 
         {/* Ecosystems */}

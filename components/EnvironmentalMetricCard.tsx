@@ -7,7 +7,7 @@
 
 import { motion } from 'framer-motion';
 import { EnvironmentalParameter } from '@/types/obis-environmental';
-import { Icon } from './ui';
+import { Icon, InfoTip } from './ui';
 
 interface EnvironmentalMetricCardProps {
   parameter: EnvironmentalParameter;
@@ -52,6 +52,18 @@ export function EnvironmentalMetricCard({ parameter }: EnvironmentalMetricCardPr
     }
   };
 
+  const getParameterDescription = () => {
+    switch (parameter.type) {
+      case 'temperature': return 'Sea surface temperature affects species survival and coral health. Sustained increases can cause bleaching events.';
+      case 'salinity': return 'Salt concentration in seawater. Changes can stress marine organisms adapted to specific salinity ranges.';
+      case 'depth': return 'Water depth influences light availability, pressure, and which species can thrive in an area.';
+      case 'pH': return 'Measures ocean acidity. Lower pH (more acidic) can dissolve shells and coral skeletons, harming marine life.';
+      case 'oxygen': return 'Dissolved oxygen is essential for marine life. Low levels can create "dead zones" where most organisms cannot survive.';
+      case 'chlorophyll': return 'Indicates phytoplankton abundance, the base of the marine food web. Abnormal levels may signal ecosystem imbalance.';
+      default: return 'Environmental parameter that contributes to overall ecosystem health assessment.';
+    }
+  };
+
   // Calculate percentage for gauge
   const percentOfRange = parameter.max !== parameter.min
     ? ((parameter.currentValue - parameter.min) / (parameter.max - parameter.min)) * 100
@@ -69,8 +81,9 @@ export function EnvironmentalMetricCard({ parameter }: EnvironmentalMetricCardPr
           <div className="w-8 h-8 rounded-lg bg-ocean-primary/10 flex items-center justify-center">
             <Icon name={getParameterIcon()} size="sm" className="text-ocean-primary" />
           </div>
-          <h3 className="text-sm font-semibold text-ocean-deep">
+          <h3 className="text-sm font-semibold text-ocean-deep flex items-center gap-1.5">
             {parameter.name}
+            <InfoTip text={getParameterDescription()} />
           </h3>
         </div>
         <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor()}`}>

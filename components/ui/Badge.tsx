@@ -151,8 +151,14 @@ const conservationConfig: Record<string, { variant: BadgeVariant; label: string;
 export function ConservationBadge({ status, size = 'md', showFull = false, className = '' }: ConservationBadgeProps) {
   const config = conservationConfig[status];
   return (
-    <Badge variant={config.variant} size={size} className={className}>
-      {showFull ? config.full : config.label}
+    <Badge
+      variant={config.variant}
+      size={size}
+      className={`${className} ${!showFull ? 'cursor-help' : ''}`}
+    >
+      <span title={!showFull ? config.full : undefined}>
+        {showFull ? config.full : config.label}
+      </span>
     </Badge>
   );
 }
