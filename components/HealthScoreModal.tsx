@@ -10,6 +10,9 @@ interface HealthScoreBreakdown {
     populationTrends: { score: number; weight: number; available: boolean };
     habitatQuality: { score: number; weight: number; available: boolean };
     speciesDiversity: { score: number; weight: number; available: boolean };
+    thermalStress?: { score: number; weight: number; available: boolean };
+    productivity?: { score: number; weight: number; available: boolean };
+    communityAssessment?: { score: number; weight: number; available: boolean; count: number };
   };
   confidence: 'high' | 'medium' | 'low';
   dataSourcesAvailable: number;
@@ -29,6 +32,8 @@ interface DataSourceCardProps {
   score: number;
   weight: number;
   available: boolean;
+  subtitle?: string;
+  unavailableMessage?: string;
 }
 
 function DataSourceCard({
@@ -39,6 +44,8 @@ function DataSourceCard({
   score,
   weight,
   available,
+  subtitle,
+  unavailableMessage,
 }: DataSourceCardProps) {
   return (
     <div className={`p-4 rounded-xl border ${available ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100'}`}>
@@ -68,29 +75,34 @@ function DataSourceCard({
           <p className="text-xs text-gray-500 mb-3">{description}</p>
 
           {available ? (
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    score >= 70 ? 'bg-green-500' :
-                    score >= 50 ? 'bg-yellow-500' :
-                    'bg-orange-500'
-                  }`}
-                  style={{ width: `${score}%` }}
-                />
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      score >= 70 ? 'bg-green-500' :
+                      score >= 50 ? 'bg-yellow-500' :
+                      'bg-orange-500'
+                    }`}
+                    style={{ width: `${score}%` }}
+                  />
+                </div>
+                <span className={`text-sm font-bold ${
+                  score >= 70 ? 'text-green-600' :
+                  score >= 50 ? 'text-yellow-600' :
+                  'text-orange-600'
+                }`}>
+                  {score}
+                </span>
               </div>
-              <span className={`text-sm font-bold ${
-                score >= 70 ? 'text-green-600' :
-                score >= 50 ? 'text-yellow-600' :
-                'text-orange-600'
-              }`}>
-                {score}
-              </span>
+              {subtitle && (
+                <p className="text-xs text-gray-400 mt-1.5">{subtitle}</p>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-2 text-gray-400">
               <Icon name="circle-exclamation" size="sm" />
-              <span className="text-xs">No data available</span>
+              <span className="text-xs">{unavailableMessage || 'No data available'}</span>
             </div>
           )}
         </div>
@@ -105,6 +117,16 @@ export function HealthScoreModal({
   healthData,
 }: HealthScoreModalProps) {
   const { score, breakdown, confidence, dataSourcesAvailable } = healthData;
+
+  // Count total possible sources from the breakdown object
+  const totalSources = [
+    true, // populationTrends always present
+    true, // habitatQuality always present
+    true, // speciesDiversity always present
+    breakdown.thermalStress !== undefined,
+    breakdown.productivity !== undefined,
+    breakdown.communityAssessment !== undefined,
+  ].filter(Boolean).length;
 
   const confidenceInfo = {
     high: { label: 'High Confidence', color: 'text-green-600', bg: 'bg-green-100' },
@@ -136,15 +158,15 @@ export function HealthScoreModal({
             {confidenceInfo[confidence].label}
           </span>
           <span className="text-xs text-gray-500">
-            ({dataSourcesAvailable}/3 sources)
+            ({dataSourcesAvailable}/{totalSources} sources)
           </span>
         </div>
       </div>
 
       {/* Explanation */}
       <p className="text-sm text-gray-600 text-center mb-6">
-        The composite health score is calculated from multiple real-time data sources,
-        each weighted by their importance to ecosystem health.
+        The composite health score is calculated from multiple real-time data sources
+        and community observations, each weighted by their importance to ecosystem health.
       </p>
 
       {/* Data Sources */}
@@ -178,13 +200,54 @@ export function HealthScoreModal({
           weight={breakdown.speciesDiversity.weight}
           available={breakdown.speciesDiversity.available}
         />
+
+        {breakdown.thermalStress && (
+          <DataSourceCard
+            name="Thermal Stress"
+            description="Sea surface temperature anomalies from Copernicus satellite data"
+            icon="temperature-high"
+            iconColor="text-red-500"
+            score={breakdown.thermalStress.score}
+            weight={breakdown.thermalStress.weight}
+            available={breakdown.thermalStress.available}
+          />
+        )}
+
+        {breakdown.productivity && (
+          <DataSourceCard
+            name="Productivity"
+            description="Ocean productivity measured by chlorophyll concentration"
+            icon="seedling"
+            iconColor="text-green-500"
+            score={breakdown.productivity.score}
+            weight={breakdown.productivity.weight}
+            available={breakdown.productivity.available}
+          />
+        )}
+
+        {breakdown.communityAssessment !== undefined && (
+          <DataSourceCard
+            name="Community Observations"
+            description="Health assessments contributed by citizen scientists and marine observers"
+            icon="users"
+            iconColor="text-amber-600"
+            score={Math.round(breakdown.communityAssessment.score)}
+            weight={breakdown.communityAssessment.weight}
+            available={breakdown.communityAssessment.available}
+            subtitle={breakdown.communityAssessment.available
+              ? `Based on ${breakdown.communityAssessment.count} assessment${breakdown.communityAssessment.count !== 1 ? 's' : ''}`
+              : undefined
+            }
+            unavailableMessage="No community assessments yet. Be the first to contribute!"
+          />
+        )}
       </div>
 
       {/* Footer Note */}
       <div className="mt-6 pt-4 border-t border-gray-100">
         <p className="text-xs text-gray-500 text-center">
-          Scores are dynamically weighted based on data availability.
-          If a source is unavailable, its weight is redistributed to other sources.
+          Scientific data sources are dynamically weighted based on availability.
+          Community observations contribute up to 10% of the overall score.
         </p>
       </div>
     </Modal>

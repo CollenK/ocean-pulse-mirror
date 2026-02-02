@@ -283,7 +283,12 @@ function ObservePageContent() {
         await deleteDraft(draftId);
       }
 
-      router.push('/?observation=success');
+      const selectedMPAName = selectedMPA?.name || '';
+      const successParams = new URLSearchParams({ observation: 'success' });
+      if (selectedMPAName) {
+        successParams.set('mpa_name', selectedMPAName);
+      }
+      router.push(`/ocean-pulse-app?${successParams.toString()}`);
     } catch (error) {
       console.error('Failed to save observation:', error);
       alert('Failed to save observation. Please try again.');
@@ -324,6 +329,17 @@ function ObservePageContent() {
           <h1 className="text-xl font-bold text-balean-navy">Submit New Report</h1>
           <p className="text-sm text-balean-gray-400">Help us monitor ocean health by sharing your observations</p>
         </div>
+
+        {/* Impact Callout */}
+        <div className="flex items-start gap-3 p-4 bg-balean-cyan/10 border border-balean-cyan/20 rounded-xl">
+          <Icon name="info" className="text-balean-cyan text-lg flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-balean-gray-600">
+            Your observations directly contribute to MPA health scores. Each health assessment
+            you provide is combined with scientific data to create a more complete picture of
+            ocean health.
+          </p>
+        </div>
+
         {/* Report Type */}
         <section data-error={!!errors.reportType}>
           <label className="block text-sm font-semibold text-balean-navy mb-3">

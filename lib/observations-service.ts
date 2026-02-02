@@ -404,3 +404,79 @@ export async function uploadObservationPhoto(
     return null;
   }
 }
+
+export interface UserObservationStats {
+  observationCount: number;
+  speciesCount: number;
+  healthAssessmentCount: number;
+  mpasContributed: number;
+  averageHealthScore: number | null;
+}
+
+/**
+ * Get observation and contribution stats for a user
+ * Fetches observation count, distinct species, and health assessment data
+ */
+export async function getUserObservationStats(userId: string): Promise<UserObservationStats> {
+  const stats: UserObservationStats = {
+    observationCount: 0,
+    speciesCount: 0,
+    healthAssessmentCount: 0,
+    mpasContributed: 0,
+    averageHealthScore: null,
+  };
+
+  if (!isSupabaseConfigured()) {
+    return stats;
+  }
+
+  try {
+    const supabase = createClient();
+
+    // Fetch observation count
+    const { count: obsCount, error: obsError } = await supabase
+      .from('observations')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_draft', false);
+
+    if (!obsError && obsCount !== null) {
+      stats.observationCount = obsCount;
+    }
+
+    // Fetch distinct species count
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: speciesData, error: speciesError } = await (supabase
+      .from('observations') as any)
+      .select('species_name')
+      .eq('user_id', userId)
+      .eq('is_draft', false)
+      .not('species_name', 'is', null);
+
+    if (!speciesError && speciesData) {
+      const uniqueSpecies = new Set(
+        (speciesData as Array<{ species_name: string }>).map(row => row.species_name)
+      );
+      stats.speciesCount = uniqueSpecies.size;
+    }
+
+    // Fetch health assessment stats
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: healthData, error: healthError } = await (supabase
+      .from('user_health_assessments') as any)
+      .select('score, mpa_id')
+      .eq('user_id', userId);
+
+    if (!healthError && healthData && healthData.length > 0) {
+      stats.healthAssessmentCount = healthData.length;
+      const uniqueMPAs = new Set(healthData.map((row: { mpa_id: string }) => row.mpa_id));
+      stats.mpasContributed = uniqueMPAs.size;
+      const totalScore = healthData.reduce((sum: number, row: { score: number }) => sum + row.score, 0);
+      stats.averageHealthScore = Math.round((totalScore / healthData.length) * 10) / 10;
+    }
+  } catch (error) {
+    console.error('Failed to fetch user observation stats:', error);
+  }
+
+  return stats;
+}

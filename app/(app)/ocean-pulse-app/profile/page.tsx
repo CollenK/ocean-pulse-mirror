@@ -9,6 +9,7 @@ import { useSavedMPAs } from '@/hooks/useSavedMPAs';
 import { Card, CardContent, CardTitle, Button, Badge, Icon } from '@/components/ui';
 import { storeAuthRedirect } from '@/lib/auth-redirect';
 import { openCookiePreferences } from '@/components/CookieConsent';
+import { getUserObservationStats, type UserObservationStats } from '@/lib/observations-service';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -17,6 +18,8 @@ export default function ProfilePage() {
   const [displayName, setDisplayName] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [userStats, setUserStats] = useState<UserObservationStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -34,6 +37,18 @@ export default function ProfilePage() {
       setDisplayName(user.email.split('@')[0]);
     }
   }, [profile, user]);
+
+  // Fetch user observation stats
+  useEffect(() => {
+    if (user?.id) {
+      setStatsLoading(true);
+      getUserObservationStats(user.id)
+        .then(setUserStats)
+        .finally(() => setStatsLoading(false));
+    } else {
+      setStatsLoading(false);
+    }
+  }, [user?.id]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -129,14 +144,73 @@ export default function ProfilePage() {
                   <p className="text-sm text-balean-gray-500">Saved MPAs</p>
                 </div>
                 <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl">
-                  <p className="text-3xl font-bold text-balean-cyan">0</p>
+                  {statsLoading ? (
+                    <div className="h-9 flex items-center justify-center">
+                      <div className="animate-pulse bg-balean-gray-200 rounded w-8 h-8" />
+                    </div>
+                  ) : (
+                    <p className="text-3xl font-bold text-balean-cyan">{userStats?.observationCount ?? 0}</p>
+                  )}
                   <p className="text-sm text-balean-gray-500">Observations</p>
                 </div>
                 <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
-                  <p className="text-3xl font-bold text-green-500">0</p>
+                  {statsLoading ? (
+                    <div className="h-9 flex items-center justify-center">
+                      <div className="animate-pulse bg-balean-gray-200 rounded w-8 h-8" />
+                    </div>
+                  ) : (
+                    <p className="text-3xl font-bold text-green-500">{userStats?.speciesCount ?? 0}</p>
+                  )}
                   <p className="text-sm text-balean-gray-500">Species Found</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Your Impact */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="shadow-lg">
+            <CardTitle className="flex items-center gap-2">
+              <Icon name="heart-rate" className="text-amber-600" />
+              Your Impact
+            </CardTitle>
+            <CardContent>
+              {statsLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-balean-cyan border-t-transparent" />
+                </div>
+              ) : userStats && userStats.healthAssessmentCount > 0 ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-balean-gray-600">
+                    You have contributed {userStats.healthAssessmentCount} health assessment{userStats.healthAssessmentCount !== 1 ? 's' : ''} across {userStats.mpasContributed} MPA{userStats.mpasContributed !== 1 ? 's' : ''}.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-amber-600">{userStats.healthAssessmentCount}</p>
+                      <p className="text-xs text-balean-gray-500">Assessments</p>
+                    </div>
+                    <div className="p-3 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-amber-600">{userStats.averageHealthScore ?? '-'}</p>
+                      <p className="text-xs text-balean-gray-500">Avg. Score</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <div className="w-12 h-12 rounded-full bg-amber-50 mx-auto mb-3 flex items-center justify-center">
+                    <Icon name="star" className="text-amber-400 text-xl" />
+                  </div>
+                  <p className="text-sm text-balean-gray-500 mb-1">No health assessments yet</p>
+                  <p className="text-xs text-balean-gray-400">
+                    Start contributing by submitting observations with health assessments
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -145,7 +219,7 @@ export default function ProfilePage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
+          transition={{ delay: 0.2 }}
         >
           <Card className="shadow-lg">
             <CardTitle className="flex items-center gap-2">
@@ -219,7 +293,7 @@ export default function ProfilePage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.3 }}
         >
           <Card className="shadow-lg">
             <CardTitle className="flex items-center gap-2">
@@ -279,7 +353,7 @@ export default function ProfilePage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.4 }}
         >
           <Card className="shadow-lg">
             <CardTitle className="flex items-center gap-2">
@@ -336,7 +410,7 @@ export default function ProfilePage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.5 }}
         >
           <Card className="shadow-lg border-red-100">
             <CardContent className="pt-6">

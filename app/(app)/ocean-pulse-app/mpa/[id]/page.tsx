@@ -311,7 +311,9 @@ export default function MPADetailPage() {
                   <p className="text-3xl font-bold text-balean-navy">{compositeHealth.score}</p>
                   <p className="text-xs text-balean-gray-400 mt-1">Health Score</p>
                   <p className="text-xs text-balean-gray-300">
-                    {compositeHealth.dataSourcesAvailable}/{compositeHealth.source === 'backend' ? '5' : '3'} sources
+                    {compositeHealth.dataSourcesAvailable}/{
+                      Object.keys(compositeHealth.breakdown).length
+                    } sources
                     {compositeHealth.backendAvailable && (
                       <span className="ml-1 text-healthy" title="Using Copernicus satellite data">*</span>
                     )}
