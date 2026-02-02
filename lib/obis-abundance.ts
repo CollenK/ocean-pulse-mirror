@@ -13,12 +13,12 @@ import {
 import { createBoundingBox, getCommonName } from './obis-client';
 import { initDB } from './offline-storage';
 import { getIndicatorSpeciesForMPA } from './indicator-species';
-import { INDICATOR_SPECIES, findByScientificName } from '@/data/indicator-species';
+import { INDICATOR_SPECIES } from '@/data/indicator-species';
 
 const OBIS_API_BASE = 'https://api.obis.org/v3';
 const REQUEST_DELAY = 1000; // 1 second between requests
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
-const CACHE_VERSION = 'v3-indicator-presence'; // Version to invalidate old caches
+const CACHE_VERSION = 'v4-targeted-species'; // Version to invalidate old caches
 
 // Simple rate limiter
 let lastRequestTime = 0;
@@ -57,30 +57,69 @@ function createWKTPolygon(bounds: {
   return `POLYGON((${bounds.west} ${bounds.south}, ${bounds.east} ${bounds.south}, ${bounds.east} ${bounds.north}, ${bounds.west} ${bounds.north}, ${bounds.west} ${bounds.south}))`;
 }
 
-// Set of indicator species scientific names for quick lookup
-const INDICATOR_SPECIES_NAMES = new Set(
-  INDICATOR_SPECIES.map(s => s.scientificName.toLowerCase())
-);
-
-// Map of taxon IDs to indicator species for lookup
-const INDICATOR_BY_TAXON = new Map(
-  INDICATOR_SPECIES.map(s => [s.obisTaxonId, s])
-);
-
 /**
- * Check if a species is an indicator species
+ * Fetch occurrence records for a single indicator species from OBIS
  */
-function isIndicatorSpecies(scientificName: string, taxonId?: number): boolean {
-  if (taxonId && INDICATOR_BY_TAXON.has(taxonId)) {
-    return true;
+async function fetchSpeciesOccurrences(
+  scientificName: string,
+  wkt: string,
+  startDate: string,
+  endDate: string,
+  maxRecords: number = 500
+): Promise<OBISAbundanceRecord[]> {
+  const params = new URLSearchParams({
+    geometry: wkt,
+    scientificname: scientificName,
+    startdate: startDate,
+    enddate: endDate,
+    size: String(Math.min(maxRecords, 1000)),
+  });
+
+  const url = `${OBIS_API_BASE}/occurrence?${params}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { 'Accept': 'application/json' },
+    });
+
+    if (!response.ok) {
+      console.warn(`[Abundance] OBIS error for ${scientificName}: ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+    const results = data.results || [];
+
+    return results
+      .filter((r: any) => r.occurrenceStatus === 'present' || r.occurrenceStatus === undefined)
+      .map((r: any) => ({
+        occurrenceID: r.occurrenceID || r.id,
+        scientificName: r.scientificName || r.scientificname || scientificName,
+        genus: r.genus,
+        family: r.family,
+        eventDate: r.eventDate,
+        eventID: r.eventID,
+        decimalLatitude: r.decimalLatitude,
+        decimalLongitude: r.decimalLongitude,
+        individualCount: r.individualCount || 1,
+        organismQuantity: r.organismQuantity,
+        organismQuantityType: r.organismQuantityType,
+        occurrenceStatus: r.occurrenceStatus || 'present',
+        basisOfRecord: r.basisOfRecord,
+        datasetID: r.datasetID,
+        institutionCode: r.institutionCode,
+      }));
+  } catch (error) {
+    console.warn(`[Abundance] Fetch error for ${scientificName}:`, error);
+    return [];
   }
-  return INDICATOR_SPECIES_NAMES.has(scientificName.toLowerCase());
 }
 
 /**
  * Fetch abundance data from OBIS for an MPA
- * Retrieves 10 years of occurrence records with abundance information
- * Filters to only include indicator species relevant to this MPA's ecosystem
+ * Queries each indicator species individually using the scientificname parameter,
+ * which is far more reliable than fetching generic records and filtering client-side
+ * (large MPAs can have hundreds of thousands of records, making generic sampling miss indicator species)
  */
 export async function fetchAbundanceData(
   mpaId: string,
@@ -104,85 +143,29 @@ export async function fetchAbundanceData(
     }
   }
 
-  // Create lookup set for relevant indicator species
-  const relevantNames = new Set(relevantIndicatorSpecies.map(s => s.scientificName.toLowerCase()));
-  const relevantTaxonIds = new Set(relevantIndicatorSpecies.map(s => s.obisTaxonId));
+  if (relevantIndicatorSpecies.length === 0) {
+    return [];
+  }
 
-  const params = new URLSearchParams({
-    geometry: wkt,
-    startdate: startDate,
-    enddate: endDate,
-    size: '1000',
-  });
-
+  // Cap at 12 species to keep API calls manageable
+  const speciesToQuery = relevantIndicatorSpecies.slice(0, 12);
   const allRecords: OBISAbundanceRecord[] = [];
-  let offset = 0;
-  let hasMore = true;
-  let maxRequests = 5; // Limit to 5 requests (5000 records) to avoid long waits
 
-  while (hasMore && maxRequests > 0) {
-    await rateLimit();
+  // Query in parallel batches of 3 to balance speed and rate courtesy
+  const BATCH_SIZE = 3;
 
-    params.set('offset', offset.toString());
-    const url = `${OBIS_API_BASE}/occurrence?${params}`;
+  for (let i = 0; i < speciesToQuery.length; i += BATCH_SIZE) {
+    if (i > 0) await rateLimit();
 
-    try {
-      const response = await fetch(url, {
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
+    const batch = speciesToQuery.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map(species =>
+        fetchSpeciesOccurrences(species.scientificName, wkt, startDate, endDate)
+      )
+    );
 
-      if (!response.ok) {
-        console.error(`[Abundance] OBIS API error: ${response.status}`);
-        break;
-      }
-
-      const data = await response.json();
-      const results = data.results || [];
-
-      // Filter for indicator species records
-      // Include all presence records - use occurrence count as proxy when abundance data unavailable
-      const indicatorRecords = results.filter((r: any) => {
-        // Check if this is an indicator species
-        const scientificName = (r.scientificName || r.scientificname || '').toLowerCase();
-        const taxonId = r.taxonID || r.aphiaID;
-
-        const isIndicator = relevantNames.has(scientificName) ||
-          (taxonId && relevantTaxonIds.has(taxonId));
-
-        if (!isIndicator) return false;
-
-        // Include presence records (most OBIS data is presence-only)
-        return r.occurrenceStatus === 'present' || r.occurrenceStatus === undefined;
-      }).map((r: any) => ({
-        occurrenceID: r.occurrenceID || r.id,
-        scientificName: r.scientificName || r.scientificname,
-        genus: r.genus,
-        family: r.family,
-        eventDate: r.eventDate,
-        eventID: r.eventID,
-        decimalLatitude: r.decimalLatitude,
-        decimalLongitude: r.decimalLongitude,
-        // Use individualCount if available, otherwise default to 1 for presence records
-        individualCount: r.individualCount || 1,
-        organismQuantity: r.organismQuantity,
-        organismQuantityType: r.organismQuantityType,
-        occurrenceStatus: r.occurrenceStatus || 'present',
-        basisOfRecord: r.basisOfRecord,
-        datasetID: r.datasetID,
-        institutionCode: r.institutionCode,
-      }));
-
-      allRecords.push(...indicatorRecords);
-
-      offset += results.length;
-      hasMore = results.length === 1000; // Continue if we got max results
-      maxRequests--;
-
-    } catch (error) {
-      console.error('[Abundance] Fetch error:', error);
-      break;
+    for (const records of batchResults) {
+      allRecords.push(...records);
     }
   }
 

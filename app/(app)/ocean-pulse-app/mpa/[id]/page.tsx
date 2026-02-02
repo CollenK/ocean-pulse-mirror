@@ -59,6 +59,12 @@ export default function MPADetailPage() {
   // Load observations for badge count
   const { observations: mpaObservations } = useObservations(mpa?.id || '', { enabled: !!mpa });
 
+  // Scale search radius to MPA size (min 50km, max 300km)
+  const abundanceRadius = useMemo(() => {
+    if (!mpa?.area) return 50;
+    return Math.min(Math.max(Math.round(Math.sqrt(mpa.area / Math.PI)), 50), 300);
+  }, [mpa?.area]);
+
   // Load abundance data (filtered by indicator species)
   const {
     summary: abundanceSummary,
@@ -67,7 +73,7 @@ export default function MPADetailPage() {
   } = useAbundanceData(
     mpa?.id || '',
     mpa?.center || [0, 0],
-    50,
+    abundanceRadius,
     mpa ? {
       latitude: mpa.center[0],
       longitude: mpa.center[1],

@@ -57,6 +57,12 @@ export function useAbundanceData(
   const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   useEffect(() => {
+    // Skip fetching when mpaId is empty (initial render before MPA loads)
+    if (!mpaId) {
+      setLoading(false);
+      return;
+    }
+
     let isMounted = true;
 
     async function loadAbundanceData() {
@@ -84,25 +90,25 @@ export function useAbundanceData(
 
         // Check if we have any data
         if (records.length === 0) {
-          const emptyummary: MPAAbundanceSummary = {
-            mpaId,
-            speciesTrends: [],
-            overallBiodiversity: {
-              speciesCount: 0,
-              trendDirection: 'stable',
-              healthScore: 0,
-            },
-            dataQuality: {
-              recordsWithAbundance: 0,
-              totalRecords: 0,
-              coveragePercent: 0,
-            },
-            lastUpdated: Date.now(),
-          };
-
-          setSummary(emptyummary);
-          setLoading(false);
-          setProgress(100);
+          if (isMounted) {
+            setSummary({
+              mpaId,
+              speciesTrends: [],
+              overallBiodiversity: {
+                speciesCount: 0,
+                trendDirection: 'stable',
+                healthScore: 0,
+              },
+              dataQuality: {
+                recordsWithAbundance: 0,
+                totalRecords: 0,
+                coveragePercent: 0,
+              },
+              lastUpdated: Date.now(),
+            });
+            setLoading(false);
+            setProgress(100);
+          }
           return;
         }
 
