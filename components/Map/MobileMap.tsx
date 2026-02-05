@@ -27,7 +27,7 @@ const boundaryFillLayer: LayerProps = {
   type: 'fill',
   paint: {
     'fill-color': ['get', 'color'],
-    'fill-opacity': 0.1,
+    'fill-opacity': 0.15,
   },
 };
 
@@ -37,7 +37,7 @@ const boundaryLineLayer: LayerProps = {
   paint: {
     'line-color': ['get', 'color'],
     'line-width': 2,
-    'line-opacity': 0.6,
+    'line-opacity': 0.7,
   },
 };
 
@@ -64,23 +64,46 @@ export function MobileMap({
     return { longitude: 0, latitude: 20, zoom: 2 };
   }, [center, zoom]);
 
-  // Convert MPA bounds to GeoJSON FeatureCollection
-  const boundariesGeoJSON = useMemo(() => ({
-    type: 'FeatureCollection' as const,
-    features: mpas
-      .filter((mpa) => mpa.bounds && mpa.bounds.length === 2)
-      .map((mpa) => ({
+  // Convert MPA geometries to GeoJSON FeatureCollection
+  // Supports both Polygon and MultiPolygon types
+  const boundariesGeoJSON = useMemo(() => {
+    const withGeometry = mpas.filter((mpa) => mpa.geometry);
+    console.log('MAP DEBUG - MPAs with geometry:', withGeometry.length);
+
+    const features = withGeometry.map((mpa) => {
+      const geom = mpa.geometry!;
+      // Cast to GeoJSON.Geometry type for MapLibre compatibility
+      const geometry = geom.type === 'Polygon'
+        ? { type: 'Polygon' as const, coordinates: geom.coordinates as number[][][] }
+        : { type: 'MultiPolygon' as const, coordinates: geom.coordinates as number[][][][] };
+
+      return {
         type: 'Feature' as const,
         properties: {
           id: mpa.id,
           color: getHealthColor(mpa.healthScore),
         },
-        geometry: {
-          type: 'Polygon' as const,
-          coordinates: [boundsToGeoJSON(mpa.bounds)],
-        },
-      })),
-  }), [mpas]);
+        geometry,
+      };
+    });
+
+    console.log('MAP DEBUG - GeoJSON features count:', features.length);
+
+    // Debug GBR specifically
+    const gbrMpa = withGeometry.find(m => m.id === '2571');
+    if (gbrMpa?.geometry) {
+      console.log('GBR DEBUG - Type:', gbrMpa.geometry.type, 'Polygons:',
+        gbrMpa.geometry.type === 'MultiPolygon'
+          ? (gbrMpa.geometry.coordinates as number[][][][]).length
+          : 1
+      );
+    }
+
+    return {
+      type: 'FeatureCollection' as const,
+      features,
+    };
+  }, [mpas]);
 
   // Hover handlers - show popup on hover (desktop) or persist on click
   const handleMarkerMouseEnter = useCallback((mpa: MPA) => {
@@ -147,6 +170,7 @@ export function MobileMap({
     };
   }, []);
 
+
   return (
     <div
       className="relative bg-[#a3d5e8]"
@@ -162,7 +186,11 @@ export function MobileMap({
         renderWorldCopies={false}
       >
         {/* MPA Boundaries as GeoJSON layers */}
-        <Source id="mpa-boundaries" type="geojson" data={boundariesGeoJSON}>
+        <Source
+          id="mpa-boundaries"
+          type="geojson"
+          data={boundariesGeoJSON}
+        >
           <Layer {...boundaryFillLayer} />
           <Layer {...boundaryLineLayer} />
         </Source>

@@ -1,4 +1,4 @@
-import { MPA } from '@/types';
+import { MPA, MPAGeometry } from '@/types';
 import { createBrowserClient } from '@supabase/ssr';
 
 /**
@@ -28,6 +28,66 @@ function getSupabase() {
 }
 
 /**
+ * Extract polygon coordinates from GeoJSON geometry
+ * Returns coordinates in GeoJSON format [[lng, lat], ...]
+ */
+function extractPolygonFromGeometry(geometry: any): number[][][] | undefined {
+  if (!geometry) return undefined;
+
+  try {
+    // Handle string (JSON that needs parsing)
+    let geom = geometry;
+    if (typeof geometry === 'string') {
+      geom = JSON.parse(geometry);
+    }
+
+    if (!geom || !geom.type) return undefined;
+
+    // Handle different geometry types
+    if (geom.type === 'Polygon' && geom.coordinates) {
+      return geom.coordinates;
+    } else if (geom.type === 'MultiPolygon' && geom.coordinates) {
+      // For MultiPolygon, return the largest polygon (first one typically)
+      return geom.coordinates[0];
+    }
+
+    return undefined;
+  } catch (e) {
+    console.warn('Error parsing geometry:', e);
+    return undefined;
+  }
+}
+
+/**
+ * Calculate bounding box from polygon coordinates
+ * Returns [[minLat, minLng], [maxLat, maxLng]]
+ */
+function boundsFromPolygon(polygon: number[][][]): number[][] {
+  if (!polygon || !polygon[0] || polygon[0].length === 0) {
+    return [];
+  }
+
+  // polygon[0] is the outer ring, coordinates are [lng, lat]
+  const ring = polygon[0];
+  let minLng = Infinity, maxLng = -Infinity;
+  let minLat = Infinity, maxLat = -Infinity;
+
+  for (const coord of ring) {
+    const [lng, lat] = coord;
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  }
+
+  // Return in [lat, lng] format for compatibility with existing bounds format
+  return [
+    [minLat, minLng],
+    [maxLat, maxLng],
+  ];
+}
+
+/**
  * Transform database row to MPA type
  */
 function transformMPARow(row: any): MPA {
@@ -48,20 +108,19 @@ function transformMPARow(row: any): MPA {
     }
   }
 
-  // Parse bounds from geometry if available, otherwise create from center
+  // Extract real polygon from PostGIS geometry (returned as GeoJSON via cast)
+  const polygon = extractPolygonFromGeometry(row.geometry_geojson);
+
+  // Calculate bounds from real polygon if available, otherwise approximate from center
   let bounds: number[][] = [];
-  if (row.geometry) {
-    // For now, create approximate bounds from center
-    // In production, you'd extract actual polygon bounds
+  if (polygon) {
+    bounds = boundsFromPolygon(polygon);
+  }
+
+  // Fallback to approximate bounds if no polygon or bounds extraction failed
+  if (bounds.length === 0 && center[0] !== 0 && center[1] !== 0) {
     const [lat, lon] = center;
     const delta = 0.5; // ~50km approximate
-    bounds = [
-      [lat - delta, lon - delta],
-      [lat + delta, lon + delta],
-    ];
-  } else if (center[0] !== 0 && center[1] !== 0) {
-    const [lat, lon] = center;
-    const delta = 0.5;
     bounds = [
       [lat - delta, lon - delta],
       [lat + delta, lon + delta],
@@ -103,6 +162,7 @@ function transformMPARow(row: any): MPA {
     protectionLevel: row.protection_level || 'Not Reported',
     description,
     regulations: row.metadata?.regulations,
+    polygon,
   };
 }
 
@@ -119,9 +179,11 @@ export async function fetchAllMPAs(): Promise<MPA[]> {
   }
 
   try {
+    // Select columns without geometry first, then fetch geometry separately if needed
+    // Large geometry data can cause query issues
     const { data, error } = await supabase
       .from('mpas')
-      .select('*')
+      .select('id, external_id, name, country, center, area_km2, established_year, protection_level, description, metadata')
       .gt('area_km2', 0)
       .order('area_km2', { ascending: false })
       .limit(100);
@@ -153,7 +215,7 @@ export async function fetchMPAById(id: string): Promise<MPA | null> {
     // Try to find by external_id first (WDPA ID), then by UUID
     let query = supabase
       .from('mpas')
-      .select('*')
+      .select('id, external_id, name, country, center, area_km2, established_year, protection_level, description, metadata')
       .eq('external_id', id)
       .single();
 
@@ -163,7 +225,7 @@ export async function fetchMPAById(id: string): Promise<MPA | null> {
     if (error || !data) {
       const { data: byUuid, error: uuidError } = await supabase
         .from('mpas')
-        .select('*')
+        .select('id, external_id, name, country, center, area_km2, established_year, protection_level, description, metadata')
         .eq('id', id)
         .single();
 
@@ -203,7 +265,7 @@ export async function findNearestMPAs(
     // (For production, you'd use PostGIS ST_Distance)
     const { data, error } = await supabase
       .from('mpas')
-      .select('*');
+      .select('id, external_id, name, country, center, area_km2, established_year, protection_level, description, metadata');
 
     if (error) {
       console.error('Error fetching MPAs:', error);
@@ -241,7 +303,7 @@ export async function searchMPAs(query: string): Promise<MPA[]> {
   try {
     const { data, error } = await supabase
       .from('mpas')
-      .select('*')
+      .select('id, external_id, name, country, center, area_km2, established_year, protection_level, description, metadata')
       .ilike('name', `%${query}%`)
       .limit(20);
 
@@ -321,6 +383,65 @@ export function formatDistance(distanceKm: number): string {
     return `${distanceKm.toFixed(0)} km`;
   }
   return `${distanceKm.toFixed(1)} km`;
+}
+
+/**
+ * Fetch MPA geometries for map rendering
+ * Returns a map of MPA external_id to GeoJSON geometry
+ * @param externalIds - Optional array of external IDs to fetch geometries for
+ */
+export async function fetchMPAGeometries(externalIds?: string[]): Promise<Map<string, MPAGeometry>> {
+  const supabase = getSupabase();
+  const geometryMap = new Map<string, MPAGeometry>();
+
+  if (!supabase) {
+    console.error('Supabase not configured');
+    return geometryMap;
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('get_mpa_geometries_for_map', {
+      external_ids: externalIds || null,
+    });
+
+    if (error) {
+      console.error('Error fetching MPA geometries:', error);
+      return geometryMap;
+    }
+
+    console.log('GEOM DEBUG - Fetched', data?.length || 0, 'geometries');
+
+    // Convert to map for easy lookup
+    // Store as { type, coordinates } to preserve MultiPolygon structure
+    for (const row of data || []) {
+      if (row.geometry_geojson && row.external_id) {
+        const geojson = row.geometry_geojson;
+
+        if (geojson.type === 'Polygon' && geojson.coordinates) {
+          // Store Polygon coordinates directly
+          geometryMap.set(row.external_id, {
+            type: 'Polygon',
+            coordinates: geojson.coordinates,
+          });
+          console.log('GEOM DEBUG - Added Polygon for:', row.external_id);
+        } else if (geojson.type === 'MultiPolygon' && geojson.coordinates) {
+          // Keep full MultiPolygon structure
+          geometryMap.set(row.external_id, {
+            type: 'MultiPolygon',
+            coordinates: geojson.coordinates,
+          });
+          console.log('GEOM DEBUG - Added MultiPolygon for:', row.external_id, 'with', geojson.coordinates.length, 'polygons');
+        } else {
+          console.log('GEOM DEBUG - Skipped:', row.external_id, 'type:', geojson?.type);
+        }
+      }
+    }
+
+    return geometryMap;
+  } catch (error) {
+    console.error('Error fetching MPA geometries:', error);
+    return geometryMap;
+  }
 }
 
 /**

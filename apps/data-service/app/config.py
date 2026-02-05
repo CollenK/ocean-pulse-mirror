@@ -22,6 +22,16 @@ class Settings(BaseSettings):
     copernicus_username: str = ""
     copernicus_password: str = ""
 
+    # Protected Planet API
+    protected_planet_api_token: str = ""
+
+    # Supabase (for polygon updates)
+    supabase_url: str = ""
+    supabase_service_role_key: str = ""
+
+    # Pipeline API key (for protected endpoints)
+    pipeline_api_key: str = ""
+
     # Cache settings (in seconds)
     cache_ttl_environmental: int = 3600  # 1 hour
     cache_ttl_species: int = 86400  # 24 hours

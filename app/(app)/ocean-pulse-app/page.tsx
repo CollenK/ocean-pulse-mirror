@@ -7,7 +7,7 @@ import { useEffect, useState, useCallback, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MPA } from '@/types';
-import { fetchAllMPAs } from '@/lib/mpa-service';
+import { fetchAllMPAs, fetchMPAGeometries } from '@/lib/mpa-service';
 import { usePullToRefresh, PullToRefreshIndicator } from '@/hooks/usePullToRefresh';
 import { useSavedMPAs } from '@/hooks/useSavedMPAs';
 import dynamic from 'next/dynamic';
@@ -104,8 +104,28 @@ function HomeContent() {
 
   const loadMPAs = useCallback(async () => {
     setLoading(true);
-    const data = await fetchAllMPAs();
-    setMpas(data);
+    try {
+      // First fetch MPA metadata
+      const data = await fetchAllMPAs();
+
+      // Then fetch geometries for these specific MPAs
+      const externalIds = data.map((mpa) => mpa.id);
+      const geometries = await fetchMPAGeometries(externalIds);
+
+      // Debug
+      const matches = data.filter(mpa => geometries.has(mpa.id)).length;
+      console.log(`PAGE DEBUG - MPAs: ${data.length}, Geometries: ${geometries.size}, Matches: ${matches}`);
+
+      // Merge geometries into MPAs
+      const mpasWithGeometry = data.map((mpa) => ({
+        ...mpa,
+        geometry: geometries.get(mpa.id) || mpa.geometry,
+      }));
+
+      setMpas(mpasWithGeometry);
+    } catch (error) {
+      alert('Error: ' + String(error));
+    }
     setLoading(false);
   }, []);
 

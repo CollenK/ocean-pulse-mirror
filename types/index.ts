@@ -1,10 +1,16 @@
+// GeoJSON geometry types for MPA boundaries
+export interface MPAGeometry {
+  type: 'Polygon' | 'MultiPolygon';
+  coordinates: number[][][] | number[][][][];
+}
+
 // Core MPA Types
 export interface MPA {
   id: string;
   dbId?: string; // Internal UUID from database (for foreign key operations)
   name: string;
   country: string;
-  bounds: number[][]; // [[lat, lng], [lat, lng]]
+  bounds: number[][]; // [[lat, lng], [lat, lng]] - approximate bounding box (fallback)
   center: [number, number];
   area: number; // km²
   healthScore: number; // 0-100
@@ -13,6 +19,8 @@ export interface MPA {
   protectionLevel: string;
   description?: string;
   regulations?: string;
+  polygon?: number[][][]; // Legacy: simple polygon coordinates (deprecated)
+  geometry?: MPAGeometry; // Full GeoJSON geometry (Polygon or MultiPolygon)
 }
 
 // Species Types

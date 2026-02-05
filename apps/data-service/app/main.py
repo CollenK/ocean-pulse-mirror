@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import health
+from app.routers import health, polygons
 
 settings = get_settings()
 
@@ -27,6 +27,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router, prefix="/api/v1", tags=["Health"])
+app.include_router(polygons.router, prefix="/api/v1", tags=["Pipeline"])
 
 
 @app.get("/")
