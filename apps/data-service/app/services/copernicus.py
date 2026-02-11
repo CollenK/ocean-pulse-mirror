@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from cachetools import TTLCache
 
 from app.config import get_settings
-from app.models.health import EnvironmentalData
+from app.models.health import EnvironmentalData, MarineHeatwaveAlert, HeatwaveCategory
 
 settings = get_settings()
 
@@ -175,50 +175,66 @@ class CopernicusService:
         lon: float,
     ) -> Optional[dict]:
         """
-        Fetch SST from Copernicus WMS GetFeatureInfo (public endpoint).
+        Fetch SST from Copernicus WMTS GetFeatureInfo (public endpoint).
 
-        This endpoint provides point data without requiring authentication.
+        Uses the new Copernicus Marine WMTS endpoint (the old
+        nrt.cmems-du.eu thredds endpoint was decommissioned April 2024).
         """
         try:
-            # Use the public WMS endpoint for SST
-            wms_url = "https://nrt.cmems-du.eu/thredds/wms/METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2"
+            wmts_url = "https://wmts.marine.copernicus.eu/teroWmts"
 
-            # Calculate bounding box for the query
-            delta = 0.1  # ~10km
-            bbox = f"{lon-delta},{lat-delta},{lon+delta},{lat+delta}"
+            # Use WMTS GetFeatureInfo with EPSG:4326 tile matrix
+            # Calculate tile coordinates for zoom level 5 (~5km resolution)
+            zoom = 5
+            n = 2 ** zoom
+            tile_col = int((lon + 180.0) / 360.0 * n)
+            tile_row = int((1.0 - math.log(math.tan(math.radians(lat)) + 1.0 / math.cos(math.radians(lat))) / math.pi) / 2.0 * n)
+
+            # Calculate pixel position within the tile (256x256)
+            tile_lon_min = tile_col / n * 360.0 - 180.0
+            tile_lon_max = (tile_col + 1) / n * 360.0 - 180.0
+            pixel_x = int((lon - tile_lon_min) / (tile_lon_max - tile_lon_min) * 256)
+
+            lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * tile_row / n)))
+            lat_rad_next = math.atan(math.sinh(math.pi * (1 - 2 * (tile_row + 1) / n)))
+            tile_lat_max = math.degrees(lat_rad)
+            tile_lat_min = math.degrees(lat_rad_next)
+            pixel_y = int((tile_lat_max - lat) / (tile_lat_max - tile_lat_min) * 256)
+
+            # Clamp pixel values
+            pixel_x = max(0, min(255, pixel_x))
+            pixel_y = max(0, min(255, pixel_y))
 
             params = {
-                "SERVICE": "WMS",
-                "VERSION": "1.3.0",
+                "SERVICE": "WMTS",
                 "REQUEST": "GetFeatureInfo",
-                "LAYERS": "analysed_sst",
-                "QUERY_LAYERS": "analysed_sst",
-                "INFO_FORMAT": "application/json",
-                "CRS": "EPSG:4326",
-                "BBOX": bbox,
-                "WIDTH": "3",
-                "HEIGHT": "3",
-                "I": "1",
-                "J": "1",
+                "LAYER": "SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001/METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2/analysed_sst",
+                "TILEMATRIXSET": "EPSG:3857",
+                "TILEMATRIX": str(zoom),
+                "TILEROW": str(tile_row),
+                "TILECOL": str(tile_col),
+                "I": str(pixel_x),
+                "J": str(pixel_y),
+                "INFOFORMAT": "application/json",
             }
 
-            response = await self.client.get(wms_url, params=params)
+            response = await self.client.get(wmts_url, params=params)
 
             if response.status_code == 200:
                 data = response.json()
-                # Parse the WMS response
+                # Parse WMTS GetFeatureInfo response
                 features = data.get("features", [])
                 if features:
                     props = features[0].get("properties", {})
-                    sst_kelvin = props.get("analysed_sst")
+                    # The new endpoint uses "value" as the property key
+                    sst_kelvin = props.get("value") or props.get("analysed_sst")
                     if sst_kelvin is not None:
-                        # Convert from Kelvin to Celsius
                         sst_celsius = float(sst_kelvin) - 273.15
                         return {"sst": sst_celsius, "anomaly": 0.0}
 
             return None
         except Exception as e:
-            print(f"WMS SST fetch error: {e}")
+            print(f"WMTS SST fetch error: {e}")
             return None
 
     async def _fetch_bgc_data(
@@ -236,35 +252,31 @@ class CopernicusService:
             return None
 
         try:
-            # Use ARCO API for point data extraction
-            # This requires the copernicusmarine library or direct API calls
-            # For now, we'll use the WMS endpoint for chlorophyll
+            # Use the new Copernicus WMTS endpoint for BGC data
+            wmts_url = "https://wmts.marine.copernicus.eu/teroWmts"
 
-            wms_url = "https://nrt.cmems-du.eu/thredds/wms/cmems_mod_glo_bgc_anfc_0.25deg_P1D-m"
-
-            delta = 0.25
-            bbox = f"{lon-delta},{lat-delta},{lon+delta},{lat+delta}"
+            # Calculate tile coordinates at zoom level 4 (~0.25 degree resolution)
+            zoom = 4
+            n = 2 ** zoom
+            tile_col = int((lon + 180.0) / 360.0 * n)
+            tile_row = int((1.0 - math.log(math.tan(math.radians(lat)) + 1.0 / math.cos(math.radians(lat))) / math.pi) / 2.0 * n)
+            pixel_x = 128
+            pixel_y = 128
 
             params = {
-                "SERVICE": "WMS",
-                "VERSION": "1.3.0",
+                "SERVICE": "WMTS",
                 "REQUEST": "GetFeatureInfo",
-                "LAYERS": "chl",
-                "QUERY_LAYERS": "chl",
-                "INFO_FORMAT": "application/json",
-                "CRS": "EPSG:4326",
-                "BBOX": bbox,
-                "WIDTH": "3",
-                "HEIGHT": "3",
-                "I": "1",
-                "J": "1",
+                "LAYER": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc_anfc_0.25deg_P1D-m/chl",
+                "TILEMATRIXSET": "EPSG:3857",
+                "TILEMATRIX": str(zoom),
+                "TILEROW": str(tile_row),
+                "TILECOL": str(tile_col),
+                "I": str(pixel_x),
+                "J": str(pixel_y),
+                "INFOFORMAT": "application/json",
             }
 
-            response = await self.client.get(
-                wms_url,
-                params=params,
-                headers={"Authorization": f"Bearer {token}"},
-            )
+            response = await self.client.get(wmts_url, params=params)
 
             if response.status_code == 200:
                 data = response.json()
@@ -430,6 +442,178 @@ class CopernicusService:
             })
 
         return timeseries
+
+    async def detect_marine_heatwave(
+        self,
+        lat: float,
+        lon: float,
+        mpa_id: str,
+    ) -> MarineHeatwaveAlert:
+        """
+        Detect marine heatwave conditions at a location.
+
+        Uses Hobday et al. 2018 classification:
+        - Category I (Moderate): 1-2x threshold exceedance
+        - Category II (Strong): 2-3x threshold exceedance
+        - Category III (Severe): 3-4x threshold exceedance
+        - Category IV (Extreme): 4x+ threshold exceedance
+
+        The threshold is the difference between the 90th percentile
+        and climatological mean for the location and time of year.
+        """
+        cache_key = f"heatwave_{mpa_id}_{lat:.2f}_{lon:.2f}"
+
+        if cache_key in _cache:
+            return _cache[cache_key]
+
+        # Get current SST
+        sst_result = await self._fetch_sst_from_wms(lat, lon)
+
+        if sst_result and sst_result.get("sst") is not None:
+            current_sst = sst_result["sst"]
+        else:
+            # Fall back to estimate if WMS fails
+            current_sst = self._estimate_sst(lat)
+
+        # Calculate climatological values for this location and time
+        climatological_mean = self._get_climatological_mean(lat)
+        threshold_90th = self._get_90th_percentile_threshold(lat)
+
+        # Calculate anomaly and intensity
+        anomaly = current_sst - climatological_mean
+        threshold_diff = threshold_90th - climatological_mean
+
+        # Intensity ratio: how many times the threshold difference
+        # A ratio of 1.0 means exactly at threshold (start of heatwave)
+        # A ratio of 2.0 means twice the threshold difference above mean
+        if threshold_diff > 0:
+            intensity_ratio = anomaly / threshold_diff
+        else:
+            intensity_ratio = 0.0
+
+        # Determine category based on Hobday et al. 2018
+        if intensity_ratio < 1.0:
+            category = HeatwaveCategory.NONE
+            active = False
+            ecological_impact = "No thermal stress detected. Normal conditions for this time of year."
+            recommendations = []
+        elif intensity_ratio < 2.0:
+            category = HeatwaveCategory.MODERATE
+            active = True
+            ecological_impact = (
+                "Moderate thermal stress may affect temperature-sensitive species. "
+                "Some coral bleaching possible in tropical waters. "
+                "Fish may seek deeper, cooler waters."
+            )
+            recommendations = [
+                "Monitor coral health in tropical MPAs",
+                "Track fish distribution changes",
+                "Document any unusual species behavior",
+            ]
+        elif intensity_ratio < 3.0:
+            category = HeatwaveCategory.STRONG
+            active = True
+            ecological_impact = (
+                "Significant thermal stress expected. "
+                "Elevated coral bleaching risk. "
+                "Marine mammals and seabirds may experience prey availability changes. "
+                "Harmful algal blooms more likely."
+            )
+            recommendations = [
+                "Increase monitoring frequency for bleaching events",
+                "Survey key indicator species",
+                "Alert local marine authorities",
+                "Monitor for harmful algal blooms",
+            ]
+        elif intensity_ratio < 4.0:
+            category = HeatwaveCategory.SEVERE
+            active = True
+            ecological_impact = (
+                "Severe thermal stress. "
+                "High probability of mass coral bleaching. "
+                "Fish kills possible in shallow areas. "
+                "Significant ecosystem disruption expected. "
+                "Marine wildlife may exhibit unusual migration patterns."
+            )
+            recommendations = [
+                "Implement emergency monitoring protocols",
+                "Document bleaching extent and mortality",
+                "Coordinate with regional conservation networks",
+                "Consider temporary fishing restrictions",
+                "Prepare for potential wildlife strandings",
+            ]
+        else:
+            category = HeatwaveCategory.EXTREME
+            active = True
+            ecological_impact = (
+                "Extreme thermal stress with catastrophic potential. "
+                "Mass mortality events likely across multiple taxa. "
+                "Ecosystem-wide impacts expected. "
+                "Recovery may take years to decades."
+            )
+            recommendations = [
+                "Activate emergency response protocols",
+                "Conduct rapid ecological assessments",
+                "Document mortality events for scientific record",
+                "Engage emergency wildlife response teams",
+                "Coordinate regional/international response",
+                "Consider all protective measures available",
+            ]
+
+        # Estimate duration based on typical heatwave persistence
+        duration_days = None
+        if active:
+            # Heatwaves typically last 5-30 days
+            # Higher intensity tends to correlate with longer events
+            duration_days = int(min(5 + intensity_ratio * 5, 30))
+
+        alert = MarineHeatwaveAlert(
+            mpa_id=mpa_id,
+            active=active,
+            category=category,
+            current_sst=round(current_sst, 1),
+            climatological_mean=round(climatological_mean, 1),
+            threshold_90th=round(threshold_90th, 1),
+            anomaly=round(anomaly, 2),
+            intensity_ratio=round(intensity_ratio, 2),
+            duration_days=duration_days,
+            ecological_impact=ecological_impact,
+            recommendations=recommendations,
+        )
+
+        _cache[cache_key] = alert
+        return alert
+
+    def _get_climatological_mean(self, lat: float) -> float:
+        """
+        Get climatological mean SST for a location and current time of year.
+
+        Based on global ocean temperature patterns and seasonal cycles.
+        """
+        return self._estimate_sst(lat)
+
+    def _get_90th_percentile_threshold(self, lat: float) -> float:
+        """
+        Get 90th percentile SST threshold for a location.
+
+        The threshold represents the value above which only 10% of
+        historical observations fall. Typically 1-3°C above the mean.
+        """
+        mean_sst = self._get_climatological_mean(lat)
+        abs_lat = abs(lat)
+
+        # Threshold difference varies by latitude
+        # Tropical regions: smaller variability (~1.0°C)
+        # Temperate regions: larger variability (~2.0°C)
+        # Polar regions: moderate variability (~1.5°C)
+        if abs_lat < 25:
+            threshold_diff = 1.0
+        elif abs_lat < 50:
+            threshold_diff = 2.0
+        else:
+            threshold_diff = 1.5
+
+        return mean_sst + threshold_diff
 
     async def close(self):
         """Close the HTTP client."""

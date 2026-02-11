@@ -196,6 +196,7 @@ function HomeContent() {
             center={center}
             zoom={zoom}
             focusMpaId={focusMpaId || undefined}
+            showSST={filters.showSST}
           />
         </div>
       </main>

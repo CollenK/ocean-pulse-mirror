@@ -13,6 +13,7 @@ export interface MapFilters {
   areaSize: string[];
   savedOnly: boolean;
   showFishingPressure: boolean;
+  showSST: boolean;
 }
 
 export const DEFAULT_FILTERS: MapFilters = {
@@ -22,6 +23,7 @@ export const DEFAULT_FILTERS: MapFilters = {
   areaSize: [],
   savedOnly: false,
   showFishingPressure: false,
+  showSST: false,
 };
 
 // Health status categories
@@ -314,6 +316,38 @@ export function MapFilterPanel({
 
             {/* Filter Sections */}
             <div className="flex-1 overflow-y-auto">
+              {/* SST Layer Toggle */}
+              <div className="border-b border-balean-gray-100">
+                <label
+                  htmlFor="sst-layer"
+                  className="flex items-center justify-between py-3 px-4 cursor-pointer group hover:bg-balean-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="sst-layer"
+                      checked={filters.showSST}
+                      onChange={(e) => onFiltersChange({ ...filters, showSST: e.target.checked })}
+                      className="w-4 h-4 rounded border-balean-gray-300 text-balean-cyan focus:ring-balean-cyan"
+                    />
+                    <div className="flex items-center gap-2">
+                      <i className="fi fi-rr-temperature-high text-orange-500" />
+                      <span className="font-semibold text-balean-navy text-sm group-hover:text-balean-navy transition-colors">
+                        Sea Surface Temperature
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-balean-cyan bg-balean-cyan/10 px-1.5 py-0.5 rounded font-medium">
+                    Live
+                  </span>
+                </label>
+                <div className="px-4 pb-3">
+                  <p className="text-[10px] text-balean-gray-400">
+                    Real-time SST data from Copernicus Marine Service. Updated daily.
+                  </p>
+                </div>
+              </div>
+
               {/* Fishing Pressure Layer Toggle */}
               <div className="border-b border-balean-gray-100">
                 <div className="flex items-center justify-between py-3 px-4 opacity-60">

@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 
-from app.models.health import HealthScore, MPALocation, EnvironmentalData, SpeciesData
+from app.models.health import HealthScore, MPALocation, EnvironmentalData, SpeciesData, MarineHeatwaveAlert
 from app.services.health import get_health_calculator
 from app.services.copernicus import get_copernicus_service
 from app.services.obis import get_obis_service
@@ -158,4 +158,37 @@ async def get_sst_timeseries(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to fetch SST timeseries: {str(e)}",
+        )
+
+
+@router.get("/heatwave/{mpa_id}", response_model=MarineHeatwaveAlert)
+async def get_heatwave_alert(
+    mpa_id: str,
+    lat: float = Query(..., ge=-90, le=90, description="Latitude"),
+    lon: float = Query(..., ge=-180, le=180, description="Longitude"),
+):
+    """
+    Detect marine heatwave conditions for an MPA.
+
+    Returns heatwave status using Hobday et al. 2018 classification:
+    - Category I (Moderate): 1-2x threshold exceedance
+    - Category II (Strong): 2-3x threshold exceedance
+    - Category III (Severe): 3-4x threshold exceedance
+    - Category IV (Extreme): 4x+ threshold exceedance
+
+    Includes ecological impact assessment and monitoring recommendations.
+    """
+    try:
+        copernicus = get_copernicus_service()
+        alert = await copernicus.detect_marine_heatwave(
+            lat=lat,
+            lon=lon,
+            mpa_id=mpa_id,
+        )
+        return alert
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to detect heatwave conditions: {str(e)}",
         )

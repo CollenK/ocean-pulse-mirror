@@ -1,8 +1,9 @@
 """Data models for health scores and environmental data."""
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
+from enum import Enum
 
 
 class EnvironmentalData(BaseModel):
@@ -61,3 +62,34 @@ class MPALocation(BaseModel):
     bbox: Optional[tuple[float, float, float, float]] = Field(
         None, description="Bounding box: (min_lon, min_lat, max_lon, max_lat)"
     )
+
+
+class HeatwaveCategory(str, Enum):
+    """
+    Marine heatwave categories based on Hobday et al. 2018.
+
+    Categories are defined by how many times the SST exceeds the
+    climatological threshold (90th percentile).
+    """
+    NONE = "none"
+    MODERATE = "moderate"      # Category I: 1-2x threshold
+    STRONG = "strong"          # Category II: 2-3x threshold
+    SEVERE = "severe"          # Category III: 3-4x threshold
+    EXTREME = "extreme"        # Category IV: 4x+ threshold
+
+
+class MarineHeatwaveAlert(BaseModel):
+    """Marine heatwave alert for an MPA."""
+
+    mpa_id: str
+    active: bool = Field(..., description="Whether a heatwave is currently active")
+    category: HeatwaveCategory = Field(..., description="Heatwave intensity category")
+    current_sst: Optional[float] = Field(None, description="Current SST in Celsius")
+    climatological_mean: Optional[float] = Field(None, description="Expected SST for this time of year")
+    threshold_90th: Optional[float] = Field(None, description="90th percentile threshold")
+    anomaly: Optional[float] = Field(None, description="Degrees above climatological mean")
+    intensity_ratio: Optional[float] = Field(None, description="Ratio of anomaly to threshold difference")
+    duration_days: Optional[int] = Field(None, description="Estimated duration if active")
+    ecological_impact: str = Field(..., description="Expected ecological impact description")
+    recommendations: list[str] = Field(default_factory=list, description="Monitoring recommendations")
+    detected_at: datetime = Field(default_factory=datetime.utcnow)

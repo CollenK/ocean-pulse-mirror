@@ -27,9 +27,11 @@ import { LiveReports } from '@/components/LiveReports';
 import { useObservations } from '@/hooks/useObservations';
 import { getCountryName } from '@/lib/country-names';
 import { useFishingData } from '@/hooks/useFishingData';
+import { useHeatwaveAlert } from '@/hooks/useHeatwaveAlert';
 import { FishingTrendChart, FishingByFlagChart, FishingByGearChart } from '@/components/Charts/FishingTrendChart';
 import { VesselActivityFeed } from '@/components/VesselActivity';
 import { IUURiskBadge } from '@/components/ui/IUURiskBadge';
+import { HeatwaveAlert, HeatwaveAlertBadge } from '@/components/HeatwaveAlert';
 
 // Dynamically import TrackingHeatmap with SSR disabled (Leaflet requires window)
 const TrackingHeatmap = dynamic(
@@ -139,6 +141,17 @@ export default function MPADetailPage() {
     enabled: !!mpa,
   });
 
+  // Load marine heatwave alert from Copernicus data
+  const {
+    alert: heatwaveAlert,
+    isLoading: heatwaveLoading,
+  } = useHeatwaveAlert(
+    mpa?.id,
+    mpa?.center[0],
+    mpa?.center[1],
+    !!mpa
+  );
+
   // Extract fishing data for easier access
   const fishingEffort = fishingData.fishingEffort;
   const vesselActivity = fishingData.vesselActivity;
@@ -161,6 +174,8 @@ export default function MPADetailPage() {
     preferBackend: true, // Try backend first for Copernicus data
     fishingCompliance: complianceScore,
     fishingComplianceLoading: fishingLoading,
+    heatwaveAlert: heatwaveAlert,
+    heatwaveLoading: heatwaveLoading,
   });
 
   useEffect(() => {
@@ -296,6 +311,9 @@ export default function MPADetailPage() {
                   <Icon name="download" size="sm" />
                   Cached
                 </Badge>
+              )}
+              {heatwaveAlert && heatwaveAlert.active && (
+                <HeatwaveAlertBadge alert={heatwaveAlert} />
               )}
             </div>
           </motion.div>
@@ -766,6 +784,51 @@ export default function MPADetailPage() {
               <p className="text-balean-gray-500 mb-2 font-medium">No environmental data available</p>
               <p className="text-sm text-balean-gray-400">
                 This MPA may not have environmental measurements in the OBIS database yet
+              </p>
+            </div>
+          )}
+        </CollapsibleCard>
+
+        {/* Marine Heatwave Alert */}
+        <CollapsibleCard
+          title="Marine Heatwave Status"
+          icon="temperature-hot"
+          iconColor={heatwaveAlert?.active ? 'text-red-500' : 'text-balean-cyan'}
+          defaultOpen={heatwaveAlert?.active || false}
+          badge={
+            heatwaveAlert && (
+              <Badge
+                variant={
+                  heatwaveAlert.category === 'none' ? 'healthy' :
+                  heatwaveAlert.category === 'moderate' ? 'warning' :
+                  'danger'
+                }
+                size="sm"
+              >
+                {heatwaveAlert.active ? heatwaveAlert.category : 'Normal'}
+              </Badge>
+            )
+          }
+          className="mb-4"
+        >
+          {heatwaveLoading ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-balean-cyan mb-4" />
+              <p className="text-balean-gray-500 mb-2">Checking thermal conditions...</p>
+              <p className="text-sm text-balean-gray-400">
+                Analyzing sea surface temperature data
+              </p>
+            </div>
+          ) : heatwaveAlert ? (
+            <HeatwaveAlert alert={heatwaveAlert} />
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
+                <Icon name="temperature-half" className="text-balean-gray-300 text-3xl" />
+              </div>
+              <p className="text-balean-gray-500 mb-2 font-medium">Heatwave data unavailable</p>
+              <p className="text-sm text-balean-gray-400">
+                Unable to fetch thermal conditions from Copernicus Marine Service
               </p>
             </div>
           )}

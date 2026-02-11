@@ -12,6 +12,7 @@ import type { MPAAbundanceSummary } from '@/types/obis-abundance';
 import type { MPAEnvironmentalSummary } from '@/types/obis-environmental';
 import type { MPATrackingSummary } from '@/types/obis-tracking';
 import type { GFWComplianceScore } from '@/types/gfw';
+import type { MarineHeatwaveAlert, HeatwaveCategory } from '@/hooks/useHeatwaveAlert';
 
 interface UserHealthData {
   averageScore: number | null;
@@ -38,6 +39,9 @@ interface HybridHealthScoreInput {
   // Fishing compliance data from Global Fishing Watch
   fishingCompliance?: GFWComplianceScore | null;
   fishingComplianceLoading?: boolean;
+  // Marine heatwave alert from Copernicus
+  heatwaveAlert?: MarineHeatwaveAlert | null;
+  heatwaveLoading?: boolean;
 }
 
 interface HybridHealthScore {
@@ -97,6 +101,8 @@ export function useHybridHealthScore({
   includeCommunityAssessments = true,
   fishingCompliance = null,
   fishingComplianceLoading = false,
+  heatwaveAlert = null,
+  heatwaveLoading = false,
 }: HybridHealthScoreInput): HybridHealthScore {
   // State for community assessments
   const [communityData, setCommunityData] = useState<UserHealthData>({ averageScore: null, count: 0 });
@@ -284,10 +290,12 @@ export function useHybridHealthScore({
     const populationScore = calculatePopulationScore(abundanceSummary);
     const habitatScore = calculateHabitatScore(environmentalSummary);
     const diversityScore = calculateDiversityScore(indicatorSpeciesCount, trackingSummary);
+    const thermalScore = calculateThermalStressScore(heatwaveAlert);
 
     const hasPopulationData = abundanceSummary && abundanceSummary.speciesTrends.length > 0;
     const hasHabitatData = environmentalSummary && environmentalSummary.parameters.length > 0;
     const hasDiversityData = indicatorSpeciesCount > 0;
+    const hasThermalData = heatwaveAlert !== null;
     const hasCommunityData = communityData.averageScore !== null && communityData.count > 0;
     const hasFishingData = fishingCompliance !== null;
 
@@ -296,23 +304,25 @@ export function useHybridHealthScore({
     // Fishing compliance score (already 0-100)
     const fishingScore = hasFishingData ? fishingCompliance!.score : 0;
 
-    // Base weights (adjusted to include community and fishing)
-    let populationWeight = 0.30;
-    let habitatWeight = 0.25;
-    let diversityWeight = 0.20;
+    // Base weights (adjusted to include thermal stress, community and fishing)
+    let populationWeight = 0.25;
+    let habitatWeight = 0.20;
+    let diversityWeight = 0.15;
+    let thermalWeight = hasThermalData ? 0.15 : 0;
     let communityWeight = hasCommunityData ? 0.10 : 0;
     let fishingWeight = hasFishingData ? 0.15 : 0;
 
-    const availableSources = [hasPopulationData, hasHabitatData, hasDiversityData, hasCommunityData, hasFishingData].filter(Boolean).length;
+    const availableSources = [hasPopulationData, hasHabitatData, hasDiversityData, hasThermalData, hasCommunityData, hasFishingData].filter(Boolean).length;
 
     if (availableSources === 0) {
       return {
         score: 0,
-        loading: clientLoading || communityLoading || fishingComplianceLoading,
+        loading: clientLoading || communityLoading || fishingComplianceLoading || heatwaveLoading,
         breakdown: {
-          populationTrends: { score: 0, weight: 30, available: false },
-          habitatQuality: { score: 0, weight: 25, available: false },
-          speciesDiversity: { score: 0, weight: 20, available: false },
+          populationTrends: { score: 0, weight: 25, available: false },
+          habitatQuality: { score: 0, weight: 20, available: false },
+          speciesDiversity: { score: 0, weight: 15, available: false },
+          thermalStress: { score: 0, weight: 15, available: false },
           communityAssessment: { score: 0, weight: 10, available: false, count: 0 },
           fishingCompliance: { score: 0, weight: 15, available: false, violations: 0 },
         },
@@ -328,9 +338,10 @@ export function useHybridHealthScore({
       population: hasPopulationData ? populationWeight : 0,
       habitat: hasHabitatData ? habitatWeight : 0,
       diversity: hasDiversityData ? diversityWeight : 0,
+      thermal: hasThermalData ? thermalWeight : 0,
     };
 
-    const totalDataWeight = dataWeights.population + dataWeights.habitat + dataWeights.diversity;
+    const totalDataWeight = dataWeights.population + dataWeights.habitat + dataWeights.diversity + dataWeights.thermal;
     const targetDataWeight = 1 - communityWeight - fishingWeight;
 
     if (totalDataWeight > 0) {
@@ -338,6 +349,7 @@ export function useHybridHealthScore({
       populationWeight = dataWeights.population * scaleFactor;
       habitatWeight = dataWeights.habitat * scaleFactor;
       diversityWeight = dataWeights.diversity * scaleFactor;
+      thermalWeight = dataWeights.thermal * scaleFactor;
     }
 
     // Calculate weighted score
@@ -345,6 +357,7 @@ export function useHybridHealthScore({
       (hasPopulationData ? populationScore * populationWeight : 0) +
       (hasHabitatData ? habitatScore * habitatWeight : 0) +
       (hasDiversityData ? diversityScore * diversityWeight : 0) +
+      (hasThermalData ? thermalScore * thermalWeight : 0) +
       (hasCommunityData ? communityScore * communityWeight : 0) +
       (hasFishingData ? fishingScore * fishingWeight : 0)
     );
@@ -355,7 +368,7 @@ export function useHybridHealthScore({
 
     return {
       score: Math.min(100, Math.max(0, compositeScore)),
-      loading: clientLoading || communityLoading || fishingComplianceLoading,
+      loading: clientLoading || communityLoading || fishingComplianceLoading || heatwaveLoading,
       breakdown: {
         populationTrends: {
           score: populationScore,
@@ -371,6 +384,11 @@ export function useHybridHealthScore({
           score: diversityScore,
           weight: Math.round(diversityWeight * 100),
           available: !!hasDiversityData,
+        },
+        thermalStress: {
+          score: thermalScore,
+          weight: Math.round(thermalWeight * 100),
+          available: hasThermalData,
         },
         communityAssessment: {
           score: communityScore,
@@ -415,7 +433,48 @@ export function useHybridHealthScore({
     communityLoading,
     fishingCompliance,
     fishingComplianceLoading,
+    heatwaveAlert,
+    heatwaveLoading,
   ]);
+}
+
+/**
+ * Convert a heatwave alert into a 0-100 thermal stress health score.
+ * Higher score = healthier (less thermal stress).
+ */
+function calculateThermalStressScore(alert: MarineHeatwaveAlert | null): number {
+  if (!alert) return 0;
+
+  const baseScores: Record<HeatwaveCategory, number> = {
+    none: 95,
+    moderate: 65,
+    strong: 40,
+    severe: 20,
+    extreme: 5,
+  };
+
+  let score = baseScores[alert.category];
+
+  // Use intensity_ratio for finer granularity within categories
+  if (alert.intensity_ratio !== null && alert.intensity_ratio > 0) {
+    const ratio = alert.intensity_ratio;
+    if (alert.category === 'none') {
+      // Approaching threshold lowers score slightly (ratio 0-1)
+      score = Math.round(95 - ratio * 10);
+    } else if (alert.category === 'moderate') {
+      // ratio 1-2
+      score = Math.round(65 - (ratio - 1) * 15);
+    } else if (alert.category === 'strong') {
+      // ratio 2-3
+      score = Math.round(40 - (ratio - 2) * 10);
+    } else if (alert.category === 'severe') {
+      // ratio 3-4
+      score = Math.round(20 - (ratio - 3) * 10);
+    }
+    // extreme stays at 5
+  }
+
+  return Math.max(0, Math.min(100, score));
 }
 
 // Helper functions (same as useCompositeHealthScore)

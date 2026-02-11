@@ -8,6 +8,8 @@ import { MPA } from '@/types';
 import { MPAMarker } from './MPAMarker';
 import { MPAPopup } from './MPAPopup';
 import { MapControls } from './MapControls';
+import { SSTLayer } from './SSTLayer';
+import { SSTLegend } from './SSTLegend';
 import { toMapLibreCoords, boundsToGeoJSON, getHealthColor } from './map-utils';
 
 interface MobileMapProps {
@@ -16,6 +18,7 @@ interface MobileMapProps {
   zoom?: number;
   onMPAClick?: (mpa: MPA) => void;
   focusMpaId?: string;
+  showSST?: boolean;
 }
 
 // OpenFreeMap style URL (free, no API key required)
@@ -47,6 +50,7 @@ export function MobileMap({
   zoom,
   onMPAClick,
   focusMpaId,
+  showSST = false,
 }: MobileMapProps) {
   const mapRef = useRef<MapRef>(null);
   const [hoveredMPA, setHoveredMPA] = useState<MPA | null>(null);
@@ -185,6 +189,9 @@ export function MobileMap({
         maxZoom={18}
         renderWorldCopies={false}
       >
+        {/* SST Layer - rendered first so it appears below MPA boundaries */}
+        <SSTLayer visible={showSST} opacity={0.7} />
+
         {/* MPA Boundaries as GeoJSON layers */}
         <Source
           id="mpa-boundaries"
@@ -219,6 +226,11 @@ export function MobileMap({
 
       {/* Custom Controls Overlay */}
       <MapControls mapRef={mapRef} />
+
+      {/* SST Legend - shown when SST layer is visible */}
+      {showSST && (
+        <SSTLegend className="absolute bottom-20 left-4 z-10" />
+      )}
     </div>
   );
 }
