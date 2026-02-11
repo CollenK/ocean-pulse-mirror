@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 interface InfoTipProps {
@@ -11,23 +11,34 @@ interface InfoTipProps {
 
 export function InfoTip({ text, className = '', iconClassName = '' }: InfoTipProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
+  const [showBelow, setShowBelow] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
 
-  const updatePosition = useCallback(() => {
-    if (!buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    setPosition({
-      top: rect.top + window.scrollY,
-      left: rect.left + rect.width / 2 + window.scrollX,
-    });
+  // Track mount state for portal
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
+  // Position tooltip and handle outside clicks
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !buttonRef.current) return;
 
-    updatePosition();
+    // Calculate position
+    const rect = buttonRef.current.getBoundingClientRect();
+    const tooltipHeight = 100; // Approximate height
+    const spaceAbove = rect.top;
+    const shouldShowBelow = spaceAbove < tooltipHeight + 20;
+
+    setShowBelow(shouldShowBelow);
+    setTooltipStyle({
+      position: 'fixed',
+      top: shouldShowBelow ? rect.bottom + 8 : rect.top - 8,
+      left: rect.left + rect.width / 2,
+      transform: shouldShowBelow ? 'translateX(-50%)' : 'translate(-50%, -100%)',
+    });
 
     function handleClickOutside(event: MouseEvent | TouchEvent) {
       const target = event.target as Node;
@@ -39,51 +50,57 @@ export function InfoTip({ text, className = '', iconClassName = '' }: InfoTipPro
       }
     }
 
-    function handleScroll() {
-      setIsOpen(false);
-    }
+    // Delay listener to prevent immediate close
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }, 50);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
-    window.addEventListener('scroll', handleScroll, true);
     return () => {
+      clearTimeout(timeoutId);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
-      window.removeEventListener('scroll', handleScroll, true);
     };
-  }, [isOpen, updatePosition]);
+  }, [isOpen]);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsOpen(prev => !prev);
+  };
+
+  const tooltip = isOpen && (
+    <div
+      ref={tooltipRef}
+      role="tooltip"
+      className="z-[9999] w-64 p-3 bg-gray-900 text-white text-xs leading-relaxed rounded-lg shadow-xl"
+      style={tooltipStyle}
+    >
+      {text}
+      <div
+        className={`absolute left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-transparent ${
+          showBelow
+            ? 'bottom-full border-b-4 border-b-gray-900'
+            : 'top-full border-t-4 border-t-gray-900'
+        }`}
+      />
+    </div>
+  );
 
   return (
     <>
       <button
         ref={buttonRef}
         type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsOpen(!isOpen);
-        }}
-        className={`inline-flex text-gray-400 hover:text-gray-600 transition-colors focus:outline-none ${iconClassName} ${className}`}
+        onClick={handleClick}
+        className={`inline-flex items-center justify-center w-5 h-5 text-gray-400 hover:text-gray-600 active:text-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-balean-cyan focus:ring-offset-1 rounded-full ${iconClassName} ${className}`}
         aria-label="More information"
+        aria-expanded={isOpen}
       >
-        <i className="fi fi-rr-info text-xs" />
+        <i className="fi fi-rr-info text-sm" />
       </button>
 
-      {isOpen && position && createPortal(
-        <div
-          ref={tooltipRef}
-          className="fixed z-[9999] w-56 p-2.5 bg-gray-900 text-white text-xs leading-relaxed rounded-lg shadow-lg"
-          style={{
-            top: position.top - 8,
-            left: position.left,
-            transform: 'translate(-50%, -100%)',
-          }}
-        >
-          {text}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
-        </div>,
-        document.body
-      )}
+      {mounted && tooltip && createPortal(tooltip, document.body)}
     </>
   );
 }

@@ -72,6 +72,18 @@ const withPWA = require('next-pwa')({
         },
       },
     },
+    {
+      urlPattern: /^https:\/\/gateway\.api\.globalfishingwatch\.org\/.*/i,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'gfw-api-cache',
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 24 * 60 * 60, // 24 hours (GFW data updates every 72-96 hours)
+        },
+        networkTimeoutSeconds: 30,
+      },
+    },
   ],
 });
 

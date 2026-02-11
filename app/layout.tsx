@@ -6,6 +6,7 @@ import { AnalyticsProvider } from '@/components/AnalyticsProvider'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Providers } from '@/components/Providers'
 import { CookieConsent } from '@/components/CookieConsent'
+import { FishingDataPrefetcher } from '@/components/FishingDataPrefetcher'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -146,6 +147,7 @@ export default function RootLayout({
           <AuthProvider>
             <AnalyticsProvider>
               <ErrorBoundary>
+                <FishingDataPrefetcher />
                 <OfflineIndicator />
                 {children}
                 <BottomNav />

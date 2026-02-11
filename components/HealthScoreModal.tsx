@@ -13,6 +13,7 @@ interface HealthScoreBreakdown {
     thermalStress?: { score: number; weight: number; available: boolean };
     productivity?: { score: number; weight: number; available: boolean };
     communityAssessment?: { score: number; weight: number; available: boolean; count: number };
+    fishingCompliance?: { score: number; weight: number; available: boolean; violations: number };
   };
   confidence: 'high' | 'medium' | 'low';
   dataSourcesAvailable: number;
@@ -126,6 +127,7 @@ export function HealthScoreModal({
     breakdown.thermalStress !== undefined,
     breakdown.productivity !== undefined,
     breakdown.communityAssessment !== undefined,
+    breakdown.fishingCompliance !== undefined,
   ].filter(Boolean).length;
 
   const confidenceInfo = {
@@ -245,14 +247,33 @@ export function HealthScoreModal({
             unavailableMessage="No community assessments yet. Be the first to contribute!"
           />
         )}
+
+        {breakdown.fishingCompliance !== undefined && (
+          <DataSourceCard
+            name="Fishing Compliance"
+            description="Fishing pressure and compliance with MPA regulations from Global Fishing Watch"
+            icon="ship"
+            iconColor="text-blue-600"
+            score={Math.round(breakdown.fishingCompliance.score)}
+            weight={breakdown.fishingCompliance.weight}
+            available={breakdown.fishingCompliance.available}
+            subtitle={breakdown.fishingCompliance.available
+              ? breakdown.fishingCompliance.violations > 0
+                ? `${breakdown.fishingCompliance.violations} potential violation${breakdown.fishingCompliance.violations !== 1 ? 's' : ''} detected`
+                : 'No violations detected'
+              : undefined
+            }
+            unavailableMessage="Global Fishing Watch data not available for this MPA"
+          />
+        )}
       </div>
 
       {/* Footer Note */}
       <div className="mt-6 pt-4 border-t border-gray-100">
         <p className="text-xs text-gray-500 text-center">
           All scores are preliminary estimates. Scientific data sources are dynamically
-          weighted based on availability. Community observations contribute up to 10%
-          of the overall score.
+          weighted based on availability. Fishing compliance data from Global Fishing Watch
+          and community observations each contribute up to 10-15% of the overall score.
         </p>
       </div>
     </Modal>

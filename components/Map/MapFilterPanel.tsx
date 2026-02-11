@@ -12,6 +12,7 @@ export interface MapFilters {
   country: string[];
   areaSize: string[];
   savedOnly: boolean;
+  showFishingPressure: boolean;
 }
 
 export const DEFAULT_FILTERS: MapFilters = {
@@ -20,6 +21,7 @@ export const DEFAULT_FILTERS: MapFilters = {
   country: [],
   areaSize: [],
   savedOnly: false,
+  showFishingPressure: false,
 };
 
 // Health status categories
@@ -312,6 +314,35 @@ export function MapFilterPanel({
 
             {/* Filter Sections */}
             <div className="flex-1 overflow-y-auto">
+              {/* Fishing Pressure Layer Toggle */}
+              <div className="border-b border-balean-gray-100">
+                <div className="flex items-center justify-between py-3 px-4 opacity-60">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="fishing-pressure"
+                      checked={false}
+                      disabled
+                      className="w-4 h-4 rounded border-balean-gray-300 text-balean-gray-300 cursor-not-allowed"
+                    />
+                    <div className="flex items-center gap-2">
+                      <i className="fi fi-rr-ship text-balean-gray-400" />
+                      <span className="font-semibold text-balean-gray-500 text-sm">
+                        Fishing Pressure
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-balean-gray-400 bg-balean-gray-50 px-1.5 py-0.5 rounded">
+                    Coming Soon
+                  </span>
+                </div>
+                <div className="px-4 pb-3">
+                  <p className="text-[10px] text-balean-gray-400">
+                    Global fishing heatmap coming soon. View fishing data on individual MPA detail pages.
+                  </p>
+                </div>
+              </div>
+
               {/* Saved MPAs Toggle */}
               {savedMPAIds.length > 0 && (
                 <div className="border-b border-balean-gray-100">

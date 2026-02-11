@@ -2,7 +2,7 @@
  * useHybridHealthScore Hook
  * Uses the Python backend for health scores when available,
  * falls back to client-side calculation otherwise
- * Now includes community-contributed health assessments
+ * Now includes community-contributed health assessments and fishing compliance data
  */
 
 import { useMemo, useState, useEffect } from 'react';
@@ -11,6 +11,7 @@ import { getUserHealthScoreForMPA } from '@/lib/offline-storage';
 import type { MPAAbundanceSummary } from '@/types/obis-abundance';
 import type { MPAEnvironmentalSummary } from '@/types/obis-environmental';
 import type { MPATrackingSummary } from '@/types/obis-tracking';
+import type { GFWComplianceScore } from '@/types/gfw';
 
 interface UserHealthData {
   averageScore: number | null;
@@ -34,6 +35,9 @@ interface HybridHealthScoreInput {
   preferBackend?: boolean;
   // Include community assessments in score
   includeCommunityAssessments?: boolean;
+  // Fishing compliance data from Global Fishing Watch
+  fishingCompliance?: GFWComplianceScore | null;
+  fishingComplianceLoading?: boolean;
 }
 
 interface HybridHealthScore {
@@ -48,6 +52,8 @@ interface HybridHealthScore {
     productivity?: { score: number; weight: number; available: boolean };
     // Community assessments
     communityAssessment?: { score: number; weight: number; available: boolean; count: number };
+    // Fishing compliance from Global Fishing Watch
+    fishingCompliance?: { score: number; weight: number; available: boolean; violations: number };
   };
   confidence: 'high' | 'medium' | 'low';
   dataSourcesAvailable: number;
@@ -63,6 +69,11 @@ interface HybridHealthScore {
   communityData?: {
     averageScore: number;
     assessmentCount: number;
+  };
+  fishingData?: {
+    complianceScore: number;
+    violations: number;
+    fishingHoursInside: number;
   };
 }
 
@@ -84,6 +95,8 @@ export function useHybridHealthScore({
   indicatorSpeciesCount,
   preferBackend = true,
   includeCommunityAssessments = true,
+  fishingCompliance = null,
+  fishingComplianceLoading = false,
 }: HybridHealthScoreInput): HybridHealthScore {
   // State for community assessments
   const [communityData, setCommunityData] = useState<UserHealthData>({ averageScore: null, count: 0 });
@@ -180,6 +193,17 @@ export function useHybridHealthScore({
         };
       }
 
+      // Add fishing compliance if available (from Global Fishing Watch)
+      const hasFishingData = fishingCompliance !== null;
+      if (hasFishingData) {
+        breakdown.fishingCompliance = {
+          score: fishingCompliance!.score,
+          weight: 10, // Fishing compliance gets 10% weight
+          available: true,
+          violations: fishingCompliance!.violations,
+        };
+      }
+
       // Count available data sources
       const dataSourcesAvailable = [
         breakdown.populationTrends.available,
@@ -188,6 +212,7 @@ export function useHybridHealthScore({
         breakdown.thermalStress?.available,
         breakdown.productivity?.available,
         breakdown.communityAssessment?.available,
+        breakdown.fishingCompliance?.available,
       ].filter(Boolean).length;
 
       // Map environmental data
@@ -215,17 +240,28 @@ export function useHybridHealthScore({
         } : undefined,
       } : undefined;
 
-      // Blend community score into overall score if available
+      // Blend community and fishing scores into overall score if available
       let finalScore = overall_score;
+      let remainingWeight = 1.0;
+
       if (hasCommunityData && communityData.averageScore !== null) {
         const communityScoreNormalized = (communityData.averageScore / 10) * 100;
-        // Weight: 90% backend, 10% community
-        finalScore = Math.round(overall_score * 0.9 + communityScoreNormalized * 0.1);
+        // Community gets 10% weight
+        finalScore = finalScore * 0.9 + communityScoreNormalized * 0.1;
+        remainingWeight -= 0.1;
       }
+
+      if (hasFishingData) {
+        // Fishing compliance gets 10% weight (reduces other weights proportionally)
+        const fishingWeight = 0.1;
+        finalScore = finalScore * (1 - fishingWeight) + fishingCompliance!.score * fishingWeight;
+      }
+
+      finalScore = Math.round(finalScore);
 
       return {
         score: finalScore,
-        loading: backendLoading || communityLoading,
+        loading: backendLoading || communityLoading || fishingComplianceLoading,
         breakdown,
         confidence: confidence as 'high' | 'medium' | 'low',
         dataSourcesAvailable,
@@ -235,6 +271,11 @@ export function useHybridHealthScore({
         communityData: hasCommunityData ? {
           averageScore: communityData.averageScore!,
           assessmentCount: communityData.count,
+        } : undefined,
+        fishingData: hasFishingData ? {
+          complianceScore: fishingCompliance!.score,
+          violations: fishingCompliance!.violations,
+          fishingHoursInside: fishingCompliance!.fishingHoursInside,
         } : undefined,
       };
     }
@@ -248,27 +289,32 @@ export function useHybridHealthScore({
     const hasHabitatData = environmentalSummary && environmentalSummary.parameters.length > 0;
     const hasDiversityData = indicatorSpeciesCount > 0;
     const hasCommunityData = communityData.averageScore !== null && communityData.count > 0;
+    const hasFishingData = fishingCompliance !== null;
 
     // Community score normalized to 0-100
     const communityScore = hasCommunityData ? (communityData.averageScore! / 10) * 100 : 0;
+    // Fishing compliance score (already 0-100)
+    const fishingScore = hasFishingData ? fishingCompliance!.score : 0;
 
-    // Base weights (adjusted to include community)
-    let populationWeight = 0.35;
-    let habitatWeight = 0.30;
-    let diversityWeight = 0.25;
+    // Base weights (adjusted to include community and fishing)
+    let populationWeight = 0.30;
+    let habitatWeight = 0.25;
+    let diversityWeight = 0.20;
     let communityWeight = hasCommunityData ? 0.10 : 0;
+    let fishingWeight = hasFishingData ? 0.15 : 0;
 
-    const availableSources = [hasPopulationData, hasHabitatData, hasDiversityData, hasCommunityData].filter(Boolean).length;
+    const availableSources = [hasPopulationData, hasHabitatData, hasDiversityData, hasCommunityData, hasFishingData].filter(Boolean).length;
 
     if (availableSources === 0) {
       return {
         score: 0,
-        loading: clientLoading || communityLoading,
+        loading: clientLoading || communityLoading || fishingComplianceLoading,
         breakdown: {
-          populationTrends: { score: 0, weight: 35, available: false },
-          habitatQuality: { score: 0, weight: 30, available: false },
-          speciesDiversity: { score: 0, weight: 25, available: false },
+          populationTrends: { score: 0, weight: 30, available: false },
+          habitatQuality: { score: 0, weight: 25, available: false },
+          speciesDiversity: { score: 0, weight: 20, available: false },
           communityAssessment: { score: 0, weight: 10, available: false, count: 0 },
+          fishingCompliance: { score: 0, weight: 15, available: false, violations: 0 },
         },
         confidence: 'low',
         dataSourcesAvailable: 0,
@@ -277,7 +323,7 @@ export function useHybridHealthScore({
       };
     }
 
-    // Redistribute weights for missing data (excluding community weight redistribution)
+    // Redistribute weights for missing data (excluding community and fishing weight redistribution)
     const dataWeights = {
       population: hasPopulationData ? populationWeight : 0,
       habitat: hasHabitatData ? habitatWeight : 0,
@@ -285,7 +331,7 @@ export function useHybridHealthScore({
     };
 
     const totalDataWeight = dataWeights.population + dataWeights.habitat + dataWeights.diversity;
-    const targetDataWeight = 1 - communityWeight;
+    const targetDataWeight = 1 - communityWeight - fishingWeight;
 
     if (totalDataWeight > 0) {
       const scaleFactor = targetDataWeight / totalDataWeight;
@@ -299,7 +345,8 @@ export function useHybridHealthScore({
       (hasPopulationData ? populationScore * populationWeight : 0) +
       (hasHabitatData ? habitatScore * habitatWeight : 0) +
       (hasDiversityData ? diversityScore * diversityWeight : 0) +
-      (hasCommunityData ? communityScore * communityWeight : 0)
+      (hasCommunityData ? communityScore * communityWeight : 0) +
+      (hasFishingData ? fishingScore * fishingWeight : 0)
     );
 
     const confidence: 'high' | 'medium' | 'low' =
@@ -308,7 +355,7 @@ export function useHybridHealthScore({
 
     return {
       score: Math.min(100, Math.max(0, compositeScore)),
-      loading: clientLoading || communityLoading,
+      loading: clientLoading || communityLoading || fishingComplianceLoading,
       breakdown: {
         populationTrends: {
           score: populationScore,
@@ -331,6 +378,12 @@ export function useHybridHealthScore({
           available: hasCommunityData,
           count: communityData.count,
         },
+        fishingCompliance: {
+          score: fishingScore,
+          weight: Math.round(fishingWeight * 100),
+          available: hasFishingData,
+          violations: hasFishingData ? fishingCompliance!.violations : 0,
+        },
       },
       confidence,
       dataSourcesAvailable: availableSources,
@@ -339,6 +392,11 @@ export function useHybridHealthScore({
       communityData: hasCommunityData ? {
         averageScore: communityData.averageScore!,
         assessmentCount: communityData.count,
+      } : undefined,
+      fishingData: hasFishingData ? {
+        complianceScore: fishingCompliance!.score,
+        violations: fishingCompliance!.violations,
+        fishingHoursInside: fishingCompliance!.fishingHoursInside,
       } : undefined,
     };
   }, [
@@ -355,6 +413,8 @@ export function useHybridHealthScore({
     indicatorSpeciesCount,
     communityData,
     communityLoading,
+    fishingCompliance,
+    fishingComplianceLoading,
   ]);
 }
 
