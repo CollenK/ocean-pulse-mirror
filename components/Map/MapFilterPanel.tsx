@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MPA } from '@/types';
 import { getCountryName } from '@/lib/country-names';
+import { WIND_FARM_STATUS_COLORS, WIND_FARM_STATUS_LABELS, type WindFarmStatus, type WindFarmSummary } from '@/types/wind-farms';
 
 // Filter types
 export interface MapFilters {
@@ -11,9 +12,11 @@ export interface MapFilters {
   protectionLevel: string[];
   country: string[];
   areaSize: string[];
+  windFarmStatus: string[];
   savedOnly: boolean;
   showFishingPressure: boolean;
   showSST: boolean;
+  showWindFarms: boolean;
 }
 
 export const DEFAULT_FILTERS: MapFilters = {
@@ -21,9 +24,11 @@ export const DEFAULT_FILTERS: MapFilters = {
   protectionLevel: [],
   country: [],
   areaSize: [],
+  windFarmStatus: [],
   savedOnly: false,
   showFishingPressure: false,
   showSST: false,
+  showWindFarms: false,
 };
 
 // Health status categories
@@ -32,6 +37,17 @@ const HEALTH_STATUS_OPTIONS = [
   { id: 'good', label: 'Good', range: [60, 79], color: 'bg-balean-cyan' },
   { id: 'moderate', label: 'Moderate', range: [40, 59], color: 'bg-warning' },
   { id: 'poor', label: 'Needs Attention', range: [0, 39], color: 'bg-critical' },
+];
+
+// Wind farm status display order for inline legend
+const WIND_FARM_STATUS_ORDER: WindFarmStatus[] = [
+  'Production',
+  'Under Construction',
+  'Authorised',
+  'Pre-Construction',
+  'Planned',
+  'Concept/Early Planning',
+  'Decommissioned',
 ];
 
 // Area size categories (km²)
@@ -49,6 +65,7 @@ interface MapFilterPanelProps {
   isOpen: boolean;
   onToggle: () => void;
   savedMPAIds?: string[];
+  windFarmSummary?: WindFarmSummary | null;
 }
 
 interface FilterSectionProps {
@@ -103,10 +120,11 @@ interface FilterCheckboxProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   color?: string;
+  hexColor?: string;
   description?: string;
 }
 
-function FilterCheckbox({ id, label, count, checked, onChange, color, description }: FilterCheckboxProps) {
+function FilterCheckbox({ id, label, count, checked, onChange, color, hexColor, description }: FilterCheckboxProps) {
   return (
     <label
       htmlFor={id}
@@ -123,6 +141,12 @@ function FilterCheckbox({ id, label, count, checked, onChange, color, descriptio
         <div className="flex items-center gap-2">
           {color && (
             <div className={`w-3 h-3 rounded-full ${color}`} />
+          )}
+          {hexColor && !color && (
+            <div
+              className="w-3 h-3 rounded-full flex-shrink-0"
+              style={{ backgroundColor: hexColor }}
+            />
           )}
           <span className="text-sm text-balean-gray-600 group-hover:text-balean-navy transition-colors">
             {label}
@@ -141,6 +165,7 @@ export function MapFilterPanel({
   isOpen,
   onToggle,
   savedMPAIds = [],
+  windFarmSummary,
 }: MapFilterPanelProps) {
   // Calculate counts for each filter option
   const filterCounts = useMemo(() => {
@@ -193,7 +218,7 @@ export function MapFilterPanel({
   }, [filterCounts.country]);
 
   // Array filter keys (excludes boolean filters like savedOnly)
-  type ArrayFilterKey = 'healthStatus' | 'protectionLevel' | 'country' | 'areaSize';
+  type ArrayFilterKey = 'healthStatus' | 'protectionLevel' | 'country' | 'areaSize' | 'windFarmStatus';
 
   // Toggle filter value
   const toggleFilter = (category: ArrayFilterKey, value: string) => {
@@ -222,6 +247,7 @@ export function MapFilterPanel({
     filters.protectionLevel.length +
     filters.country.length +
     filters.areaSize.length +
+    filters.windFarmStatus.length +
     (filters.savedOnly ? 1 : 0);
 
   // Build saved ID set for fast lookups
@@ -345,6 +371,65 @@ export function MapFilterPanel({
                   <p className="text-[10px] text-balean-gray-400">
                     Real-time SST data from Copernicus Marine Service. Updated daily.
                   </p>
+                </div>
+              </div>
+
+              {/* Offshore Wind Farms Layer Toggle */}
+              <div className="border-b border-balean-gray-100">
+                <label
+                  htmlFor="wind-farms-layer"
+                  className="flex items-center justify-between py-3 px-4 cursor-pointer group hover:bg-balean-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="wind-farms-layer"
+                      checked={filters.showWindFarms}
+                      onChange={(e) => onFiltersChange({ ...filters, showWindFarms: e.target.checked })}
+                      className="w-4 h-4 rounded border-balean-gray-300 text-balean-cyan focus:ring-balean-cyan"
+                    />
+                    <div className="flex items-center gap-2">
+                      <i className="fi fi-rr-wind text-orange-500" />
+                      <span className="font-semibold text-balean-navy text-sm group-hover:text-balean-navy transition-colors">
+                        Offshore Wind Farms
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded font-medium">
+                    EMODnet + OSPAR
+                  </span>
+                </label>
+                <div className="px-4 pb-3">
+                  <p className="text-[10px] text-balean-gray-400">
+                    Offshore wind farm boundaries from EMODnet and OSPAR. Color-coded by development status.
+                  </p>
+
+                  {/* Wind farm status filter checkboxes */}
+                  <AnimatePresence>
+                    {filters.showWindFarms && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-2 pt-2 border-t border-balean-gray-100 space-y-1">
+                          {WIND_FARM_STATUS_ORDER.map((status) => (
+                            <FilterCheckbox
+                              key={status}
+                              id={`wind-farm-status-${status}`}
+                              label={WIND_FARM_STATUS_LABELS[status]}
+                              count={windFarmSummary?.byStatus[status] ?? 0}
+                              checked={filters.windFarmStatus.includes(status)}
+                              onChange={() => toggleFilter('windFarmStatus', status)}
+                              hexColor={WIND_FARM_STATUS_COLORS[status]}
+                            />
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 

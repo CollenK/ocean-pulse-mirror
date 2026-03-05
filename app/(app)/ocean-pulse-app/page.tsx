@@ -12,6 +12,7 @@ import { usePullToRefresh, PullToRefreshIndicator } from '@/hooks/usePullToRefre
 import { useSavedMPAs } from '@/hooks/useSavedMPAs';
 import dynamic from 'next/dynamic';
 import { MapFilterPanel, MapFilters, DEFAULT_FILTERS, filterMPAs } from '@/components/Map/MapFilterPanel';
+import { useWindFarmLayer } from '@/hooks/useWindFarmData';
 
 // Dynamically import map component (no SSR due to Leaflet)
 const MobileMap = dynamic(
@@ -102,6 +103,27 @@ function HomeContent() {
   // Filter MPAs based on current filters
   const filteredMpas = useMemo(() => filterMPAs(mpas, filters, savedMPAIds), [mpas, filters, savedMPAIds]);
 
+  // Wind farm data (lazy-loaded when layer is toggled on)
+  const { geojson: windFarmGeoJSON, summary: windFarmSummary } = useWindFarmLayer(
+    mpas,
+    filters.showWindFarms
+  );
+
+  // Filter wind farm GeoJSON by selected development statuses
+  const filteredWindFarmGeoJSON = useMemo(() => {
+    if (!windFarmGeoJSON || filters.windFarmStatus.length === 0) {
+      return windFarmGeoJSON;
+    }
+    const statusSet = new Set(filters.windFarmStatus);
+    return {
+      ...windFarmGeoJSON,
+      features: windFarmGeoJSON.features.filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (f: any) => statusSet.has(f.properties?.status)
+      ),
+    };
+  }, [windFarmGeoJSON, filters.windFarmStatus]);
+
   const loadMPAs = useCallback(async () => {
     setLoading(true);
     try {
@@ -189,6 +211,7 @@ function HomeContent() {
             isOpen={filterPanelOpen}
             onToggle={() => setFilterPanelOpen(!filterPanelOpen)}
             savedMPAIds={savedMPAIds}
+            windFarmSummary={windFarmSummary}
           />
 
           <MobileMap
@@ -197,6 +220,9 @@ function HomeContent() {
             zoom={zoom}
             focusMpaId={focusMpaId || undefined}
             showSST={filters.showSST}
+            showWindFarms={filters.showWindFarms}
+            windFarmGeoJSON={filteredWindFarmGeoJSON}
+            windFarmSummary={windFarmSummary}
           />
         </div>
       </main>

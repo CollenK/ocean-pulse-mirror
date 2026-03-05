@@ -32,6 +32,8 @@ import { FishingTrendChart, FishingByFlagChart, FishingByGearChart } from '@/com
 import { VesselActivityFeed } from '@/components/VesselActivity';
 import { IUURiskBadge } from '@/components/ui/IUURiskBadge';
 import { HeatwaveAlert, HeatwaveAlertBadge } from '@/components/HeatwaveAlert';
+import { useWindFarmConflictsForMPA } from '@/hooks/useWindFarmData';
+import { WindFarmConflictCard } from '@/components/WindFarmConflictCard';
 
 // Dynamically import TrackingHeatmap with SSR disabled (Leaflet requires window)
 const TrackingHeatmap = dynamic(
@@ -149,6 +151,18 @@ export default function MPADetailPage() {
     mpa?.id,
     mpa?.center[0],
     mpa?.center[1],
+    !!mpa
+  );
+
+  // Load wind farm conflict data for this MPA
+  const {
+    conflicts: windFarmConflicts,
+    nearbyWindFarms,
+    isLoading: windFarmsLoading,
+    hasConflicts: hasWindFarmConflicts,
+  } = useWindFarmConflictsForMPA(
+    mpa?.id || '',
+    mpa ? [mpa] : [],
     !!mpa
   );
 
@@ -1079,6 +1093,32 @@ export default function MPADetailPage() {
               </p>
             </div>
           )}
+        </CollapsibleCard>
+
+        {/* Wind Farm Conflicts */}
+        <CollapsibleCard
+          title="Offshore Wind Farms"
+          icon="wind"
+          iconColor="text-orange-500"
+          defaultOpen={hasWindFarmConflicts}
+          badge={
+            hasWindFarmConflicts ? (
+              <Badge variant="danger" size="sm">
+                {windFarmConflicts.length} Conflict{windFarmConflicts.length !== 1 ? 's' : ''}
+              </Badge>
+            ) : (
+              <Badge variant="healthy" size="sm">
+                Clear
+              </Badge>
+            )
+          }
+          className="mb-4"
+        >
+          <WindFarmConflictCard
+            conflicts={windFarmConflicts}
+            nearbyWindFarms={nearbyWindFarms}
+            isLoading={windFarmsLoading}
+          />
         </CollapsibleCard>
       </div>
 

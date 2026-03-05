@@ -166,9 +166,20 @@ function transformMPARow(row: any): MPA {
   };
 }
 
+// European coastal/maritime countries (ISO 3166-1 alpha-3 codes matching WDPA data)
+// Used to ensure European MPAs are loaded for wind farm conflict detection
+const EUROPEAN_COUNTRY_CODES = [
+  'ALB', 'BEL', 'BGR', 'CYP', 'DEU', 'DNK', 'ESP', 'EST', 'FIN', 'FRA',
+  'GBR', 'GRC', 'HRV', 'IRL', 'ISL', 'ITA', 'LTU', 'LVA', 'MLT', 'MNE',
+  'NLD', 'NOR', 'POL', 'PRT', 'ROU', 'SVN', 'SWE', 'TUR',
+];
+
+const MPA_SELECT_COLUMNS = 'id, external_id, name, country, center, area_km2, established_year, protection_level, description, metadata';
+
 /**
- * Fetch the largest MPAs from Supabase
- * Returns the top 100 MPAs by area (km²) for performance
+ * Fetch MPAs from Supabase
+ * Returns the top 100 largest MPAs globally plus all European MPAs
+ * (European MPAs are needed for wind farm conflict detection)
  */
 export async function fetchAllMPAs(): Promise<MPA[]> {
   const supabase = getSupabase();
@@ -179,21 +190,48 @@ export async function fetchAllMPAs(): Promise<MPA[]> {
   }
 
   try {
-    // Select columns without geometry first, then fetch geometry separately if needed
-    // Large geometry data can cause query issues
-    const { data, error } = await supabase
-      .from('mpas')
-      .select('id, external_id, name, country, center, area_km2, established_year, protection_level, description, metadata')
-      .gt('area_km2', 0)
-      .order('area_km2', { ascending: false })
-      .limit(100);
+    // Build an OR filter that matches exact country codes and multi-country entries
+    // WDPA uses semicolons for shared MPAs, e.g. "DEU;DNK;NLD"
+    const countryFilter = EUROPEAN_COUNTRY_CODES
+      .map((code) => `country.eq.${code},country.like.*${code}*`)
+      .join(',');
 
-    if (error) {
-      console.error('Error fetching MPAs:', error);
-      return [];
+    // Fetch top 100 largest MPAs globally and all European MPAs in parallel
+    const [globalResult, europeanResult] = await Promise.all([
+      supabase
+        .from('mpas')
+        .select(MPA_SELECT_COLUMNS)
+        .gt('area_km2', 0)
+        .order('area_km2', { ascending: false })
+        .limit(100),
+      supabase
+        .from('mpas')
+        .select(MPA_SELECT_COLUMNS)
+        .or(countryFilter)
+        .gt('area_km2', 0)
+        .order('area_km2', { ascending: false })
+        .limit(1000),
+    ]);
+
+    if (globalResult.error) {
+      console.error('Error fetching global MPAs:', globalResult.error);
+    }
+    if (europeanResult.error) {
+      console.error('Error fetching European MPAs:', europeanResult.error);
     }
 
-    return (data || []).map(transformMPARow);
+    // Merge and deduplicate by id
+    const seen = new Set<string>();
+    const merged: MPA[] = [];
+
+    for (const row of [...(globalResult.data || []), ...(europeanResult.data || [])]) {
+      if (!seen.has(row.id)) {
+        seen.add(row.id);
+        merged.push(transformMPARow(row));
+      }
+    }
+
+    return merged;
   } catch (error) {
     console.error('Error fetching MPAs:', error);
     return [];

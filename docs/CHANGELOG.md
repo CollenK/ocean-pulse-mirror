@@ -4,6 +4,32 @@ All notable changes to Ocean PULSE will be documented in this file.
 
 ---
 
+## 2026-02-27
+
+### Added
+- **Offshore Wind Farm Map Layer** sourced from EMODnet Human Activities and OSPAR Commission
+  - 600+ EMODnet polygon features merged with 278 OSPAR records across European waters
+  - Intelligent deduplication by normalized name and country, with OSPAR metadata enrichment
+  - Color-coded by development status (Operational, Under Construction, Planned, etc.)
+  - Toggleable via the Filters panel alongside existing SST and Fishing Pressure layers
+  - Legend component with status breakdown, total capacity, and MPA conflict count
+  - Labels visible at higher zoom levels for individual farm identification
+- **Wind Farm vs MPA Conflict Detection** using bounding box spatial overlap
+  - Automatically identifies wind farms whose footprints intersect Marine Protected Areas
+  - Summary statistics including total farms, capacity in GW, and number of MPA conflicts
+- **Wind Farm Conflict Section on MPA Detail Pages**
+  - New "Offshore Wind Farms" collapsible card on each MPA detail page
+  - Shows conflict alert banner when overlapping wind farms are detected
+  - Individual wind farm cards with name, country, status, capacity, turbine count, and developer
+  - OSPAR-enriched metadata: operator, foundation type, water depth, EIA status, device type
+  - Source badges showing data provenance (EMODnet, OSPAR, or merged)
+  - Badge indicator showing conflict count or "Clear" status
+- New TypeScript types for wind farm data from both EMODnet and OSPAR (`types/wind-farms.ts`)
+- Wind farm data service with dual EMODnet + OSPAR WFS integration and merge logic (`lib/wind-farm-service.ts`)
+- TanStack Query hook for wind farm data with 24-hour caching (`hooks/useWindFarmData.ts`)
+
+---
+
 ## 2025-01-22
 
 ### Added

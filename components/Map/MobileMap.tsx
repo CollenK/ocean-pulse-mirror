@@ -10,7 +10,10 @@ import { MPAPopup } from './MPAPopup';
 import { MapControls } from './MapControls';
 import { SSTLayer } from './SSTLayer';
 import { SSTLegend } from './SSTLegend';
+import { WindFarmLayer } from './WindFarmLayer';
+import { WindFarmLegend } from './WindFarmLegend';
 import { toMapLibreCoords, boundsToGeoJSON, getHealthColor } from './map-utils';
+import type { WindFarmSummary } from '@/types/wind-farms';
 
 interface MobileMapProps {
   mpas: MPA[];
@@ -19,6 +22,10 @@ interface MobileMapProps {
   onMPAClick?: (mpa: MPA) => void;
   focusMpaId?: string;
   showSST?: boolean;
+  showWindFarms?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  windFarmGeoJSON?: { type: 'FeatureCollection'; features: any[] };
+  windFarmSummary?: WindFarmSummary | null;
 }
 
 // OpenFreeMap style URL (free, no API key required)
@@ -51,6 +58,9 @@ export function MobileMap({
   onMPAClick,
   focusMpaId,
   showSST = false,
+  showWindFarms = false,
+  windFarmGeoJSON,
+  windFarmSummary,
 }: MobileMapProps) {
   const mapRef = useRef<MapRef>(null);
   const [hoveredMPA, setHoveredMPA] = useState<MPA | null>(null);
@@ -189,8 +199,17 @@ export function MobileMap({
         maxZoom={18}
         renderWorldCopies={false}
       >
-        {/* SST Layer - rendered first so it appears below MPA boundaries */}
+        {/* SST Layer - rendered first so it appears below other layers */}
         <SSTLayer visible={showSST} opacity={0.7} />
+
+        {/* Wind Farm Layer - rendered above SST but below MPA boundaries */}
+        {windFarmGeoJSON && (
+          <WindFarmLayer
+            geojson={windFarmGeoJSON}
+            visible={showWindFarms}
+            opacity={0.35}
+          />
+        )}
 
         {/* MPA Boundaries as GeoJSON layers */}
         <Source
@@ -230,6 +249,16 @@ export function MobileMap({
       {/* SST Legend - shown when SST layer is visible */}
       {showSST && (
         <SSTLegend className="absolute bottom-20 left-4 z-10" />
+      )}
+
+      {/* Wind Farm Legend - shown when wind farm layer is visible */}
+      {showWindFarms && !showSST && (
+        <WindFarmLegend visible={showWindFarms} summary={windFarmSummary} />
+      )}
+      {showWindFarms && showSST && (
+        <div className="absolute bottom-44 left-4 z-10">
+          <WindFarmLegend visible={showWindFarms} summary={windFarmSummary} />
+        </div>
       )}
     </div>
   );
