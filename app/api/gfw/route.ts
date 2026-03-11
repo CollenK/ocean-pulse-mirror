@@ -20,10 +20,14 @@ import {
   geometryToGFWRegion,
   boundsToGFWRegion,
 } from '@/lib/gfw-client';
+import { captureError } from '@/lib/error-reporting';
+import { rateLimit, getRequestIp } from '@/lib/rate-limit';
 import type { GFWRegion } from '@/types/gfw';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Allow up to 60 seconds for GFW API calls
+
+const checkRateLimit = rateLimit({ interval: 60_000, limit: 30 });
 
 interface RequestParams {
   action: string;
@@ -60,6 +64,16 @@ function parseGeometry(geometryStr?: string, boundsStr?: string): GFWRegion | nu
 }
 
 export async function GET(request: NextRequest) {
+  const ip = getRequestIp(request);
+  const rateLimitResult = checkRateLimit(ip);
+  if (!rateLimitResult.success) {
+    const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
+    return NextResponse.json(
+      { error: 'Too many requests', retryAfter },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    );
+  }
+
   const searchParams = request.nextUrl.searchParams;
 
   const params: RequestParams = {
@@ -182,20 +196,9 @@ export async function GET(request: NextRequest) {
         );
     }
   } catch (error) {
-    console.error(`[GFW API Route] Error handling ${params.action}:`, error);
+    captureError(error, { context: 'GFW API GET', action: params.action, mpaId: params.mpaId });
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
-
-    // Log full details for debugging
-    console.error('[GFW API Route] Full error details:', {
-      action: params.action,
-      mpaId: params.mpaId,
-      hasGeometry: !!params.geometry,
-      hasBounds: !!params.bounds,
-      errorMessage,
-      errorStack,
-    });
 
     // Check for specific error types
     if (errorMessage.includes('GFW_API_TOKEN') || errorMessage.includes('not set')) {
@@ -242,6 +245,16 @@ export async function GET(request: NextRequest) {
 
 // Support POST for larger geometry payloads
 export async function POST(request: NextRequest) {
+  const ip = getRequestIp(request);
+  const rateLimitResult = checkRateLimit(ip);
+  if (!rateLimitResult.success) {
+    const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
+    return NextResponse.json(
+      { error: 'Too many requests', retryAfter },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    );
+  }
+
   console.log('[GFW API Route] POST request received');
 
   try {
@@ -337,15 +350,9 @@ export async function POST(request: NextRequest) {
         );
     }
   } catch (error) {
-    console.error('[GFW API Route] POST error:', error);
+    captureError(error, { context: 'GFW API POST' });
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
-
-    console.error('[GFW API Route] POST full error:', {
-      errorMessage,
-      errorStack,
-    });
 
     // Check for specific error types
     if (errorMessage.includes('GFW_API_TOKEN') || errorMessage.includes('not set')) {

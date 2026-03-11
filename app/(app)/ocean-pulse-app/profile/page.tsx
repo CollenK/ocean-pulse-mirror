@@ -20,6 +20,10 @@ export default function ProfilePage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [userStats, setUserStats] = useState<UserObservationStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -68,6 +72,44 @@ export default function ProfilePage() {
   const handleSignOut = async () => {
     await signOut();
     router.push('/ocean-pulse-app');
+  };
+
+  const handleExportData = async () => {
+    setExporting(true);
+    try {
+      const response = await fetch('/api/gdpr/export');
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'ocean-pulse-data-export.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to export data. Please try again.' });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETE') return;
+    setDeleting(true);
+    try {
+      const response = await fetch('/api/gdpr/delete-account', { method: 'DELETE' });
+      if (!response.ok) {
+        throw new Error('Deletion failed');
+      }
+      router.push('/');
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to delete account. Please try again.' });
+      setDeleting(false);
+    }
   };
 
   // Show loading while checking auth
@@ -406,11 +448,127 @@ export default function ProfilePage() {
           </Card>
         </motion.div>
 
-        {/* Sign Out */}
+        {/* Data & Privacy */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
+        >
+          <Card className="shadow-lg">
+            <CardTitle className="flex items-center gap-2">
+              <Icon name="document" className="text-balean-cyan" />
+              Data &amp; Privacy
+            </CardTitle>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between py-3 border-b border-balean-gray-100">
+                  <div>
+                    <p className="font-medium text-balean-navy">Download My Data</p>
+                    <p className="text-sm text-balean-gray-400">
+                      Export all your data as a JSON file
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleExportData}
+                    variant="outline"
+                    size="sm"
+                    loading={exporting}
+                    disabled={exporting}
+                  >
+                    <Icon name="download" size="sm" />
+                    Export
+                  </Button>
+                </div>
+
+                <div className="py-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-balean-navy">Delete Account</p>
+                      <p className="text-sm text-balean-gray-400">
+                        Permanently remove all your data
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      variant="danger"
+                      size="sm"
+                    >
+                      <Icon name="trash" size="sm" />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Delete Account Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <Icon name="exclamation" className="text-red-500" />
+                </div>
+                <h3 className="text-lg font-bold text-balean-navy">Delete Account</h3>
+              </div>
+
+              <p className="text-sm text-balean-gray-500 mb-2">
+                This action is permanent and cannot be undone. All your observations,
+                saved MPAs, health assessments, and profile data will be deleted.
+              </p>
+
+              <p className="text-sm font-medium text-balean-navy mb-2">
+                Type <span className="font-mono text-red-500 bg-red-50 px-1.5 py-0.5 rounded">DELETE</span> to confirm:
+              </p>
+
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="Type DELETE to confirm"
+                className="w-full px-4 py-2 border border-balean-gray-300 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none transition-colors mb-4 font-mono"
+                autoFocus
+              />
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteConfirmText('');
+                  }}
+                  variant="secondary"
+                  size="sm"
+                  className="flex-1"
+                  disabled={deleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleDeleteAccount}
+                  variant="danger"
+                  size="sm"
+                  className="flex-1"
+                  disabled={deleteConfirmText !== 'DELETE' || deleting}
+                  loading={deleting}
+                >
+                  Delete My Account
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Sign Out */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
         >
           <Card className="shadow-lg border-red-100">
             <CardContent className="pt-6">

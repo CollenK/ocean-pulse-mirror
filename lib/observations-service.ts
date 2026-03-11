@@ -5,6 +5,7 @@
  */
 
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { captureError } from '@/lib/error-reporting';
 import { saveObservation as saveObservationLocal, getObservationsForMPA as getLocalObservations, deleteLocalObservation } from '@/lib/offline-storage';
 import type { ReportType } from '@/types';
 import type { Json, ObservationRow } from '@/types/supabase';
@@ -91,7 +92,7 @@ export async function createObservation(input: CreateObservationInput): Promise<
 
       return { id: data.id, synced: true };
     } catch (error) {
-      console.error('Failed to save to Supabase, falling back to local storage:', error);
+      captureError(error, { context: 'createObservation', mpaId: input.mpaId, userId: input.userId ?? '' });
     }
   }
 
@@ -290,7 +291,7 @@ export async function updateObservation(input: UpdateObservationInput): Promise<
 
     return { success: true };
   } catch (error) {
-    console.error('Failed to update observation:', error);
+    captureError(error, { context: 'updateObservation', observationId: input.id, userId: input.userId });
     return { success: false, error: 'Failed to update observation' };
   }
 }
@@ -312,7 +313,7 @@ export async function deleteObservation(observationId: string, userId: string): 
       await deleteLocalObservation(numericId);
       return { success: true };
     } catch (error) {
-      console.error('Failed to delete local observation:', error);
+      captureError(error, { context: 'deleteObservation', observationId, action: 'deleteLocal' });
       return { success: false, error: 'Failed to delete local observation' };
     }
   }
@@ -348,7 +349,7 @@ export async function deleteObservation(observationId: string, userId: string): 
 
     return { success: true };
   } catch (error) {
-    console.error('Failed to delete observation:', error);
+    captureError(error, { context: 'deleteObservation', observationId, userId, action: 'deleteSupabase' });
     return { success: false, error: 'Failed to delete observation' };
   }
 }
@@ -389,7 +390,7 @@ export async function uploadObservationPhoto(
       });
 
     if (error) {
-      console.error('Photo upload error:', error);
+      captureError(error, { context: 'uploadObservationPhoto', userId, action: 'storageUpload' });
       return null;
     }
 
@@ -400,7 +401,7 @@ export async function uploadObservationPhoto(
 
     return urlData.publicUrl;
   } catch (error) {
-    console.error('Failed to upload photo:', error);
+    captureError(error, { context: 'uploadObservationPhoto', userId });
     return null;
   }
 }

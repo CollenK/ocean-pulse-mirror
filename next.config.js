@@ -87,6 +87,19 @@ const withPWA = require('next-pwa')({
   ],
 });
 
+// Content Security Policy directives
+const cspDirectives = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://*.sentry.io",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn-uicons.flaticon.com",
+  "font-src 'self' https://fonts.gstatic.com https://cdn-uicons.flaticon.com",
+  "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://server.arcgisonline.com https://api.obis.org https://*.mpatlas.org https://*.supabase.co",
+  "connect-src 'self' https://*.supabase.co https://api.obis.org https://gateway.api.globalfishingwatch.org https://*.tile.openstreetmap.org https://tiles.openfreemap.org https://server.arcgisonline.com https://*.mpatlas.org https://www.google-analytics.com https://*.sentry.io https://nrt.cmems-du.eu",
+  "frame-src 'none'",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+].join('; ');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -113,6 +126,43 @@ const nextConfig = {
   },
   // Turbopack configuration for PWA compatibility
   turbopack: {},
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(self), microphone=(), geolocation=(self)',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains',
+          },
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: cspDirectives,
+          },
+        ],
+      },
+    ];
+  },
 };
 
 // Sentry configuration options

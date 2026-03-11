@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { captureError } from '@/lib/error-reporting';
+import { rateLimit, getRequestIp } from '@/lib/rate-limit';
+
+const checkRateLimit = rateLimit({ interval: 60_000, limit: 120 });
 
 /**
  * Proxy endpoint for Copernicus Marine Service SST tiles.
@@ -10,6 +14,16 @@ import { NextRequest, NextResponse } from 'next/server';
  * is optional. It can be useful for server-side caching.
  */
 export async function GET(request: NextRequest) {
+  const ip = getRequestIp(request);
+  const rateLimitResult = checkRateLimit(ip);
+  if (!rateLimitResult.success) {
+    const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
+    return NextResponse.json(
+      { error: 'Too many requests', retryAfter },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const z = searchParams.get('z');
   const x = searchParams.get('x');
@@ -61,7 +75,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('SST tile fetch error:', error);
+    captureError(error, { context: 'SST tile fetch', z: z ?? '', x: x ?? '', y: y ?? '' });
     return new NextResponse(null, { status: 500 });
   }
 }

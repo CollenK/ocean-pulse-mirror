@@ -1,4 +1,5 @@
 import { MPA, MPAGeometry } from '@/types';
+import { captureError } from '@/lib/error-reporting';
 import { createBrowserClient } from '@supabase/ssr';
 
 /**
@@ -233,7 +234,7 @@ export async function fetchAllMPAs(): Promise<MPA[]> {
 
     return merged;
   } catch (error) {
-    console.error('Error fetching MPAs:', error);
+    captureError(error, { context: 'fetchAllMPAs' });
     return [];
   }
 }
@@ -275,7 +276,7 @@ export async function fetchMPAById(id: string): Promise<MPA | null> {
 
     return transformMPARow(data);
   } catch (error) {
-    console.error('Error fetching MPA:', error);
+    captureError(error, { context: 'fetchMPAById', mpaId: id });
     return null;
   }
 }
@@ -323,7 +324,7 @@ export async function findNearestMPAs(
       .filter((mpa) => mpa.distance <= maxDistanceKm)
       .sort((a, b) => a.distance - b.distance);
   } catch (error) {
-    console.error('Error finding nearest MPAs:', error);
+    captureError(error, { context: 'findNearestMPAs', lat: String(lat), lng: String(lng) });
     return [];
   }
 }
@@ -352,7 +353,7 @@ export async function searchMPAs(query: string): Promise<MPA[]> {
 
     return (data || []).map(transformMPARow);
   } catch (error) {
-    console.error('Error searching MPAs:', error);
+    captureError(error, { context: 'searchMPAs', query });
     return [];
   }
 }
@@ -477,7 +478,7 @@ export async function fetchMPAGeometries(externalIds?: string[]): Promise<Map<st
 
     return geometryMap;
   } catch (error) {
-    console.error('Error fetching MPA geometries:', error);
+    captureError(error, { context: 'fetchMPAGeometries' });
     return geometryMap;
   }
 }
