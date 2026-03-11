@@ -9,6 +9,7 @@ interface MPASearchSelectProps {
   onChange: (mpaId: string) => void;
   error?: boolean;
   disabled?: boolean;
+  loading?: boolean;
 }
 
 export function MPASearchSelect({
@@ -17,6 +18,7 @@ export function MPASearchSelect({
   onChange,
   error = false,
   disabled = false,
+  loading = false,
 }: MPASearchSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -153,8 +155,8 @@ export function MPASearchSelect({
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
           onKeyDown={handleKeyDown}
-          placeholder="Search for a Marine Protected Area..."
-          disabled={disabled}
+          placeholder={loading && value ? 'Loading MPA...' : 'Search for a Marine Protected Area...'}
+          disabled={disabled || (loading && !!value)}
           autoComplete="off"
           className={`w-full px-4 py-3 pr-10 border rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 bg-white transition-colors ${
             error ? 'border-red-300 bg-red-50' : 'border-gray-200'

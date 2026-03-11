@@ -98,6 +98,7 @@ function ObservePageContent() {
   const { user, loading: authLoading } = useAuth();
 
   const [mpas, setMpas] = useState<MPA[]>([]);
+  const [mpasLoading, setMpasLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftId, setDraftId] = useState<number | null>(null);
@@ -112,7 +113,7 @@ function ObservePageContent() {
 
   // Load MPAs
   useEffect(() => {
-    fetchAllMPAs().then(setMpas);
+    fetchAllMPAs().then(setMpas).finally(() => setMpasLoading(false));
   }, []);
 
   // Load draft if provided in URL
@@ -364,6 +365,7 @@ function ObservePageContent() {
             value={data.mpaId}
             onChange={handleMpaChange}
             error={!!errors.mpaId}
+            loading={mpasLoading}
           />
           {errors.mpaId ? (
             <p className="mt-2 text-sm text-red-600">{errors.mpaId}</p>

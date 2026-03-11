@@ -12,7 +12,7 @@ import { SSTLayer } from './SSTLayer';
 import { SSTLegend } from './SSTLegend';
 import { WindFarmLayer } from './WindFarmLayer';
 import { WindFarmLegend } from './WindFarmLegend';
-import { toMapLibreCoords, boundsToGeoJSON, getHealthColor } from './map-utils';
+import { toMapLibreCoords, boundsToGeoJSON, getHealthColor, normalizeAntimeridianGeometry } from './map-utils';
 import type { WindFarmSummary } from '@/types/wind-farms';
 
 interface MobileMapProps {
@@ -87,9 +87,12 @@ export function MobileMap({
     const features = withGeometry.map((mpa) => {
       const geom = mpa.geometry!;
       // Cast to GeoJSON.Geometry type for MapLibre compatibility
-      const geometry = geom.type === 'Polygon'
+      const rawGeometry = geom.type === 'Polygon'
         ? { type: 'Polygon' as const, coordinates: geom.coordinates as number[][][] }
         : { type: 'MultiPolygon' as const, coordinates: geom.coordinates as number[][][][] };
+
+      // Normalize geometries that cross the anti-meridian (e.g., New Zealand)
+      const geometry = normalizeAntimeridianGeometry(rawGeometry);
 
       return {
         type: 'Feature' as const,
@@ -197,7 +200,7 @@ export function MobileMap({
         mapStyle={MAP_STYLE}
         minZoom={1.5}
         maxZoom={18}
-        renderWorldCopies={false}
+        renderWorldCopies={true}
       >
         {/* SST Layer - rendered first so it appears below other layers */}
         <SSTLayer visible={showSST} opacity={0.7} />

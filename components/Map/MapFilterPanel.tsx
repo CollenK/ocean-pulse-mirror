@@ -209,10 +209,10 @@ export function MapFilterPanel({
     return Array.from(levels).sort();
   }, [mpas]);
 
-  // Get unique countries sorted by count
+  // Get unique countries sorted alphabetically by display name
   const countries = useMemo(() => {
     const countryList = Object.entries(filterCounts.country)
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, b) => getCountryName(a[0]).localeCompare(getCountryName(b[0])))
       .map(([country]) => country);
     return countryList;
   }, [filterCounts.country]);

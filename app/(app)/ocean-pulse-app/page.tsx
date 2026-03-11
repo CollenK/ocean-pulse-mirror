@@ -175,8 +175,14 @@ function HomeContent() {
       : undefined;
     const zoom = mapZoom ? parseFloat(mapZoom) : undefined;
 
-    // Count active filters for badge
-    const activeFilterCount = Object.values(filters).flat().length;
+    // Count active filters for badge (only count user-selected array filters + savedOnly)
+    const activeFilterCount =
+      filters.healthStatus.length +
+      filters.protectionLevel.length +
+      filters.country.length +
+      filters.areaSize.length +
+      filters.windFarmStatus.length +
+      (filters.savedOnly ? 1 : 0);
 
     return (
       <main id="main-content" className="overflow-hidden" style={{ height: 'calc(100vh - 64px)' }}>

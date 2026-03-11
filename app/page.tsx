@@ -2,7 +2,7 @@
 
 import { motion, useScroll, useTransform } from 'framer-motion';
 import Link from 'next/link';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 
@@ -91,6 +91,7 @@ const testimonials = [
 ];
 
 export default function LandingPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -117,22 +118,50 @@ export default function LandingPage() {
               </div>
             </Link>
 
-            {/* CTA Buttons */}
-            <div className="flex items-center gap-3">
-              <a href="https://www.balean.org/projects/68bfe9252ee300914fd4542a" target="_blank" rel="noopener noreferrer" className="hidden sm:block">
-                <Button variant="secondary" size="sm">
-                  <i className="fi fi-rr-heart" />
+            {/* CTA Buttons - Desktop */}
+            <div className="hidden sm:flex items-center gap-3">
+              <a href="https://www.balean.org/projects/68bfe9252ee300914fd4542a" target="_blank" rel="noopener noreferrer">
+                <Button variant="secondary" size="sm" icon={<i className="fi fi-rr-heart" />}>
                   Support Us
                 </Button>
               </a>
               <Link href="/ocean-pulse-app">
-                <Button variant="primary" size="sm">
-                  <i className="fi fi-rr-rocket-lunch" />
+                <Button variant="primary" size="sm" icon={<i className="fi fi-rr-rocket-lunch" />}>
                   Launch App
                 </Button>
               </Link>
             </div>
+
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="sm:hidden w-10 h-10 rounded-xl flex items-center justify-center hover:bg-balean-gray-100 transition-colors"
+              aria-label="Toggle menu"
+            >
+              <i className={`fi ${mobileMenuOpen ? 'fi-rr-cross-small' : 'fi-rr-menu-burger'} text-balean-navy text-lg`} />
+            </button>
           </div>
+
+          {/* Mobile menu dropdown */}
+          {mobileMenuOpen && (
+            <div className="sm:hidden border-t border-balean-gray-100 py-4 flex flex-col gap-3">
+              <a
+                href="https://www.balean.org/projects/68bfe9252ee300914fd4542a"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Button variant="secondary" size="sm" fullWidth icon={<i className="fi fi-rr-heart" />}>
+                  Support Us
+                </Button>
+              </a>
+              <Link href="/ocean-pulse-app" onClick={() => setMobileMenuOpen(false)}>
+                <Button variant="primary" size="sm" fullWidth icon={<i className="fi fi-rr-rocket-lunch" />}>
+                  Launch App
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       </nav>
 
@@ -227,14 +256,12 @@ export default function LandingPage() {
               className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
               <Link href="/ocean-pulse-app">
-                <Button variant="yellow" size="lg">
-                  <i className="fi fi-rr-rocket-lunch" />
+                <Button variant="yellow" size="lg" icon={<i className="fi fi-rr-rocket-lunch" />}>
                   Get Started Free
                 </Button>
               </Link>
-              <Link href="#features">
-                <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white hover:text-balean-navy">
-                  <i className="fi fi-rr-play" />
+              <Link href="#how-it-works">
+                <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white hover:text-balean-navy" icon={<i className="fi fi-rr-play" />}>
                   See How It Works
                 </Button>
               </Link>
@@ -295,7 +322,7 @@ export default function LandingPage() {
               variants={fadeInUp}
               className="text-balean-gray-400 text-lg max-w-2xl mx-auto"
             >
-              A comprehensive platform built for researchers, conservationists,
+              A platform built for researchers, conservationists,
               and ocean enthusiasts to monitor and protect marine ecosystems.
             </motion.p>
           </motion.div>
@@ -323,7 +350,7 @@ export default function LandingPage() {
                       ${feature.color === 'yellow' ? 'bg-balean-yellow/20 text-balean-yellow-dark' : ''}
                     `}
                   >
-                    <i className={`${feature.icon} text-2xl`} />
+                    <i className={`${feature.icon} text-2xl leading-none`} />
                   </div>
                   <h3 className="font-display text-xl text-balean-navy mb-2">
                     {feature.title}
@@ -339,7 +366,7 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works Section */}
-      <section className="section-spacing bg-white">
+      <section id="how-it-works" className="section-spacing bg-white">
         <div className="container-app">
           <motion.div
             initial="initial"
@@ -511,14 +538,12 @@ export default function LandingPage() {
               className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
               <Link href="/ocean-pulse-app">
-                <Button variant="primary" size="lg">
-                  <i className="fi fi-rr-rocket-lunch" />
+                <Button variant="primary" size="lg" icon={<i className="fi fi-rr-rocket-lunch" />}>
                   Launch Ocean PULSE
                 </Button>
               </Link>
               <a href="https://www.balean.org/projects/68bfe9252ee300914fd4542a" target="_blank" rel="noopener noreferrer">
-                <Button variant="secondary" size="lg">
-                  <i className="fi fi-rr-heart" />
+                <Button variant="secondary" size="lg" icon={<i className="fi fi-rr-heart" />}>
                   Support Us
                 </Button>
               </a>
@@ -554,14 +579,14 @@ export default function LandingPage() {
               <ul className="space-y-2 text-white/60">
                 <li><Link href="/ocean-pulse-app" className="hover:text-white transition-colors">App</Link></li>
                 <li><Link href="#features" className="hover:text-white transition-colors">Features</Link></li>
-                <li><a href="#" className="hover:text-white transition-colors">API</a></li>
+                <li><span className="text-white/30 cursor-not-allowed" title="Coming Soon">API</span></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-semibold mb-4">Resources</h4>
               <ul className="space-y-2 text-white/60">
-                <li><a href="#" className="hover:text-white transition-colors">Documentation</a></li>
+                <li><span className="text-white/30 cursor-not-allowed" title="Coming Soon">Documentation</span></li>
                 <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link></li>
                 <li><Link href="/privacy" className="hover:text-white transition-colors">Terms</Link></li>
               </ul>
