@@ -2,7 +2,6 @@ import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { MPA, Species, Observation, UserHealthAssessment } from '@/types';
 import type { AbundanceCache, AbundanceRecord } from '@/types/obis-abundance';
 import type { EnvironmentalCache } from '@/types/obis-environmental';
-import type { TrackingCache } from '@/types/obis-tracking';
 import type { IndicatorSpecies, IndicatorSpeciesCache } from '@/types/indicator-species';
 
 /**
@@ -63,11 +62,6 @@ export interface OceanPulseDB extends DBSchema {
   'environmental-cache': {
     key: string; // mpaId
     value: EnvironmentalCache;
-    indexes: { 'by-last-fetched': 'lastFetched' };
-  };
-  'tracking-cache': {
-    key: string; // mpaId
-    value: TrackingCache;
     indexes: { 'by-last-fetched': 'lastFetched' };
   };
   'indicator-species': {
@@ -163,11 +157,6 @@ export async function initDB(): Promise<IDBPDatabase<OceanPulseDB>> {
         environmentalCacheStore.createIndex('by-last-fetched', 'lastFetched');
       }
 
-      // Tracking cache store (added in v4)
-      if (!db.objectStoreNames.contains('tracking-cache')) {
-        const trackingCacheStore = db.createObjectStore('tracking-cache', { keyPath: 'id' });
-        trackingCacheStore.createIndex('by-last-fetched', 'lastFetched');
-      }
 
       // Indicator species store (added in v5)
       if (!db.objectStoreNames.contains('indicator-species')) {
@@ -314,8 +303,8 @@ export async function saveObservation(observation: Omit<Observation, 'id'>): Pro
  */
 export async function getUnsyncedObservations(): Promise<(Observation & { id: number })[]> {
   const db = await initDB();
-  const index = db.transaction('observations').store.index('by-sync-status');
-  return await index.getAll(false as any);
+  const all = await db.getAll('observations');
+  return (all as (Observation & { id: number })[]).filter((o) => !o.synced);
 }
 
 /**
@@ -543,8 +532,8 @@ export async function getHealthAssessmentsForMPA(mpaId: string): Promise<(UserHe
  */
 export async function getUnsyncedHealthAssessments(): Promise<(UserHealthAssessment & { id: number })[]> {
   const db = await initDB();
-  const index = db.transaction('user-health-assessments').store.index('by-sync-status');
-  return await index.getAll(false as any);
+  const all = await db.getAll('user-health-assessments');
+  return (all as (UserHealthAssessment & { id: number })[]).filter((a) => !a.synced);
 }
 
 /**

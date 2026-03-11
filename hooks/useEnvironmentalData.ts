@@ -13,6 +13,7 @@ import {
   detectAnomalies,
   calculateHabitatQualityScore,
 } from '@/lib/obis-environmental';
+import { getEnvironmentalSummary } from '@/lib/mpa-data-service';
 
 export interface UseEnvironmentalDataResult {
   summary: MPAEnvironmentalSummary | null;
@@ -50,7 +51,16 @@ export function useEnvironmentalData(
         setError(null);
         setProgress(10);
 
-        // Try cache first
+        // Try pipeline data from Supabase first (instant)
+        const pipelineData = await getEnvironmentalSummary(mpaId);
+        if (pipelineData && isMounted) {
+          setSummary(pipelineData);
+          setLoading(false);
+          setProgress(100);
+          return;
+        }
+
+        // Try local cache next
         const cached = await getCachedEnvironmentalSummary(mpaId);
         if (cached && isMounted) {
           setSummary(cached);
@@ -61,7 +71,7 @@ export function useEnvironmentalData(
 
         setProgress(20);
 
-        // Fetch from OBIS
+        // Fall back to client-side OBIS fetch
         const measurements = await fetchEnvironmentalData(mpaId, center, radiusKm);
 
         if (!isMounted) return;

@@ -13,6 +13,7 @@ import {
   processSpeciesTrends,
   calculateOverallBiodiversity,
 } from '@/lib/obis-abundance';
+import { getAbundanceSummary } from '@/lib/mpa-data-service';
 
 export interface UseAbundanceDataOptions {
   mpaId: string;
@@ -71,7 +72,16 @@ export function useAbundanceData(
         setError(null);
         setProgress(10);
 
-        // Try cache first
+        // Try pipeline data from Supabase first (instant)
+        const pipelineData = await getAbundanceSummary(mpaId);
+        if (pipelineData && isMounted) {
+          setSummary(pipelineData);
+          setLoading(false);
+          setProgress(100);
+          return;
+        }
+
+        // Try local cache next
         const cached = await getCachedAbundanceSummary(mpaId);
         if (cached && isMounted) {
           setSummary(cached);
@@ -82,7 +92,7 @@ export function useAbundanceData(
 
         setProgress(20);
 
-        // Fetch from OBIS (filtered by indicator species)
+        // Fall back to client-side OBIS fetch (filtered by indicator species)
         const records = await fetchAbundanceData(mpaId, center, radiusKm, mpaInfo);
 
         if (!isMounted) return;

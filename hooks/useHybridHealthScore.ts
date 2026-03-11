@@ -10,7 +10,6 @@ import { useBackendHealthScore } from './useBackendData';
 import { getUserHealthScoreForMPA } from '@/lib/offline-storage';
 import type { MPAAbundanceSummary } from '@/types/obis-abundance';
 import type { MPAEnvironmentalSummary } from '@/types/obis-environmental';
-import type { MPATrackingSummary } from '@/types/obis-tracking';
 import type { GFWComplianceScore } from '@/types/gfw';
 import type { MarineHeatwaveAlert, HeatwaveCategory } from '@/hooks/useHeatwaveAlert';
 
@@ -29,8 +28,6 @@ interface HybridHealthScoreInput {
   abundanceLoading: boolean;
   environmentalSummary: MPAEnvironmentalSummary | null;
   environmentalLoading: boolean;
-  trackingSummary: MPATrackingSummary | null;
-  trackingLoading: boolean;
   indicatorSpeciesCount: number;
   // Option to prefer backend
   preferBackend?: boolean;
@@ -94,8 +91,6 @@ export function useHybridHealthScore({
   abundanceLoading,
   environmentalSummary,
   environmentalLoading,
-  trackingSummary,
-  trackingLoading,
   indicatorSpeciesCount,
   preferBackend = true,
   includeCommunityAssessments = true,
@@ -151,7 +146,7 @@ export function useHybridHealthScore({
   return useMemo(() => {
     // Determine if we should use backend data
     const backendAvailable = !backendError && !!backendData;
-    const clientLoading = abundanceLoading || environmentalLoading || trackingLoading;
+    const clientLoading = abundanceLoading || environmentalLoading;
     const loading = preferBackend ? (backendLoading && clientLoading) : clientLoading;
 
     // If backend is available and has valid data, prefer it
@@ -289,7 +284,7 @@ export function useHybridHealthScore({
     // Fallback to client-side calculation
     const populationScore = calculatePopulationScore(abundanceSummary);
     const habitatScore = calculateHabitatScore(environmentalSummary);
-    const diversityScore = calculateDiversityScore(indicatorSpeciesCount, trackingSummary);
+    const diversityScore = calculateDiversityScore(indicatorSpeciesCount);
     const thermalScore = calculateThermalStressScore(heatwaveAlert);
 
     const hasPopulationData = abundanceSummary && abundanceSummary.speciesTrends.length > 0;
@@ -426,8 +421,6 @@ export function useHybridHealthScore({
     abundanceLoading,
     environmentalSummary,
     environmentalLoading,
-    trackingSummary,
-    trackingLoading,
     indicatorSpeciesCount,
     communityData,
     communityLoading,
@@ -499,13 +492,9 @@ function calculateHabitatScore(summary: MPAEnvironmentalSummary | null): number 
 }
 
 function calculateDiversityScore(
-  indicatorSpeciesCount: number,
-  trackingSummary: MPATrackingSummary | null
+  indicatorSpeciesCount: number
 ): number {
   if (indicatorSpeciesCount === 0) return 0;
-  let diversityScore = Math.min(100, indicatorSpeciesCount * 5);
-  if (trackingSummary && trackingSummary.trackedIndividuals > 0) {
-    diversityScore = Math.min(100, diversityScore + 10);
-  }
+  const diversityScore = Math.min(100, indicatorSpeciesCount * 5);
   return Math.round(diversityScore);
 }

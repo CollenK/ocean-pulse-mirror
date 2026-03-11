@@ -9,15 +9,12 @@
 import { useMemo } from 'react';
 import type { MPAAbundanceSummary } from '@/types/obis-abundance';
 import type { MPAEnvironmentalSummary } from '@/types/obis-environmental';
-import type { MPATrackingSummary } from '@/types/obis-tracking';
 
 interface CompositeHealthScoreInput {
   abundanceSummary: MPAAbundanceSummary | null;
   abundanceLoading: boolean;
   environmentalSummary: MPAEnvironmentalSummary | null;
   environmentalLoading: boolean;
-  trackingSummary: MPATrackingSummary | null;
-  trackingLoading: boolean;
   indicatorSpeciesCount: number;
 }
 
@@ -48,17 +45,15 @@ export function useCompositeHealthScore({
   abundanceLoading,
   environmentalSummary,
   environmentalLoading,
-  trackingSummary,
-  trackingLoading,
   indicatorSpeciesCount,
 }: CompositeHealthScoreInput): CompositeHealthScore {
   return useMemo(() => {
-    const loading = abundanceLoading || environmentalLoading || trackingLoading;
+    const loading = abundanceLoading || environmentalLoading;
 
     // Calculate individual scores
     const populationScore = calculatePopulationScore(abundanceSummary);
     const habitatScore = calculateHabitatScore(environmentalSummary);
-    const diversityScore = calculateDiversityScore(indicatorSpeciesCount, trackingSummary);
+    const diversityScore = calculateDiversityScore(indicatorSpeciesCount);
 
     // Determine which data sources are available
     const hasPopulationData = abundanceSummary && abundanceSummary.speciesTrends.length > 0;
@@ -154,8 +149,6 @@ export function useCompositeHealthScore({
     abundanceLoading,
     environmentalSummary,
     environmentalLoading,
-    trackingSummary,
-    trackingLoading,
     indicatorSpeciesCount,
   ]);
 }
@@ -211,8 +204,7 @@ function calculateHabitatScore(summary: MPAEnvironmentalSummary | null): number 
  * Calculate species diversity score
  */
 function calculateDiversityScore(
-  indicatorSpeciesCount: number,
-  trackingSummary: MPATrackingSummary | null
+  indicatorSpeciesCount: number
 ): number {
   if (indicatorSpeciesCount === 0) {
     return 0;
@@ -220,12 +212,7 @@ function calculateDiversityScore(
 
   // Base score from indicator species count
   // Scale: 0 species = 0, 5+ species = 60, 10+ species = 80, 20+ species = 100
-  let diversityScore = Math.min(100, indicatorSpeciesCount * 5);
-
-  // Bonus for tracking data (shows active research/monitoring)
-  if (trackingSummary && trackingSummary.trackedIndividuals > 0) {
-    diversityScore = Math.min(100, diversityScore + 10);
-  }
+  const diversityScore = Math.min(100, indicatorSpeciesCount * 5);
 
   return Math.round(diversityScore);
 }

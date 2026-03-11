@@ -3,11 +3,12 @@
 import { Button, Card, CardTitle, CardContent, Badge } from '@/components/ui';
 import { CircularProgress, getHealthColor } from '@/components/CircularProgress';
 import Link from 'next/link';
-import { useEffect, useState, useCallback, useMemo, Suspense } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MPA } from '@/types';
 import { fetchAllMPAs, fetchMPAGeometries } from '@/lib/mpa-service';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import { usePullToRefresh, PullToRefreshIndicator } from '@/hooks/usePullToRefresh';
 import { useSavedMPAs } from '@/hooks/useSavedMPAs';
 import dynamic from 'next/dynamic';
@@ -93,6 +94,16 @@ function HomeContent() {
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const { savedMPAIds } = useSavedMPAs();
   const searchParams = useSearchParams();
+  const { position, permission, requestPermission } = useGeolocation();
+  const locationRequested = useRef(false);
+
+  // Request location permission immediately on mount
+  useEffect(() => {
+    if (!locationRequested.current && permission === 'prompt') {
+      locationRequested.current = true;
+      requestPermission();
+    }
+  }, [permission, requestPermission]);
 
   // Check for map navigation params from MPA detail page
   const mapLat = searchParams.get('lat');
@@ -175,6 +186,7 @@ function HomeContent() {
     const activeFilterCount =
       filters.healthStatus.length +
       filters.protectionLevel.length +
+      filters.region.length +
       filters.country.length +
       filters.areaSize.length +
       filters.windFarmStatus.length +
@@ -191,8 +203,7 @@ function HomeContent() {
               <Button
                 onClick={() => setFilterPanelOpen(true)}
                 size="sm"
-                variant="secondary"
-                className="shadow-lg"
+                className="shadow-lg bg-balean-navy text-white hover:bg-balean-navy/90"
               >
                 <i className="fi fi-rr-filter" />
                 Filters
@@ -225,6 +236,7 @@ function HomeContent() {
             showWindFarms={filters.showWindFarms}
             windFarmGeoJSON={filteredWindFarmGeoJSON}
             windFarmSummary={windFarmSummary}
+            userLocation={position ? { latitude: position.latitude, longitude: position.longitude } : undefined}
           />
         </div>
       </main>

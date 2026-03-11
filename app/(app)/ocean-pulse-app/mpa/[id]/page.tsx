@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import { MPA } from '@/types';
 import { fetchMPAById, formatArea } from '@/lib/mpa-service';
 import { cacheMPA, getCachedMPA, isMPACached } from '@/lib/offline-storage';
@@ -14,10 +13,8 @@ import { useAbundanceData } from '@/hooks/useAbundanceData';
 import { AbundanceTrendCard } from '@/components/AbundanceTrendCard';
 import { useEnvironmentalData } from '@/hooks/useEnvironmentalData';
 import { EnvironmentalDashboard } from '@/components/EnvironmentalDashboard';
-import { useTrackingData } from '@/hooks/useTrackingData';
 import { useHybridHealthScore } from '@/hooks/useHybridHealthScore';
 import { HealthScoreModal } from '@/components/HealthScoreModal';
-import { TrackingStatsCard } from '@/components/TrackingStatsCard';
 import { SpeciesCard } from '@/components/SpeciesCard';
 import { getIndicatorSpeciesForMPA } from '@/lib/indicator-species';
 import type { IndicatorSpecies } from '@/types/indicator-species';
@@ -34,22 +31,6 @@ import { IUURiskBadge } from '@/components/ui/IUURiskBadge';
 import { HeatwaveAlert, HeatwaveAlertBadge } from '@/components/HeatwaveAlert';
 import { useWindFarmConflictsForMPA } from '@/hooks/useWindFarmData';
 import { WindFarmConflictCard } from '@/components/WindFarmConflictCard';
-
-// Dynamically import TrackingHeatmap with SSR disabled (Leaflet requires window)
-const TrackingHeatmap = dynamic(
-  () => import('@/components/TrackingHeatmap').then(mod => mod.TrackingHeatmap),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-[500px] rounded-xl bg-balean-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-balean-gray-200 border-t-balean-cyan mb-2" />
-          <p className="text-sm text-balean-gray-400">Loading map...</p>
-        </div>
-      </div>
-    )
-  }
-);
 
 export default function MPADetailPage() {
   const params = useParams();
@@ -100,34 +81,6 @@ export default function MPADetailPage() {
     mpa?.center || [0, 0],
     50
   );
-
-  // Generate boundary from MPA bounds (memoized to prevent infinite loops)
-  const mpaBoundary = useMemo(() => {
-    return mpa?.bounds?.map(([lat, lng]) => [lat, lng] as [number, number]) || [];
-  }, [mpa?.bounds]);
-
-  // MPA info for indicator species filtering
-  const mpaInfo = useMemo(() => {
-    if (!mpa) return undefined;
-    return {
-      latitude: mpa.center[0],
-      longitude: mpa.center[1],
-      name: mpa.name,
-      description: mpa.description,
-    };
-  }, [mpa]);
-
-  // Load tracking data (filtered by indicator species relevant to this MPA's ecosystem)
-  const {
-    summary: trackingSummary,
-    loading: trackingLoading,
-    progress: trackingProgress
-  } = useTrackingData({
-    mpaId: mpa?.id || '',
-    mpaBoundary: mpaBoundary,
-    enabled: !!mpa && mpaBoundary.length > 0,
-    mpaInfo: mpaInfo,
-  });
 
   // Load fishing activity data from Global Fishing Watch
   const {
@@ -182,8 +135,6 @@ export default function MPADetailPage() {
     abundanceLoading,
     environmentalSummary,
     environmentalLoading,
-    trackingSummary,
-    trackingLoading,
     indicatorSpeciesCount: indicatorSpecies.length,
     preferBackend: true, // Try backend first for Copernicus data
     fishingCompliance: complianceScore,
@@ -843,77 +794,6 @@ export default function MPADetailPage() {
               <p className="text-balean-gray-500 mb-2 font-medium">Heatwave data unavailable</p>
               <p className="text-sm text-balean-gray-400">
                 Unable to fetch thermal conditions from Copernicus Marine Service
-              </p>
-            </div>
-          )}
-        </CollapsibleCard>
-
-        {/* Satellite Tracking Data from Movebank */}
-        <CollapsibleCard
-          title="Satellite Tracking"
-          icon="satellite"
-          iconColor="text-balean-coral"
-          defaultOpen={false}
-          badge={
-            trackingSummary && trackingSummary.trackedIndividuals > 0 && (
-              <Badge variant="info" size="sm">
-                {trackingSummary.trackedIndividuals} tagged
-              </Badge>
-            )
-          }
-          className="mb-4"
-        >
-          {trackingLoading ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-balean-cyan mb-4" />
-              <p className="text-balean-gray-500 mb-2">Searching Movebank for tracking data...</p>
-              <p className="text-sm text-balean-gray-400 mb-4">
-                Finding GPS/satellite telemetry studies near this MPA
-              </p>
-              <div className="mt-4 w-full bg-balean-gray-200 rounded-full h-2 max-w-md mx-auto">
-                <motion.div
-                  className="bg-gradient-to-r from-balean-cyan to-balean-cyan-light h-2 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${trackingProgress}%` }}
-                  transition={{ duration: 0.3 }}
-                />
-              </div>
-            </div>
-          ) : trackingSummary && trackingSummary.trackedIndividuals > 0 ? (
-            <>
-              {/* Tracking Stats */}
-              <div className="mb-6">
-                <TrackingStatsCard summary={trackingSummary} />
-              </div>
-
-              {/* Data source attribution */}
-              <div className="mb-4 p-3 bg-info/10 border-l-4 border-info rounded">
-                <div className="flex items-start gap-2">
-                  <Icon name="satellite" size="sm" className="text-info mt-0.5" />
-                  <div className="text-sm text-balean-gray-500">
-                    <p className="font-medium mb-1">Real Telemetry Data from Movebank</p>
-                    <p className="text-xs text-balean-gray-400">
-                      GPS/satellite tracking data from tagged animals in scientific studies
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tracking Heatmap */}
-              <TrackingHeatmap
-                summary={trackingSummary}
-                center={mpa.center}
-                zoom={6}
-              />
-            </>
-          ) : (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
-                <Icon name="satellite" className="text-balean-gray-300 text-3xl" />
-              </div>
-              <p className="text-balean-gray-500 mb-2 font-medium">No satellite tracking data available</p>
-              <p className="text-sm text-balean-gray-400">
-                No GPS/satellite telemetry studies found for marine species in this area on Movebank
               </p>
             </div>
           )}

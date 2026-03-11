@@ -26,6 +26,7 @@ interface MobileMapProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   windFarmGeoJSON?: { type: 'FeatureCollection'; features: any[] };
   windFarmSummary?: WindFarmSummary | null;
+  userLocation?: { latitude: number; longitude: number };
 }
 
 // OpenFreeMap style URL (free, no API key required)
@@ -61,12 +62,15 @@ export function MobileMap({
   showWindFarms = false,
   windFarmGeoJSON,
   windFarmSummary,
+  userLocation,
 }: MobileMapProps) {
   const mapRef = useRef<MapRef>(null);
   const [hoveredMPA, setHoveredMPA] = useState<MPA | null>(null);
   const [selectedMPA, setSelectedMPA] = useState<MPA | null>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isHoveringPopupRef = useRef(false);
+
+  const hasFlownToUser = useRef(false);
 
   // Calculate initial view state
   const initialViewState = useMemo(() => {
@@ -77,6 +81,18 @@ export function MobileMap({
     // Default world view
     return { longitude: 0, latitude: 20, zoom: 2 };
   }, [center, zoom]);
+
+  // Fly to user location when it becomes available (only once, and only if no nav params)
+  useEffect(() => {
+    if (userLocation && !hasFlownToUser.current && !center) {
+      hasFlownToUser.current = true;
+      mapRef.current?.flyTo({
+        center: [userLocation.longitude, userLocation.latitude],
+        zoom: 6,
+        duration: 1500,
+      });
+    }
+  }, [userLocation, center]);
 
   // Convert MPA geometries to GeoJSON FeatureCollection
   // Supports both Polygon and MultiPolygon types
