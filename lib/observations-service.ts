@@ -43,54 +43,30 @@ export async function createObservation(input: CreateObservationInput): Promise<
     try {
       const supabase = createClient();
 
-      const observationData = {
-        mpa_id: input.mpaId,
-        user_id: input.userId || null,
-        report_type: input.reportType,
-        species_name: input.speciesName || null,
-        species_type: input.speciesType || null,
-        quantity: input.quantity || null,
-        notes: input.notes || null,
-        latitude: input.latitude,
-        longitude: input.longitude,
-        location_accuracy_m: input.locationAccuracy || null,
-        location_manually_entered: true,
-        photo_url: input.photoUrl || null,
-        photo_metadata: input.photoMetadata || null,
-        health_score_assessment: input.healthScoreAssessment || null,
-        is_draft: false,
-        synced_at: new Date().toISOString(),
-      };
-
+      // Use atomic function to create observation + health assessment in one transaction
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase
-        .from('observations') as any)
-        .insert(observationData)
-        .select('id')
-        .single();
+      const { data, error } = await (supabase.rpc as any)('create_observation_with_health', {
+        p_mpa_id: input.mpaId,
+        p_user_id: input.userId || null,
+        p_report_type: input.reportType,
+        p_species_name: input.speciesName || null,
+        p_species_type: input.speciesType || null,
+        p_quantity: input.quantity || null,
+        p_notes: input.notes || null,
+        p_latitude: input.latitude,
+        p_longitude: input.longitude,
+        p_location_accuracy_m: input.locationAccuracy || null,
+        p_photo_url: input.photoUrl || null,
+        p_photo_metadata: input.photoMetadata || null,
+        p_health_score: input.healthScoreAssessment || null,
+      });
 
       if (error) {
-        console.error('Supabase insert error:', error);
+        console.error('Supabase RPC error:', error);
         throw error;
       }
 
-      if (!data) {
-        throw new Error('No data returned from insert');
-      }
-
-      // Also save health assessment if provided
-      if (input.healthScoreAssessment && input.mpaId && input.userId) {
-        const healthData = {
-          mpa_id: input.mpaId,
-          user_id: input.userId,
-          observation_id: data.id,
-          score: input.healthScoreAssessment,
-        };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase.from('user_health_assessments') as any).insert(healthData);
-      }
-
-      return { id: data.id, synced: true };
+      return { id: data as string, synced: true };
     } catch (error) {
       captureError(error, { context: 'createObservation', mpaId: input.mpaId, userId: input.userId ?? '' });
     }
@@ -366,6 +342,11 @@ export async function uploadObservationPhoto(
     return null;
   }
 
+  if (!isUUID(userId)) {
+    console.error('Invalid userId format for photo upload');
+    return null;
+  }
+
   try {
     const supabase = createClient();
 
@@ -377,15 +358,35 @@ export async function uploadObservationPhoto(
       byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
     const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: 'image/jpeg' });
+
+    // Validate file size (max 5MB)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    if (byteArray.length > MAX_FILE_SIZE) {
+      console.error('Photo exceeds maximum file size of 5MB');
+      return null;
+    }
+
+    // Validate image magic bytes (JPEG: FF D8 FF, PNG: 89 50 4E 47)
+    const isJPEG = byteArray[0] === 0xFF && byteArray[1] === 0xD8 && byteArray[2] === 0xFF;
+    const isPNG = byteArray[0] === 0x89 && byteArray[1] === 0x50 && byteArray[2] === 0x4E && byteArray[3] === 0x47;
+
+    if (!isJPEG && !isPNG) {
+      console.error('Invalid image format. Only JPEG and PNG are supported.');
+      return null;
+    }
+
+    const contentType = isJPEG ? 'image/jpeg' : 'image/png';
+    const extension = isJPEG ? 'jpg' : 'png';
+
+    const blob = new Blob([byteArray], { type: contentType });
 
     // Generate unique filename
-    const filename = `${userId}/${Date.now()}.jpg`;
+    const filename = `${userId}/${Date.now()}.${extension}`;
 
     const { data, error } = await supabase.storage
       .from('observation-photos')
       .upload(filename, blob, {
-        contentType: 'image/jpeg',
+        contentType,
         upsert: false,
       });
 

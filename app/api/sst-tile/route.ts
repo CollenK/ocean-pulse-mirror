@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { captureError } from '@/lib/error-reporting';
 import { rateLimit, getRequestIp } from '@/lib/rate-limit';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 const checkRateLimit = rateLimit({ interval: 60_000, limit: 120 });
+
+// Note: No auth check on SST tiles - map tiles are needed for the public-facing map
+// and are protected by rate limiting. The Copernicus data is publicly available.
 
 /**
  * Proxy endpoint for Copernicus Marine Service SST tiles.
@@ -52,12 +56,13 @@ export async function GET(request: NextRequest) {
   wmtsUrl.searchParams.set('FORMAT', 'image/png');
 
   try {
-    const response = await fetch(wmtsUrl.toString(), {
+    const response = await fetchWithTimeout(wmtsUrl.toString(), {
+      timeout: 15_000,
       headers: {
         Accept: 'image/png',
       },
       next: { revalidate: 3600 },
-    });
+    } as RequestInit & { timeout?: number });
 
     if (!response.ok) {
       console.error(`Copernicus WMTS error: ${response.status} ${response.statusText}`);

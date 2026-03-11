@@ -22,6 +22,7 @@ import {
 } from '@/lib/gfw-client';
 import { captureError } from '@/lib/error-reporting';
 import { rateLimit, getRequestIp } from '@/lib/rate-limit';
+import { createClient } from '@/lib/supabase/server';
 import type { GFWRegion } from '@/types/gfw';
 
 export const dynamic = 'force-dynamic';
@@ -72,6 +73,12 @@ export async function GET(request: NextRequest) {
       { error: 'Too many requests', retryAfter },
       { status: 429, headers: { 'Retry-After': String(retryAfter) } },
     );
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
   }
 
   const searchParams = request.nextUrl.searchParams;
@@ -152,9 +159,6 @@ export async function GET(request: NextRequest) {
         // Simple health check to verify API token is configured
         const token = process.env.GFW_API_TOKEN;
         const hasToken = !!token;
-        const tokenPreview = hasToken ? `${token.substring(0, 10)}...${token.substring(token.length - 5)}` : null;
-
-        console.log('[GFW API Route] Health check:', { hasToken, tokenPreview });
 
         // Try to reach GFW API with proper dataset parameter
         let apiReachable = false;
@@ -181,7 +185,6 @@ export async function GET(request: NextRequest) {
           success: true,
           data: {
             configured: hasToken,
-            tokenPreview, // First/last few chars for debugging
             apiReachable,
             apiError,
             timestamp: Date.now(),
@@ -255,18 +258,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  console.log('[GFW API Route] POST request received');
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
 
   try {
     const body = await request.json();
-    console.log('[GFW API Route] POST body:', {
-      action: body.action,
-      mpaId: body.mpaId,
-      hasGeometry: !!body.geometry,
-      hasBounds: !!body.bounds,
-      geometryType: body.geometry?.type,
-    });
-
     const { action, mpaId, geometry, bounds, days, protectionLevel, establishedYear } = body;
 
     // Validate required params
@@ -288,10 +287,8 @@ export async function POST(request: NextRequest) {
     let gfwGeometry = null;
     try {
       if (geometry) {
-        console.log('[GFW API Route] Converting geometry:', geometry.type);
         gfwGeometry = geometryToGFWRegion(geometry);
       } else if (bounds) {
-        console.log('[GFW API Route] Converting bounds:', bounds.length, 'points');
         gfwGeometry = boundsToGFWRegion(bounds);
       }
     } catch (geoError) {
@@ -308,8 +305,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    console.log('[GFW API Route] GFW geometry ready:', gfwGeometry.type);
 
     switch (action) {
       case 'fishing-effort': {

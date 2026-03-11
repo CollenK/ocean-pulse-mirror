@@ -3,6 +3,8 @@
  * Client for communicating with the Python backend data service
  */
 
+import { fetchWithTimeout } from '../fetch-with-timeout';
+
 const DATA_SERVICE_URL = process.env.NEXT_PUBLIC_DATA_SERVICE_URL || 'http://localhost:8000';
 
 export interface HealthScoreResponse {
@@ -106,7 +108,7 @@ class DataServiceClient {
     url.searchParams.set('lat', params.lat.toString());
     url.searchParams.set('lon', params.lon.toString());
 
-    const res = await fetch(url.toString());
+    const res = await fetchWithTimeout(url.toString());
     if (!res.ok) {
       const error = await res.json().catch(() => ({ detail: 'Unknown error' }));
       throw new Error(error.detail || 'Failed to fetch health score');
@@ -126,7 +128,7 @@ class DataServiceClient {
     url.searchParams.set('lat', params.lat.toString());
     url.searchParams.set('lon', params.lon.toString());
 
-    const res = await fetch(url.toString());
+    const res = await fetchWithTimeout(url.toString());
     if (!res.ok) {
       const error = await res.json().catch(() => ({ detail: 'Unknown error' }));
       throw new Error(error.detail || 'Failed to fetch environmental data');
@@ -150,7 +152,7 @@ class DataServiceClient {
       url.searchParams.set('radius_km', params.radiusKm.toString());
     }
 
-    const res = await fetch(url.toString());
+    const res = await fetchWithTimeout(url.toString());
     if (!res.ok) {
       const error = await res.json().catch(() => ({ detail: 'Unknown error' }));
       throw new Error(error.detail || 'Failed to fetch species data');
@@ -178,7 +180,7 @@ class DataServiceClient {
       url.searchParams.set('limit', params.limit.toString());
     }
 
-    const res = await fetch(url.toString());
+    const res = await fetchWithTimeout(url.toString());
     if (!res.ok) {
       const error = await res.json().catch(() => ({ detail: 'Unknown error' }));
       throw new Error(error.detail || 'Failed to fetch species list');
@@ -202,7 +204,7 @@ class DataServiceClient {
       url.searchParams.set('days', params.days.toString());
     }
 
-    const res = await fetch(url.toString());
+    const res = await fetchWithTimeout(url.toString());
     if (!res.ok) {
       const error = await res.json().catch(() => ({ detail: 'Unknown error' }));
       throw new Error(error.detail || 'Failed to fetch SST timeseries');
@@ -214,7 +216,7 @@ class DataServiceClient {
    * Check if the data service is healthy
    */
   async healthCheck(): Promise<{ status: string; service: string }> {
-    const res = await fetch(`${this.baseUrl}/health`);
+    const res = await fetchWithTimeout(`${this.baseUrl}/health`);
     if (!res.ok) {
       throw new Error('Data service is unavailable');
     }

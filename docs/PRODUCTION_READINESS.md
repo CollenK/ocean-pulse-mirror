@@ -322,39 +322,39 @@ Ocean PULSE is a Next.js 16 PWA (React 19, TypeScript strict mode) backed by Sup
 
 | # | Title | Priority | Status |
 |---|-------|----------|--------|
-| 1.1 | FK constraints dropped, never re-added | P1 | Not started |
-| 1.2 | Non-atomic observation + health assessment creation | P1 | Not started |
+| 1.1 | FK constraints dropped, never re-added | P1 | Done (migration 006) |
+| 1.2 | Non-atomic observation + health assessment creation | P1 | Done (migration 007 + RPC) |
 | 1.3 | Non-atomic delete (assessments then observation) | P2 | Not started |
-| 1.4 | No write policies on core data tables (verify) | P0 | Not verified |
-| 2.1 | Open redirect in OAuth callback | P0 | Not started |
-| 2.2 | No security headers (CSP, HSTS, X-Frame-Options) | P0 | Not started |
-| 2.3 | No rate limiting on API routes | P0 | Not started |
-| 2.4 | API routes not authenticated | P1 | Not started |
-| 2.5 | GFW API token exposed in health check | P1 | Not started |
-| 2.6 | Photo upload lacks server-side validation | P1 | Not started |
-| 2.7 | Sentry replay captures unmasked text | P1 | Not started |
+| 1.4 | No write policies on core data tables (verify) | P0 | Verified (no client writes) |
+| 2.1 | Open redirect in OAuth callback | P0 | Done |
+| 2.2 | No security headers (CSP, HSTS, X-Frame-Options) | P0 | Done |
+| 2.3 | No rate limiting on API routes | P0 | Done |
+| 2.4 | API routes not authenticated | P1 | Done (GFW auth-gated, SST rate-limited only) |
+| 2.5 | GFW API token exposed in health check | P1 | Done (tokenPreview removed) |
+| 2.6 | Photo upload lacks server-side validation | P1 | Done (UUID, size, magic bytes) |
+| 2.7 | Sentry replay captures unmasked text | P1 | Done |
 | 2.8 | CORS wildcard on SST tile endpoint | P2 | Not started |
 | 2.9 | Server-side route protection commented out | P2 | Not started |
-| 3.1 | Sentry not wired up in API routes or service layer | P0 | Not started |
-| 3.2 | No request timeouts on OBIS/Copernicus/data-service | P1 | Not started |
-| 3.3 | No health check endpoint | P1 | Not started |
+| 3.1 | Sentry not wired up in API routes or service layer | P0 | Done |
+| 3.2 | No request timeouts on OBIS/Copernicus/data-service | P1 | Done (fetchWithTimeout 30s) |
+| 3.3 | No health check endpoint | P1 | Done (/api/health) |
 | 3.4 | Silent failures indistinguishable from empty data | P2 | Not started |
-| 3.5 | Offline sync never triggers automatically | P1 | Not started |
-| 4.1 | No account deletion (GDPR Article 17) | P0 | Not started |
-| 4.2 | No data export (GDPR Article 20) | P0 | Not started |
-| 4.3 | No email service for GDPR acknowledgment | P1 | Not started |
+| 3.5 | Offline sync never triggers automatically | P1 | Done (OfflineSync component) |
+| 4.1 | No account deletion (GDPR Article 17) | P0 | Done |
+| 4.2 | No data export (GDPR Article 20) | P0 | Done |
+| 4.3 | No email service for GDPR acknowledgment | P1 | Process (manual for beta) |
 | 4.4 | Data Processing Agreements not documented | P1 | Not verified |
-| 4.5 | No Terms of Service acceptance tracking | P1 | Not started |
+| 4.5 | No Terms of Service acceptance tracking | P1 | Done (ToSAcceptance component) |
 | 4.6 | No data retention enforcement | P2 | Not started |
-| 5.1 | No structured logging | P1 | Not started |
-| 5.2 | No uptime monitoring | P1 | Not started |
+| 5.1 | No structured logging | P1 | Done (debug logs removed) |
+| 5.2 | No uptime monitoring | P1 | Not started (external service) |
 | 5.3 | Database backup verification | P1 | Not verified |
 | 5.4 | CI pipeline missing lint and type-check | P2 | Not started |
 | 5.5 | Deploy stage disabled/undocumented | P2 | Not verified |
 | 6.1 | Client-side distance calculation | P2 | Not started |
 | 6.2 | No server-side pagination on MPA list | P2 | Not started |
-| 6.3 | Debug console.log in hot paths | P2 | Not started |
-| 7.1 | Zero unit tests for business logic | P1 | Not started |
+| 6.3 | Debug console.log in hot paths | P2 | Done (removed in 5.1) |
+| 7.1 | Zero unit tests for business logic | P1 | Done (57 tests, Vitest) |
 | 7.2 | E2E tests run against production only | P2 | Not started |
 | 7.3 | No automated dependency vulnerability scanning | P2 | Not started |
 

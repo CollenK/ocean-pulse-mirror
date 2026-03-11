@@ -82,7 +82,6 @@ export function MobileMap({
   // Supports both Polygon and MultiPolygon types
   const boundariesGeoJSON = useMemo(() => {
     const withGeometry = mpas.filter((mpa) => mpa.geometry);
-    console.log('MAP DEBUG - MPAs with geometry:', withGeometry.length);
 
     const features = withGeometry.map((mpa) => {
       const geom = mpa.geometry!;
@@ -103,18 +102,6 @@ export function MobileMap({
         geometry,
       };
     });
-
-    console.log('MAP DEBUG - GeoJSON features count:', features.length);
-
-    // Debug GBR specifically
-    const gbrMpa = withGeometry.find(m => m.id === '2571');
-    if (gbrMpa?.geometry) {
-      console.log('GBR DEBUG - Type:', gbrMpa.geometry.type, 'Polygons:',
-        gbrMpa.geometry.type === 'MultiPolygon'
-          ? (gbrMpa.geometry.coordinates as number[][][][]).length
-          : 1
-      );
-    }
 
     return {
       type: 'FeatureCollection' as const,

@@ -134,10 +134,6 @@ function HomeContent() {
       const externalIds = data.map((mpa) => mpa.id);
       const geometries = await fetchMPAGeometries(externalIds);
 
-      // Debug
-      const matches = data.filter(mpa => geometries.has(mpa.id)).length;
-      console.log(`PAGE DEBUG - MPAs: ${data.length}, Geometries: ${geometries.size}, Matches: ${matches}`);
-
       // Merge geometries into MPAs
       const mpasWithGeometry = data.map((mpa) => ({
         ...mpa,

@@ -11,6 +11,7 @@ import {
   AbundanceCache,
 } from '@/types/obis-abundance';
 import { createBoundingBox, getCommonName } from './obis-client';
+import { fetchWithTimeout } from './fetch-with-timeout';
 import { initDB } from './offline-storage';
 import { getIndicatorSpeciesForMPA } from './indicator-species';
 import { INDICATOR_SPECIES } from '@/data/indicator-species';
@@ -78,7 +79,7 @@ async function fetchSpeciesOccurrences(
   const url = `${OBIS_API_BASE}/occurrence?${params}`;
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       headers: { 'Accept': 'application/json' },
     });
 

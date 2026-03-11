@@ -15,6 +15,7 @@ import {
   ENVIRONMENTAL_THRESHOLDS,
 } from '@/types/obis-environmental';
 import { createBoundingBox } from './obis-client';
+import { fetchWithTimeout } from './fetch-with-timeout';
 import { initDB } from './offline-storage';
 
 const OBIS_API_BASE = 'https://api.obis.org/v3';
@@ -122,7 +123,7 @@ export async function fetchEnvironmentalData(
 
 
     try {
-      const response = await fetch(url, {
+      const response = await fetchWithTimeout(url, {
         headers: {
           'Accept': 'application/json',
         },

@@ -11,6 +11,7 @@ import {
   TrackingCache,
 } from '@/types/obis-tracking';
 import { initDB } from './offline-storage';
+import { fetchWithTimeout } from './fetch-with-timeout';
 import { INDICATOR_SPECIES, findByScientificName } from '@/data/indicator-species';
 import { getIndicatorSpeciesForMPA, determineEcosystemTypes } from './indicator-species';
 import type { EcosystemType } from '@/types/indicator-species';
@@ -180,7 +181,7 @@ export async function fetchTrackingData(
         const taxonParam = batch.join(',');
         const url = `${OBIS_API_BASE}/occurrence?geometry=${encodeURIComponent(queryWkt)}&taxonid=${taxonParam}&size=500`;
 
-        const response = await fetch(url);
+        const response = await fetchWithTimeout(url);
         if (response.ok) {
           const data = await response.json();
           if (data.results && Array.isArray(data.results)) {

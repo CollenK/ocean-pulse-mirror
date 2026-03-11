@@ -5,6 +5,8 @@
  * Free and open access to marine biodiversity data
  */
 
+import { fetchWithTimeout } from './fetch-with-timeout';
+
 export interface OBISSpecies {
   id: number;
   scientificName: string;
@@ -95,7 +97,7 @@ async function rateLimit() {
 async function fetchTaxonComplete(name: string): Promise<OBISSpecies[]> {
   const url = `${OBIS_API_BASE}/taxon/complete/${encodeURIComponent(name)}`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     headers: {
       'Accept': 'application/json',
     },
@@ -204,7 +206,7 @@ export async function getSpeciesOccurrences(
   }
 
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${OBIS_API_BASE}/occurrence?${queryParams.toString()}`,
       {
         headers: {
@@ -240,7 +242,7 @@ export async function getSpeciesInArea(
 
 
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${OBIS_API_BASE}/occurrence?geometry=${encodeURIComponent(wkt)}&size=${limit}`,
       {
         headers: {
@@ -300,7 +302,7 @@ export async function getSpeciesDetails(
   await rateLimit();
 
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${OBIS_API_BASE}/taxon/${encodeURIComponent(scientificName)}`,
       {
         headers: {

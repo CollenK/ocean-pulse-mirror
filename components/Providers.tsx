@@ -2,6 +2,8 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
+import { OfflineSync } from '@/components/OfflineSync';
+import { ToSAcceptance } from '@/components/ToSAcceptance';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -25,6 +27,8 @@ export function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
+      <OfflineSync />
+      <ToSAcceptance />
     </QueryClientProvider>
   );
 }
