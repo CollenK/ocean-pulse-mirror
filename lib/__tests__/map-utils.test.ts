@@ -57,8 +57,12 @@ describe('getHealthColor', () => {
     expect(getHealthColor(65)).toBe('#F59E0B');
   });
 
-  it('returns red for critical scores (< 50)', () => {
-    expect(getHealthColor(0)).toBe('#EF4444');
+  it('returns gray for score 0 (pending data)', () => {
+    expect(getHealthColor(0)).toBe('#94A3B8');
+  });
+
+  it('returns red for critical scores (1-49)', () => {
+    expect(getHealthColor(1)).toBe('#EF4444');
     expect(getHealthColor(49)).toBe('#EF4444');
     expect(getHealthColor(25)).toBe('#EF4444');
   });
