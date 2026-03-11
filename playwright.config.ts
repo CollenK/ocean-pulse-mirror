@@ -2,7 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Playwright configuration for Ocean PULSE E2E testing
- * Tests run against production: https://ocean-pulse-ochre.vercel.app/
+ * Set PLAYWRIGHT_BASE_URL to test against a specific environment,
+ * otherwise defaults to http://localhost:3000 with auto-started dev server.
  */
 export default defineConfig({
   testDir: './e2e',
@@ -28,7 +29,7 @@ export default defineConfig({
   /* Shared settings for all the projects below */
   use: {
     /* Base URL to use in actions like `await page.goto('/')` */
-    baseURL: 'https://ocean-pulse-ochre.vercel.app',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
 
     /* Collect trace when retrying the failed test */
     trace: 'on-first-retry',
@@ -78,4 +79,14 @@ export default defineConfig({
 
   /* Global timeout for each test */
   timeout: 60000,
+
+  /* Run local dev server before starting tests (only when not in CI) */
+  webServer: process.env.CI
+    ? undefined
+    : {
+        command: 'npm run dev',
+        url: 'http://localhost:3000',
+        reuseExistingServer: true,
+        timeout: 120_000,
+      },
 });

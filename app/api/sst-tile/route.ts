@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
       headers: {
         'Content-Type': 'image/png',
         'Cache-Control': 'public, max-age=3600, s-maxage=3600',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': process.env.NEXT_PUBLIC_APP_URL || 'https://ocean-pulse-ochre.vercel.app',
       },
     });
   } catch (error) {

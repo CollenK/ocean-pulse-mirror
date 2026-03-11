@@ -1,10 +1,39 @@
 stages:
+  - validate
   - migrate
   - build
   - deploy
 
 variables:
   SUPABASE_PROJECT_ID: "oftyqrsmirvzmxpbmucd"
+
+# Validate code quality and type safety
+validate:
+  stage: validate
+  image: node:20
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_MERGE_REQUEST_IID
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+  before_script:
+    - npm ci
+  script:
+    - npm run type-check
+    - npm run test:unit
+
+# Scan dependencies for known vulnerabilities
+security-audit:
+  stage: validate
+  image: node:20
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_MERGE_REQUEST_IID
+  script:
+    - npm audit --audit-level=high
+  allow_failure: true
 
 # Run database migrations when migration files change
 migrate:
@@ -53,14 +82,16 @@ build:
       - .next/
     expire_in: 1 week
 
-# Optional: Deploy stage (customize based on your hosting)
+# Deployment is handled by Vercel's GitLab integration.
+# Vercel automatically deploys on push to main.
+# The deploy stage below is available for manual/custom deployments.
 # deploy:
 #   stage: deploy
 #   image: node:20-alpine
 #   rules:
 #     - if: $CI_COMMIT_BRANCH == "main"
 #   script:
-#     - echo "Add your deployment commands here"
+#     - echo "Deployment is handled by Vercel GitLab integration"
 #   environment:
 #     name: production
 #   needs:

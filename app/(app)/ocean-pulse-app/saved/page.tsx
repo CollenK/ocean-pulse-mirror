@@ -44,9 +44,13 @@ export default function SavedMPAsPage() {
 
       for (const id of savedMPAIds) {
         if (cancelled) return;
-        const mpa = await fetchMPAById(id);
-        if (mpa) {
-          loadedMPAs.push(mpa);
+        try {
+          const mpa = await fetchMPAById(id);
+          if (mpa) {
+            loadedMPAs.push(mpa);
+          }
+        } catch {
+          // Skip MPAs that fail to load; remaining ones still display
         }
       }
 

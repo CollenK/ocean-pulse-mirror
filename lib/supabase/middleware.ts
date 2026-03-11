@@ -42,17 +42,16 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Optional: redirect unauthenticated users to login for protected routes
-  // if (
-  //   !user &&
-  //   !request.nextUrl.pathname.startsWith('/login') &&
-  //   !request.nextUrl.pathname.startsWith('/auth') &&
-  //   request.nextUrl.pathname.startsWith('/protected')
-  // ) {
-  //   const url = request.nextUrl.clone();
-  //   url.pathname = '/login';
-  //   return NextResponse.redirect(url);
-  // }
+  // Redirect unauthenticated users to login for protected routes
+  const protectedPaths = ['/ocean-pulse-app/observe', '/ocean-pulse-app/profile', '/ocean-pulse-app/saved'];
+  const isProtected = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path));
+
+  if (!user && isProtected) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    url.searchParams.set('next', request.nextUrl.pathname);
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }

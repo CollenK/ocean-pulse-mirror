@@ -113,7 +113,7 @@ function ObservePageContent() {
 
   // Load MPAs
   useEffect(() => {
-    fetchAllMPAs().then(setMpas).finally(() => setMpasLoading(false));
+    fetchAllMPAs().then(setMpas).catch(() => setMpas([])).finally(() => setMpasLoading(false));
   }, []);
 
   // Load draft if provided in URL

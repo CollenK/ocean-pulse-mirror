@@ -6,6 +6,7 @@ import { AnalyticsProvider } from '@/components/AnalyticsProvider'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Providers } from '@/components/Providers'
 import { CookieConsent } from '@/components/CookieConsent'
+import { ToSAcceptance } from '@/components/ToSAcceptance'
 import { FishingDataPrefetcher } from '@/components/FishingDataPrefetcher'
 import './globals.css'
 
@@ -145,6 +146,7 @@ export default function RootLayout({
         </a>
         <Providers>
           <AuthProvider>
+            <ToSAcceptance />
             <AnalyticsProvider>
               <ErrorBoundary>
                 <FishingDataPrefetcher />

@@ -235,7 +235,7 @@ export async function fetchAllMPAs(): Promise<MPA[]> {
     return merged;
   } catch (error) {
     captureError(error, { context: 'fetchAllMPAs' });
-    return [];
+    throw error;
   }
 }
 
@@ -276,8 +276,8 @@ export async function fetchMPAById(id: string): Promise<MPA | null> {
 
     return transformMPARow(data);
   } catch (error) {
-    captureError(error, { context: 'fetchMPAById', mpaId: id });
-    return null;
+    captureError(error, { context: 'fetchMPAById', id });
+    throw error;
   }
 }
 
@@ -300,29 +300,22 @@ export async function findNearestMPAs(
   }
 
   try {
-    // Fetch all MPAs and calculate distance client-side
-    // (For production, you'd use PostGIS ST_Distance)
-    const { data, error } = await supabase
-      .from('mpas')
-      .select('id, external_id, name, country, center, area_km2, established_year, protection_level, description, metadata');
+    const { data, error } = await supabase.rpc('find_nearest_mpas', {
+      p_lat: lat,
+      p_lng: lng,
+      p_max_distance_km: maxDistanceKm,
+      p_limit: 20,
+    });
 
     if (error) {
-      console.error('Error fetching MPAs:', error);
+      captureError(error, { context: 'findNearestMPAs', lat: String(lat), lng: String(lng) });
       return [];
     }
 
-    const mpas: MPA[] = (data || []).map(transformMPARow);
-
-    // Calculate distance for each MPA
-    const mpasWithDistance = mpas.map((mpa: MPA) => ({
-      ...mpa,
-      distance: calculateDistance(lat, lng, mpa.center[0], mpa.center[1]),
+    return (data || []).map((row: any) => ({
+      ...transformMPARow(row),
+      distance: row.distance_km,
     }));
-
-    // Filter by max distance and sort by distance
-    return mpasWithDistance
-      .filter((mpa) => mpa.distance <= maxDistanceKm)
-      .sort((a, b) => a.distance - b.distance);
   } catch (error) {
     captureError(error, { context: 'findNearestMPAs', lat: String(lat), lng: String(lng) });
     return [];
@@ -354,7 +347,7 @@ export async function searchMPAs(query: string): Promise<MPA[]> {
     return (data || []).map(transformMPARow);
   } catch (error) {
     captureError(error, { context: 'searchMPAs', query });
-    return [];
+    throw error;
   }
 }
 
@@ -479,7 +472,7 @@ export async function fetchMPAGeometries(externalIds?: string[]): Promise<Map<st
     return geometryMap;
   } catch (error) {
     captureError(error, { context: 'fetchMPAGeometries' });
-    return geometryMap;
+    throw error;
   }
 }
 

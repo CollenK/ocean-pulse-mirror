@@ -5,6 +5,17 @@
 -- (external_id is the TEXT column that stores MPA IDs like '2571')
 ALTER TABLE mpas ADD CONSTRAINT mpas_external_id_unique UNIQUE (external_id);
 
+-- Clean up orphaned rows before adding FK constraints
+-- Delete observations referencing non-existent MPAs
+DELETE FROM observations
+WHERE mpa_id IS NOT NULL
+  AND mpa_id NOT IN (SELECT external_id FROM mpas WHERE external_id IS NOT NULL);
+
+-- Delete health assessments referencing non-existent MPAs
+DELETE FROM user_health_assessments
+WHERE mpa_id IS NOT NULL
+  AND mpa_id NOT IN (SELECT external_id FROM mpas WHERE external_id IS NOT NULL);
+
 -- Re-add FK constraint on observations.mpa_id -> mpas.external_id
 ALTER TABLE observations
   ADD CONSTRAINT observations_mpa_id_fkey

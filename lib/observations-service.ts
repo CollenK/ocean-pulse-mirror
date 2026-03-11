@@ -302,15 +302,7 @@ export async function deleteObservation(observationId: string, userId: string): 
   try {
     const supabase = createClient();
 
-    // First, delete any associated health assessments
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase
-      .from('user_health_assessments') as any)
-      .delete()
-      .eq('observation_id', observationId)
-      .eq('user_id', userId);
-
-    // Then delete the observation (user_id check ensures they can only delete their own)
+    // Health assessments cascade-delete via FK constraint
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase
       .from('observations') as any)
