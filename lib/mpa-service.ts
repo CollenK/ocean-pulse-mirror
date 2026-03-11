@@ -128,11 +128,12 @@ function transformMPARow(row: any): MPA {
     ];
   }
 
-  // Get health score (from joined health_scores or default)
-  const healthScore = row.latest_health_score ?? row.health_score ?? 0;
+  // Get health score from pipeline abundance summary (joined via mpa_abundance_summaries)
+  const abundanceSummary = row.mpa_abundance_summaries?.[0] || row.mpa_abundance_summaries || null;
+  const healthScore = abundanceSummary?.health_score ?? row.health_score ?? 0;
 
-  // Get species count (from joined species count or metadata)
-  const speciesCount = row.species_count ?? row.metadata?.species_count ?? 0;
+  // Get species count from pipeline data or metadata
+  const speciesCount = abundanceSummary?.species_count ?? row.metadata?.species_count ?? 0;
 
   // Build description from metadata if not set
   let description = row.description;
@@ -230,6 +231,29 @@ export async function fetchAllMPAs(): Promise<MPA[]> {
         seen.add(row.id);
         merged.push(transformMPARow(row));
       }
+    }
+
+    // Fetch pipeline health scores and merge (graceful if table doesn't exist yet)
+    try {
+      const { data: healthData } = await supabase
+        .from('mpa_abundance_summaries')
+        .select('mpa_id, health_score, species_count');
+
+      if (healthData && healthData.length > 0) {
+        type HealthRow = { mpa_id: string; health_score: number | null; species_count: number | null };
+        const healthMap = new Map<string, HealthRow>(
+          (healthData as HealthRow[]).map((h) => [h.mpa_id, h])
+        );
+        for (const mpa of merged) {
+          const h = healthMap.get(mpa.id);
+          if (h) {
+            mpa.healthScore = h.health_score ?? mpa.healthScore;
+            mpa.speciesCount = h.species_count ?? mpa.speciesCount;
+          }
+        }
+      }
+    } catch {
+      // Pipeline tables may not exist yet; continue with default scores
     }
 
     return merged;

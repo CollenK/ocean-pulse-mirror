@@ -79,9 +79,9 @@ export function WindFarmLayer({
   visible,
   opacity = 0.35,
 }: WindFarmLayerProps) {
-  if (!visible || !geojson || geojson.features.length === 0) {
-    return null;
-  }
+  if (!geojson) return null;
+
+  const visibility = visible && geojson.features.length > 0 ? 'visible' : 'none';
 
   return (
     <Source
@@ -92,6 +92,7 @@ export function WindFarmLayer({
       <Layer
         id="wind-farms-fill"
         type="fill"
+        layout={{ visibility }}
         paint={{
           'fill-color': statusColorExpression as unknown as string,
           'fill-opacity': opacity,
@@ -100,6 +101,7 @@ export function WindFarmLayer({
       <Layer
         id="wind-farms-line"
         type="line"
+        layout={{ visibility }}
         paint={{
           'line-color': statusColorExpression as unknown as string,
           'line-width': [
@@ -118,6 +120,7 @@ export function WindFarmLayer({
         type="symbol"
         minzoom={8}
         layout={{
+          visibility,
           'text-field': ['get', 'name'],
           'text-size': 11,
           'text-anchor': 'center',

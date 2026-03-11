@@ -34,6 +34,7 @@ export function boundsToGeoJSON(bounds: number[][]): number[][] {
  * Matches the existing color scheme from the app
  */
 export function getHealthColor(score: number): string {
+  if (score === 0) return '#94A3B8'; // gray (no data yet)
   if (score >= 80) return '#10B981'; // green (healthy)
   if (score >= 50) return '#F59E0B'; // yellow/amber (warning)
   return '#EF4444'; // red (critical)

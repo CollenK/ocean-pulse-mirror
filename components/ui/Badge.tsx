@@ -74,6 +74,13 @@ interface HealthBadgeProps {
 
 export function HealthBadge({ score, size = 'md', showScore = true, className = '' }: HealthBadgeProps) {
   const getHealthConfig = (score: number) => {
+    if (score === 0) {
+      return {
+        variant: 'default' as BadgeVariant,
+        label: 'Pending',
+        icon: <i className="fi fi-rr-horizontal-rule text-xs" />,
+      };
+    }
     if (score >= 70) {
       return {
         variant: 'healthy' as BadgeVariant,

@@ -18,8 +18,6 @@ interface SSTLayerProps {
  * This is a public endpoint that doesn't require authentication.
  */
 export function SSTLayer({ visible, opacity = 0.7 }: SSTLayerProps) {
-  if (!visible) return null;
-
   // Copernicus Marine WMTS endpoint (public, CORS-enabled, no auth required)
   // Product: SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001
   // Dataset: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
@@ -32,15 +30,6 @@ export function SSTLayer({ visible, opacity = 0.7 }: SSTLayerProps) {
     '&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}' +
     '&FORMAT=image/png';
 
-  const layerStyle: LayerProps = {
-    id: 'sst-layer',
-    type: 'raster',
-    paint: {
-      'raster-opacity': opacity,
-      'raster-fade-duration': 300,
-    },
-  };
-
   return (
     <Source
       id="copernicus-sst"
@@ -49,7 +38,15 @@ export function SSTLayer({ visible, opacity = 0.7 }: SSTLayerProps) {
       tileSize={256}
       attribution="© Copernicus Marine Service"
     >
-      <Layer {...layerStyle} />
+      <Layer
+        id="sst-layer"
+        type="raster"
+        layout={{ visibility: visible ? 'visible' : 'none' }}
+        paint={{
+          'raster-opacity': opacity,
+          'raster-fade-duration': 300,
+        }}
+      />
     </Source>
   );
 }

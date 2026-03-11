@@ -135,7 +135,8 @@ export function CircularProgress({
 /**
  * Get color based on health score
  */
-export function getHealthColor(score: number): 'healthy' | 'warning' | 'critical' {
+export function getHealthColor(score: number): 'healthy' | 'warning' | 'critical' | 'primary' {
+  if (score === 0) return 'primary'; // no data yet
   if (score >= 75) return 'healthy';
   if (score >= 50) return 'warning';
   return 'critical';

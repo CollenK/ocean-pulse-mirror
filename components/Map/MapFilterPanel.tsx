@@ -38,7 +38,8 @@ const HEALTH_STATUS_OPTIONS = [
   { id: 'excellent', label: 'Excellent', range: [80, 100], color: 'bg-healthy' },
   { id: 'good', label: 'Good', range: [60, 79], color: 'bg-balean-cyan' },
   { id: 'moderate', label: 'Moderate', range: [40, 59], color: 'bg-warning' },
-  { id: 'poor', label: 'Needs Attention', range: [0, 39], color: 'bg-critical' },
+  { id: 'poor', label: 'Needs Attention', range: [1, 39], color: 'bg-critical' },
+  { id: 'pending', label: 'Pending Data', range: [0, 0], color: 'bg-balean-gray-300' },
 ];
 
 // Wind farm status display order for inline legend
