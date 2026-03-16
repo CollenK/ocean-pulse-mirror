@@ -31,6 +31,8 @@ import { IUURiskBadge } from '@/components/ui/IUURiskBadge';
 import { HeatwaveAlert, HeatwaveAlertBadge } from '@/components/HeatwaveAlert';
 import { useWindFarmConflictsForMPA } from '@/hooks/useWindFarmData';
 import { WindFarmConflictCard } from '@/components/WindFarmConflictCard';
+import { useCoastalConditions } from '@/hooks/useCoastalConditions';
+import { BeachConditionsCard, WhatsAroundToday } from '@/components/CoastalConditions';
 
 export default function MPADetailPage() {
   const params = useParams();
@@ -116,6 +118,20 @@ export default function MPADetailPage() {
   } = useWindFarmConflictsForMPA(
     mpa?.id || '',
     mpa ? [mpa] : [],
+    !!mpa
+  );
+
+  // Load beach & coastal conditions
+  const {
+    conditions: coastalConditions,
+    loading: coastalLoading,
+    error: coastalError,
+    isStale: coastalStale,
+    refetch: refetchCoastal,
+  } = useCoastalConditions(
+    mpa?.id || '',
+    mpa?.center[0] || 0,
+    mpa?.center[1] || 0,
     !!mpa
   );
 
@@ -392,6 +408,58 @@ export default function MPADetailPage() {
             <p className="text-balean-gray-500 leading-relaxed">{mpa.description}</p>
           </CollapsibleCard>
         )}
+
+        {/* Beach & Coastal Conditions */}
+        <CollapsibleCard
+          title="Beach & Coastal Conditions"
+          icon="sun"
+          iconColor="text-amber-500"
+          defaultOpen={true}
+          badge={
+            coastalConditions && (
+              <Badge
+                variant={
+                  coastalConditions.swimSafety === 'safe' ? 'healthy' :
+                  coastalConditions.swimSafety === 'caution' ? 'warning' : 'danger'
+                }
+                size="sm"
+              >
+                {coastalConditions.weatherDescription}
+              </Badge>
+            )
+          }
+          className="mb-4"
+        >
+          {coastalLoading && !coastalConditions ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-amber-500 mb-4" />
+              <p className="text-balean-gray-500">Loading beach conditions...</p>
+            </div>
+          ) : coastalConditions ? (
+            <div className="space-y-6">
+              <BeachConditionsCard
+                conditions={coastalConditions}
+                isStale={coastalStale}
+                onRefresh={refetchCoastal}
+              />
+              <WhatsAroundToday observations={mpaObservations} />
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
+                <Icon name="sun" className="text-balean-gray-300 text-3xl" />
+              </div>
+              <p className="text-balean-gray-500 mb-2 font-medium">Conditions unavailable</p>
+              <p className="text-sm text-balean-gray-400 mb-4">
+                {coastalError || 'Weather data could not be loaded for this location'}
+              </p>
+              <Button variant="secondary" onClick={refetchCoastal}>
+                <Icon name="refresh" size="sm" />
+                Try Again
+              </Button>
+            </div>
+          )}
+        </CollapsibleCard>
 
         {/* Regulations */}
         {mpa.regulations && (

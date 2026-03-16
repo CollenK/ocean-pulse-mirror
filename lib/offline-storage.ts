@@ -3,6 +3,8 @@ import { MPA, Species, Observation, UserHealthAssessment } from '@/types';
 import type { AbundanceCache, AbundanceRecord } from '@/types/obis-abundance';
 import type { EnvironmentalCache } from '@/types/obis-environmental';
 import type { IndicatorSpecies, IndicatorSpeciesCache } from '@/types/indicator-species';
+import type { CoastalConditions, CoastalConditionsCache } from '@/types/coastal-conditions';
+import { COASTAL_CONDITIONS_TTL } from '@/types/coastal-conditions';
 
 /**
  * IndexedDB Schema for Ocean PULSE
@@ -99,10 +101,15 @@ export interface OceanPulseDB extends DBSchema {
       'by-sync-status': 'synced';
     };
   };
+  'coastal-conditions-cache': {
+    key: string; // mpaId
+    value: CoastalConditionsCache;
+    indexes: { 'by-last-fetched': 'lastFetched' };
+  };
 }
 
 const DB_NAME = 'ocean-pulse-db';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 
 /**
  * Initialize the IndexedDB database
@@ -191,6 +198,12 @@ export async function initDB(): Promise<IDBPDatabase<OceanPulseDB>> {
         healthStore.createIndex('by-mpa', 'mpaId');
         healthStore.createIndex('by-user', 'userId');
         healthStore.createIndex('by-sync-status', 'synced');
+      }
+
+      // Coastal conditions cache store (added in v7)
+      if (!db.objectStoreNames.contains('coastal-conditions-cache')) {
+        const coastalStore = db.createObjectStore('coastal-conditions-cache', { keyPath: 'id' });
+        coastalStore.createIndex('by-last-fetched', 'lastFetched');
       }
     },
   });
@@ -577,4 +590,35 @@ export async function getUserHealthScoreForMPA(mpaId: string): Promise<{
     count: assessments.length,
     recentAssessments,
   };
+}
+
+// ==================== COASTAL CONDITIONS CACHE OPERATIONS ====================
+
+/**
+ * Cache coastal conditions for an MPA (30-minute TTL)
+ */
+export async function cacheCoastalConditions(
+  mpaId: string,
+  conditions: CoastalConditions
+): Promise<void> {
+  const db = await initDB();
+  const now = Date.now();
+  await db.put('coastal-conditions-cache', {
+    id: mpaId,
+    conditions,
+    lastFetched: now,
+    expiresAt: now + COASTAL_CONDITIONS_TTL,
+  });
+}
+
+/**
+ * Get cached coastal conditions for an MPA
+ * Returns null if no cache exists
+ */
+export async function getCachedCoastalConditions(
+  mpaId: string
+): Promise<CoastalConditionsCache | null> {
+  const db = await initDB();
+  const cached = await db.get('coastal-conditions-cache', mpaId);
+  return cached || null;
 }

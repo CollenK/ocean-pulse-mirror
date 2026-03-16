@@ -18,7 +18,27 @@ export const CATEGORY_CONFIG: Record<ChangeCategory, { label: string; icon: stri
  * Keep language simple and non-technical. Any user should understand these.
  */
 export const CHANGELOG: ChangeEntry[] = [
-  // 2026-03-16
+  // 2026-03-16 - Beach & Coastal Conditions
+  {
+    date: '2026-03-16',
+    category: 'new',
+    title: 'Real-time beach and coastal conditions',
+    description: 'Each MPA page now shows live weather, water temperature, wave height, UV levels, wind, and visibility so you can plan your visit before heading out.',
+  },
+  {
+    date: '2026-03-16',
+    category: 'new',
+    title: 'Swim safety and UV advisories',
+    description: 'Automatic safety banners warn you when waves, currents, or UV levels could be dangerous. The app checks conditions and gives clear advice so you can stay safe.',
+  },
+  {
+    date: '2026-03-16',
+    category: 'new',
+    title: '"What\'s Around Today?" sightings feed',
+    description: 'See which species other visitors have spotted near this MPA in the last 7 days, plus a monthly marine wildlife tip to help you know what to look for.',
+  },
+
+  // 2026-03-16 - Verification system
   {
     date: '2026-03-16',
     category: 'new',

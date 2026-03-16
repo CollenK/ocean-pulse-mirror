@@ -94,7 +94,7 @@ const cspDirectives = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn-uicons.flaticon.com",
   "font-src 'self' https://fonts.gstatic.com https://cdn-uicons.flaticon.com",
   "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://server.arcgisonline.com https://api.obis.org https://*.mpatlas.org https://*.supabase.co",
-  "connect-src 'self' https://*.supabase.co https://api.obis.org https://gateway.api.globalfishingwatch.org https://*.tile.openstreetmap.org https://tiles.openfreemap.org https://server.arcgisonline.com https://*.mpatlas.org https://www.google-analytics.com https://*.sentry.io https://nrt.cmems-du.eu https://wmts.marine.copernicus.eu https://ows.emodnet-humanactivities.eu https://odims.ospar.org",
+  "connect-src 'self' https://*.supabase.co https://api.obis.org https://gateway.api.globalfishingwatch.org https://*.tile.openstreetmap.org https://tiles.openfreemap.org https://server.arcgisonline.com https://*.mpatlas.org https://www.google-analytics.com https://*.sentry.io https://nrt.cmems-du.eu https://wmts.marine.copernicus.eu https://ows.emodnet-humanactivities.eu https://odims.ospar.org https://api.open-meteo.com https://marine-api.open-meteo.com",
   "frame-src 'none'",
   "worker-src 'self' blob:",
   "manifest-src 'self'",

@@ -7,6 +7,16 @@ All notable changes to Ocean PULSE will be documented in this file.
 ## 2026-03-16
 
 ### Added
+- **Real-Time Beach & Coastal Conditions** for local communities
+  - Live weather, water temperature, wave height, UV levels, wind, and visibility on MPA detail pages
+  - Swim safety assessment based on wave height, currents, and weather conditions
+  - UV risk level indicators with protective advice
+  - Weather-based water quality estimation with clear disclaimer
+  - "What's Around Today?" section showing recent species sightings near each MPA
+  - Monthly marine educational tips ("Did you know?")
+  - Offline caching with 30-minute TTL and staleness indicator
+  - Data sourced from Open-Meteo Weather and Marine APIs (free, no API key)
+  - IndexedDB store (v7) for coastal conditions cache
 - **Observation Verification & Community Validation System** (iNaturalist-style)
   - Quality tiers for observations: Casual, Needs ID, Community Verified, Research Grade
   - Community verification workflow: agree with species ID or suggest alternatives
