@@ -552,3 +552,61 @@ At the end of a development session, add a changelog entry summarizing:
 ### Removed
 - Sign in buttons from landing page
 ```
+
+---
+
+## What's New (In-App Changelog)
+
+The app has a user-facing "What's New" page at `/ocean-pulse-app/whats-new`, accessible from the user menu. This is separate from the developer changelog and must be written in plain, non-technical language that any user can understand.
+
+### When to Update
+
+**After every session that adds, changes, or fixes user-facing functionality**, add entries to the `CHANGELOG` array in `lib/whats-new-data.ts`. This is a mandatory step, not optional. If you built it, tell users about it.
+
+### How to Write Entries
+
+Add new entries at the **top** of the `CHANGELOG` array (newest first). Each entry has:
+
+```ts
+{
+  date: '2026-03-16',           // Today's date (YYYY-MM-DD)
+  category: 'new',              // 'new' | 'improved' | 'fixed'
+  title: 'Short, clear title',  // What changed, in 5-8 words
+  description: 'Plain language explanation of what this means for the user.',
+}
+```
+
+### Writing Rules
+
+- **No jargon.** Do not mention components, hooks, migrations, APIs, databases, RLS, RPC, or any implementation detail. Write as if explaining to someone who has never written code.
+- **Focus on the user benefit.** Not "Added VerificationPanel component" but "Other users can now confirm species identifications on your observations."
+- **Use categories correctly:**
+  - `new` - A capability that did not exist before
+  - `improved` - An existing feature that now works better, looks better, or is easier to use
+  - `fixed` - Something that was broken and is now working correctly
+- **One entry per distinct change.** A large feature may produce multiple entries (e.g. the verification system generated 7 entries covering different aspects a user would notice).
+- **Skip purely internal changes.** Refactors, dependency bumps, code cleanup, and developer tooling changes that have no visible effect on users should not be listed.
+
+### Example Entries
+
+```ts
+// Good
+{
+  date: '2026-03-16',
+  category: 'new',
+  title: 'Community verification for species sightings',
+  description: 'Other users can now confirm or suggest corrections to species identifications on your observations. When enough people agree, the observation gets upgraded to "Verified" or "Research Grade", making the data more reliable for everyone.',
+}
+
+// Bad - too technical
+{
+  date: '2026-03-16',
+  category: 'new',
+  title: 'Added VerificationPanel component with RPC consensus',
+  description: 'Implemented submit_verification RPC with UPSERT and compute_observation_consensus trigger that uses weighted voting (expert 2x) to update quality_tier enum.',
+}
+```
+
+### How the "New" Indicator Works
+
+The user menu shows a green "NEW" badge next to "What's New" when there are entries the user has not yet seen. This is tracked via `localStorage` key `ocean-pulse-whats-new-last-viewed`, which stores the date of the most recent entry the user viewed. Adding a new entry with a date newer than this value automatically lights up the indicator for all users.

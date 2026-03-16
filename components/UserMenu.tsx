@@ -5,13 +5,31 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Icon } from '@/components/Icon';
 import { storeAuthRedirect } from '@/lib/auth-redirect';
+import { getLatestChangeDate } from '@/lib/whats-new-data';
+
+const LAST_VIEWED_KEY = 'ocean-pulse-whats-new-last-viewed';
+
+function hasUnviewedChanges(): boolean {
+  try {
+    const lastViewed = localStorage.getItem(LAST_VIEWED_KEY);
+    if (!lastViewed) return true;
+    return lastViewed < getLatestChangeDate();
+  } catch {
+    return false;
+  }
+}
 
 export function UserMenu() {
   const { user, profile, isAuthenticated, loading, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [showNewDot, setShowNewDot] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
+
+  useEffect(() => {
+    setShowNewDot(hasUnviewedChanges());
+  }, []);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -154,8 +172,30 @@ export function UserMenu() {
             )}
           </div>
 
-          {/* Sign Out */}
+          {/* What's New + Sign Out */}
           <div className="border-t border-gray-100 pt-2">
+            <button
+              onClick={() => {
+                router.push('/ocean-pulse-app/whats-new');
+                setIsOpen(false);
+                setShowNewDot(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <span className="relative">
+                <Icon name="sparkles" className="text-gray-400" size="sm" />
+                {showNewDot && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full" />
+                )}
+              </span>
+              <span>What's New</span>
+              {showNewDot && (
+                <span className="ml-auto text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                  NEW
+                </span>
+              )}
+            </button>
+
             <button
               onClick={handleSignOut}
               className="w-full flex items-center gap-3 px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors"
