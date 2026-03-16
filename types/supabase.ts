@@ -185,6 +185,8 @@ export interface Database {
           display_name: string | null;
           avatar_url: string | null;
           preferences: Json;
+          is_expert: boolean;
+          is_admin: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -193,6 +195,8 @@ export interface Database {
           display_name?: string | null;
           avatar_url?: string | null;
           preferences?: Json;
+          is_expert?: boolean;
+          is_admin?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -201,6 +205,8 @@ export interface Database {
           display_name?: string | null;
           avatar_url?: string | null;
           preferences?: Json;
+          is_expert?: boolean;
+          is_admin?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -247,6 +253,8 @@ export interface Database {
           observed_at: string;
           created_at: string;
           updated_at: string;
+          quality_tier: 'casual' | 'needs_id' | 'community_verified' | 'research_grade';
+          community_species_name: string | null;
         };
         Insert: {
           id?: string;
@@ -269,6 +277,8 @@ export interface Database {
           observed_at?: string;
           created_at?: string;
           updated_at?: string;
+          quality_tier?: 'casual' | 'needs_id' | 'community_verified' | 'research_grade';
+          community_species_name?: string | null;
         };
         Update: {
           id?: string;
@@ -291,6 +301,75 @@ export interface Database {
           observed_at?: string;
           created_at?: string;
           updated_at?: string;
+          quality_tier?: 'casual' | 'needs_id' | 'community_verified' | 'research_grade';
+          community_species_name?: string | null;
+        };
+      };
+      observation_verifications: {
+        Row: {
+          id: string;
+          observation_id: string;
+          user_id: string;
+          species_name: string | null;
+          is_agreement: boolean;
+          confidence: number;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          observation_id: string;
+          user_id: string;
+          species_name?: string | null;
+          is_agreement: boolean;
+          confidence: number;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          observation_id?: string;
+          user_id?: string;
+          species_name?: string | null;
+          is_agreement?: boolean;
+          confidence?: number;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: string;
+          title: string;
+          body: string | null;
+          data: Json;
+          read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: string;
+          title: string;
+          body?: string | null;
+          data?: Json;
+          read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?: string;
+          title?: string;
+          body?: string | null;
+          data?: Json;
+          read?: boolean;
+          created_at?: string;
         };
       };
       user_health_assessments: {

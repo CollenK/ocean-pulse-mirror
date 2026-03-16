@@ -139,6 +139,19 @@ export function UserMenu() {
               <Icon name="user" className="text-gray-400" size="sm" />
               <span>Profile Settings</span>
             </button>
+
+            {profile?.is_admin && (
+              <button
+                onClick={() => {
+                  router.push('/ocean-pulse-app/admin');
+                  setIsOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <Icon name="shield-check" className="text-gray-400" size="sm" />
+                <span>Admin Dashboard</span>
+              </button>
+            )}
           </div>
 
           {/* Sign Out */}

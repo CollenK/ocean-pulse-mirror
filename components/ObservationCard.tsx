@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { REPORT_TYPES } from '@/types';
-import { Badge, Button, Modal } from '@/components/ui';
+import { Badge, Button, Modal, QualityTierBadge } from '@/components/ui';
 import { Icon } from '@/components/Icon';
 import type { ObservationWithProfile } from '@/lib/observations-service';
+import type { QualityTier } from '@/types/verification';
 
 // Simple relative time formatter
 function formatTimeAgo(timestamp: string): string {
@@ -76,6 +77,7 @@ interface ObservationCardProps {
   onViewDetails?: () => void;
   onEdit?: (observation: ObservationWithProfile) => void;
   onDelete?: (observationId: string) => void;
+  onVerify?: (observation: ObservationWithProfile) => void;
 }
 
 export function ObservationCard({
@@ -84,6 +86,7 @@ export function ObservationCard({
   onViewDetails,
   onEdit,
   onDelete,
+  onVerify,
 }: ObservationCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const isOwner = currentUserId && observation.user_id === currentUserId;
@@ -126,15 +129,33 @@ export function ObservationCard({
           <span className="text-sm text-gray-400 ml-auto">{timeAgo}</span>
         </div>
 
-        {/* Report type badge */}
-        {reportTypeInfo && (
-          <div className="mb-3">
+        {/* Report type badge + Quality tier */}
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          {reportTypeInfo && (
             <Badge
               variant={getReportTypeBadgeVariant(observation.report_type)}
               size="sm"
             >
               {reportTypeInfo.label}
             </Badge>
+          )}
+          {observation.quality_tier && (
+            <QualityTierBadge
+              tier={observation.quality_tier as QualityTier}
+              size="sm"
+              verificationCount={observation.verification_count}
+            />
+          )}
+        </div>
+
+        {/* Community species suggestion */}
+        {observation.community_species_name &&
+          observation.community_species_name !== observation.species_name && (
+          <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+            <i className="fi fi-rr-users-alt text-amber-600 text-xs" />
+            <p className="text-xs text-amber-800">
+              Community suggests: <span className="font-medium italic">{observation.community_species_name}</span>
+            </p>
           </div>
         )}
 
@@ -166,6 +187,22 @@ export function ObservationCard({
             </button>
           )}
         </div>
+
+        {/* Verify button for non-owners */}
+        {!isOwner && onVerify && observation.quality_tier === 'needs_id' && (
+          <div className="mt-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => onVerify(observation)}
+              fullWidth
+              className="border-balean-cyan text-balean-cyan hover:bg-cyan-50"
+            >
+              <Icon name="check-circle" size="sm" />
+              Verify Observation
+            </Button>
+          </div>
+        )}
 
         {/* Edit/Delete buttons for owner */}
         {isOwner && (onEdit || onDelete) && (

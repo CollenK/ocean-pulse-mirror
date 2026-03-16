@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { UserMenu } from '@/components/UserMenu';
+import { NotificationBell } from '@/components/Notification/NotificationBell';
 
 export function AppHeader() {
   return (
@@ -17,7 +18,10 @@ export function AppHeader() {
           </div>
         </Link>
       </div>
-      <UserMenu />
+      <div className="flex items-center gap-1">
+        <NotificationBell />
+        <UserMenu />
+      </div>
     </header>
   );
 }

@@ -9,6 +9,7 @@ import { captureError } from '@/lib/error-reporting';
 import { saveObservation as saveObservationLocal, getObservationsForMPA as getLocalObservations, deleteLocalObservation } from '@/lib/offline-storage';
 import type { ReportType } from '@/types';
 import type { Json, ObservationRow } from '@/types/supabase';
+import type { QualityTier } from '@/types/verification';
 
 export interface CreateObservationInput {
   mpaId: string;
@@ -31,6 +32,7 @@ export interface ObservationWithProfile extends ObservationRow {
     display_name: string | null;
     avatar_url: string | null;
   } | null;
+  verification_count?: number;
 }
 
 /**
@@ -109,7 +111,8 @@ export async function fetchObservationsForMPA(mpaId: string): Promise<Observatio
           profiles:user_id (
             display_name,
             avatar_url
-          )
+          ),
+          observation_verifications (count)
         `)
         .eq('mpa_id', mpaId)
         .eq('is_draft', false)
@@ -119,7 +122,15 @@ export async function fetchObservationsForMPA(mpaId: string): Promise<Observatio
       if (error) {
         console.error('Supabase fetch error:', error);
       } else if (data) {
-        observations.push(...(data as ObservationWithProfile[]));
+        // Map the nested count to a flat verification_count field
+        const mapped = (data as Array<ObservationWithProfile & {
+          observation_verifications?: Array<{ count: number }>;
+        }>).map(obs => {
+          const count = obs.observation_verifications?.[0]?.count ?? 0;
+          const { observation_verifications: _, ...rest } = obs;
+          return { ...rest, verification_count: count } as ObservationWithProfile;
+        });
+        observations.push(...mapped);
       }
     } catch (error) {
       console.error('Failed to fetch from Supabase:', error);
@@ -154,6 +165,8 @@ export async function fetchObservationsForMPA(mpaId: string): Promise<Observatio
         observed_at: new Date(local.timestamp).toISOString(),
         created_at: new Date(local.timestamp).toISOString(),
         updated_at: new Date(local.timestamp).toISOString(),
+        quality_tier: determineInitialTier(local.photo as string || null, local.location?.lat ?? null, local.speciesName || null),
+        community_species_name: null,
         profiles: null,
       });
     }
@@ -473,4 +486,18 @@ export async function getUserObservationStats(userId: string): Promise<UserObser
   }
 
   return stats;
+}
+
+/**
+ * Determine the initial quality tier based on observation data
+ */
+function determineInitialTier(
+  photoUrl: string | null,
+  latitude: number | null,
+  speciesName: string | null
+): QualityTier {
+  if (photoUrl && latitude !== null && speciesName) {
+    return 'needs_id';
+  }
+  return 'casual';
 }

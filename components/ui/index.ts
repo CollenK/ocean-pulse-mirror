@@ -19,6 +19,7 @@ export {
   ConservationBadge,
   ReportTypeBadge,
 } from './Badge';
+export { QualityTierBadge } from './QualityTierBadge';
 export { InfoTip } from './InfoTip';
 export { Input, Textarea, SearchInput } from './Input';
 export {

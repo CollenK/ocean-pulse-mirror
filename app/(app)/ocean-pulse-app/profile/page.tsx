@@ -10,6 +10,8 @@ import { Card, CardContent, CardTitle, Button, Badge, Icon } from '@/components/
 import { storeAuthRedirect } from '@/lib/auth-redirect';
 import { openCookiePreferences } from '@/components/CookieConsent';
 import { getUserObservationStats, type UserObservationStats } from '@/lib/observations-service';
+import { getUserVerificationStats } from '@/lib/verification-service';
+import type { VerificationStats } from '@/types/verification';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -24,6 +26,7 @@ export default function ProfilePage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [verificationStats, setVerificationStats] = useState<VerificationStats | null>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -42,13 +45,17 @@ export default function ProfilePage() {
     }
   }, [profile, user]);
 
-  // Fetch user observation stats
+  // Fetch user observation stats and verification stats
   useEffect(() => {
     if (user?.id) {
       setStatsLoading(true);
-      getUserObservationStats(user.id)
-        .then(setUserStats)
-        .finally(() => setStatsLoading(false));
+      Promise.all([
+        getUserObservationStats(user.id),
+        getUserVerificationStats(user.id),
+      ]).then(([obsStats, vStats]) => {
+        setUserStats(obsStats);
+        setVerificationStats(vStats);
+      }).finally(() => setStatsLoading(false));
     } else {
       setStatsLoading(false);
     }
@@ -251,6 +258,70 @@ export default function ProfilePage() {
                   <p className="text-xs text-balean-gray-400">
                     Start contributing by submitting observations with health assessments
                   </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Verification Activity */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <Card className="shadow-lg">
+            <CardTitle className="flex items-center gap-2">
+              <Icon name="check-circle" className="text-balean-cyan" />
+              Verification Activity
+            </CardTitle>
+            <CardContent>
+              {statsLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-balean-cyan border-t-transparent" />
+                </div>
+              ) : verificationStats ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="p-3 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-balean-cyan">{verificationStats.total_verifications}</p>
+                      <p className="text-xs text-balean-gray-500">Verifications</p>
+                    </div>
+                    <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-green-500">{verificationStats.agreements}</p>
+                      <p className="text-xs text-balean-gray-500">Agreements</p>
+                    </div>
+                    <div className="p-3 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-amber-600">{verificationStats.suggestions}</p>
+                      <p className="text-xs text-balean-gray-500">Suggestions</p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/ocean-pulse-app/verify"
+                    className="flex items-center justify-between w-full px-3 py-3 rounded-lg bg-balean-cyan/5 hover:bg-balean-cyan/10 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon name="check-circle" className="text-balean-cyan" />
+                      <span className="font-medium text-balean-navy">Help Verify Observations</span>
+                    </div>
+                    <Icon name="angle-right" className="text-balean-gray-300" />
+                  </Link>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <div className="w-12 h-12 rounded-full bg-cyan-50 mx-auto mb-3 flex items-center justify-center">
+                    <Icon name="check-circle" className="text-balean-cyan text-xl" />
+                  </div>
+                  <p className="text-sm text-balean-gray-500 mb-1">No verifications yet</p>
+                  <p className="text-xs text-balean-gray-400 mb-3">
+                    Help improve data quality by verifying species identifications
+                  </p>
+                  <Link
+                    href="/ocean-pulse-app/verify"
+                    className="text-sm font-medium text-balean-cyan hover:text-balean-cyan/80"
+                  >
+                    Start Verifying
+                  </Link>
                 </div>
               )}
             </CardContent>

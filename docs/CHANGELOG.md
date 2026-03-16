@@ -4,6 +4,31 @@ All notable changes to Ocean PULSE will be documented in this file.
 
 ---
 
+## 2026-03-16
+
+### Added
+- **Observation Verification & Community Validation System** (iNaturalist-style)
+  - Quality tiers for observations: Casual, Needs ID, Community Verified, Research Grade
+  - Community verification workflow: agree with species ID or suggest alternatives
+  - Expert votes weighted 2x in consensus calculations
+  - Automatic tier upgrades based on community agreement (2+ votes, 2/3 majority)
+  - Real-time notifications for observation owners when verifications are submitted or tiers upgrade
+  - Notification bell in app header with unread count and dropdown
+  - Quality tier filter pills on Live Reports (All, Needs ID, Verified, Research Grade)
+  - Quality tier badges on observation cards with tooltip descriptions
+  - Dedicated `/verify` page with feed of observations needing identification
+  - Verification stats on user profile page (total verifications, agreements, suggestions)
+  - Database migration with RLS policies, RPC functions, and consensus computation
+  - Backfill logic to classify existing observations as Casual or Needs ID
+
+### Changed
+- Health score community assessment now only counts verified observations (community_verified or research_grade tier)
+- Observation cards now show quality tier badge alongside report type
+- Live Reports component supports tier-based filtering
+- App header now includes notification bell for authenticated users
+
+---
+
 ## 2026-02-27
 
 ### Added

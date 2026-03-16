@@ -8,6 +8,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useBackendHealthScore } from './useBackendData';
 import { getUserHealthScoreForMPA } from '@/lib/offline-storage';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import type { MPAAbundanceSummary } from '@/types/obis-abundance';
 import type { MPAEnvironmentalSummary } from '@/types/obis-environmental';
 import type { GFWComplianceScore } from '@/types/gfw';
@@ -103,7 +104,7 @@ export function useHybridHealthScore({
   const [communityData, setCommunityData] = useState<UserHealthData>({ averageScore: null, count: 0 });
   const [communityLoading, setCommunityLoading] = useState(true);
 
-  // Fetch community assessments
+  // Fetch community assessments (only from verified observations)
   useEffect(() => {
     if (!mpaId || !includeCommunityAssessments) {
       setCommunityLoading(false);
@@ -111,13 +112,42 @@ export function useHybridHealthScore({
     }
 
     setCommunityLoading(true);
-    getUserHealthScoreForMPA(mpaId)
-      .then(data => {
-        setCommunityData({
-          averageScore: data.averageScore,
-          count: data.count,
-        });
-      })
+
+    // Try Supabase first for quality-tier-filtered assessments
+    const fetchVerifiedAssessments = async (): Promise<UserHealthData> => {
+      if (isSupabaseConfigured()) {
+        try {
+          const supabase = createClient();
+          // Only count health assessments linked to verified observations
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data, error } = await (supabase
+            .from('user_health_assessments') as any)
+            .select('score, observation_id, observations!inner(quality_tier)')
+            .eq('mpa_id', mpaId)
+            .in('observations.quality_tier', ['community_verified', 'research_grade']);
+
+          if (!error && data && data.length > 0) {
+            const totalScore = data.reduce((sum: number, row: { score: number }) => sum + row.score, 0);
+            return {
+              averageScore: totalScore / data.length,
+              count: data.length,
+            };
+          }
+        } catch {
+          // Fall back to local storage
+        }
+      }
+
+      // Fallback: use all local assessments (unfiltered, for offline support)
+      const localData = await getUserHealthScoreForMPA(mpaId);
+      return {
+        averageScore: localData.averageScore,
+        count: localData.count,
+      };
+    };
+
+    fetchVerifiedAssessments()
+      .then(setCommunityData)
       .catch(error => {
         console.error('Failed to fetch community health assessments:', error);
       })
