@@ -4,6 +4,25 @@ All notable changes to Ocean PULSE will be documented in this file.
 
 ---
 
+## 2026-03-17
+
+### Added
+- **Gamification & Community Engagement System**
+  - 9 achievement badges across observation, collection, streak, and verification categories
+  - `user_badges` and `user_streaks` tables with RLS policies
+  - `user_species_collection` view aggregating per-user species life list
+  - `check_and_award_badges` RPC function with automatic notification on badge earn
+  - `update_observation_streak` RPC function tracking consecutive-day streaks
+  - `get_leaderboard` RPC function supporting observations/species/verifications, monthly/all-time, optional MPA filter
+  - Database trigger on observation insert to auto-update streaks and check badges
+  - Service layer (`lib/gamification-service.ts`) following verification-service pattern
+  - `useGamification` and `useLeaderboard` hooks
+  - UI components: AchievementBadge, BadgesGrid, StreakCounter, SpeciesCollection, LeaderboardCard
+  - Profile page integration with badges grid, streak counter, species collection, and leaderboard sections
+  - Dynamic profile title badge based on highest earned achievement
+
+---
+
 ## 2026-03-16
 
 ### Added

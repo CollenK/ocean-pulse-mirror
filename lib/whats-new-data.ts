@@ -18,6 +18,32 @@ export const CATEGORY_CONFIG: Record<ChangeCategory, { label: string; icon: stri
  * Keep language simple and non-technical. Any user should understand these.
  */
 export const CHANGELOG: ChangeEntry[] = [
+  // 2026-03-17 - Gamification & Community Engagement
+  {
+    date: '2026-03-17',
+    category: 'new',
+    title: 'Achievement badges for your contributions',
+    description: 'Earn badges as you explore and contribute. Submit observations, discover species, verify sightings, and maintain daily streaks to unlock 9 unique achievements displayed on your profile.',
+  },
+  {
+    date: '2026-03-17',
+    category: 'new',
+    title: 'Species life list on your profile',
+    description: 'Your profile now shows every species you have observed, when you first spotted it, and how many times. Build your personal marine life collection over time.',
+  },
+  {
+    date: '2026-03-17',
+    category: 'new',
+    title: 'Observation streaks',
+    description: 'Submit observations on consecutive days to build a streak. Your current and longest streaks are tracked on your profile with a live flame counter.',
+  },
+  {
+    date: '2026-03-17',
+    category: 'new',
+    title: 'Community leaderboards',
+    description: 'See how you rank among other contributors. Leaderboards track observations, species discovered, and verifications, with monthly and all-time views.',
+  },
+
   // 2026-03-16 - Beach & Coastal Conditions
   {
     date: '2026-03-16',

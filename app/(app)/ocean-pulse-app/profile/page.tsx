@@ -12,6 +12,9 @@ import { openCookiePreferences } from '@/components/CookieConsent';
 import { getUserObservationStats, type UserObservationStats } from '@/lib/observations-service';
 import { getUserVerificationStats } from '@/lib/verification-service';
 import type { VerificationStats } from '@/types/verification';
+import { useGamification } from '@/hooks/useGamification';
+import { BadgesGrid, StreakCounter, SpeciesCollection, LeaderboardCard } from '@/components/Gamification';
+import { BADGE_DEFINITIONS, getBadgeDefinition } from '@/types/gamification';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -27,6 +30,7 @@ export default function ProfilePage() {
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [verificationStats, setVerificationStats] = useState<VerificationStats | null>(null);
+  const { stats: gamStats, speciesCollection, loading: gamLoading } = useGamification(user?.id);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -167,7 +171,9 @@ export default function ProfilePage() {
               <h1 className="text-3xl font-bold text-white">{currentDisplayName}</h1>
               <p className="text-white/80">{user?.email}</p>
               <Badge variant="info" size="sm" className="mt-2 bg-white/20 text-white border-none">
-                Marine Observer
+                {gamStats && gamStats.badges.length > 0
+                  ? getBadgeDefinition(gamStats.badges[gamStats.badges.length - 1].badge_id)?.name || 'Marine Observer'
+                  : 'Marine Observer'}
               </Badge>
             </div>
           </motion.div>
@@ -213,6 +219,79 @@ export default function ProfilePage() {
                   <p className="text-sm text-balean-gray-500">Species Found</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Achievements & Badges */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+        >
+          <Card className="shadow-lg">
+            <CardTitle className="flex items-center gap-2">
+              <Icon name="trophy" className="text-amber-500" />
+              Achievements &amp; Badges
+            </CardTitle>
+            <CardContent>
+              {gamLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-amber-400 border-t-transparent" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <BadgesGrid earnedBadges={gamStats?.badges || []} />
+                  {gamStats?.streak && (
+                    <StreakCounter streak={gamStats.streak} />
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Species Collection */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.07 }}
+        >
+          <Card className="shadow-lg">
+            <CardTitle className="flex items-center gap-2">
+              <Icon name="fish" className="text-cyan-600" />
+              Species Collection
+              {speciesCollection.length > 0 && (
+                <span className="ml-auto text-sm font-normal text-balean-gray-400">
+                  {speciesCollection.length} Species Discovered
+                </span>
+              )}
+            </CardTitle>
+            <CardContent>
+              {gamLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-cyan-400 border-t-transparent" />
+                </div>
+              ) : (
+                <SpeciesCollection collection={speciesCollection} />
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Leaderboard */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.09 }}
+        >
+          <Card className="shadow-lg">
+            <CardTitle className="flex items-center gap-2">
+              <Icon name="chart-histogram" className="text-purple-600" />
+              Leaderboard
+            </CardTitle>
+            <CardContent>
+              <LeaderboardCard currentUserId={user?.id} />
             </CardContent>
           </Card>
         </motion.div>
