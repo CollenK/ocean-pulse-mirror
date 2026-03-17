@@ -18,6 +18,32 @@ export const CATEGORY_CONFIG: Record<ChangeCategory, { label: string; icon: stri
  * Keep language simple and non-technical. Any user should understand these.
  */
 export const CHANGELOG: ChangeEntry[] = [
+  // 2026-03-17 - Marine Litter Monitoring
+  {
+    date: '2026-03-17',
+    category: 'new',
+    title: 'Report beach litter with item counts',
+    description: 'A new "Marine Litter" report type lets you record what you find on the beach. Tap items to tally them, with 10 common items shown by default or expand to the full OSPAR list of 70+ categories for formal surveys.',
+  },
+  {
+    date: '2026-03-17',
+    category: 'new',
+    title: 'OSPAR survey mode for beach litter',
+    description: 'Switch to "OSPAR Survey" mode for standardised beach monitoring. Choose a transect length (10m, 50m, or 100m) and get items-per-100m density calculations compatible with MCS Beachwatch reporting.',
+  },
+  {
+    date: '2026-03-17',
+    category: 'new',
+    title: 'Beach litter hotspot map layer',
+    description: 'Toggle the new "Beach Litter Hotspots" layer on the map to see where litter has been surveyed across European coastlines. Colour-coded from green (clean) to red (very dirty) based on items per 100 metres.',
+  },
+  {
+    date: '2026-03-17',
+    category: 'new',
+    title: 'Litter collection badges',
+    description: 'Two new achievement badges reward litter reporting: "Beach Guardian" for your first report, and "Litter Tracker" after 10 reports. Check your profile to see your progress.',
+  },
+
   // 2026-03-17 - Gamification & Community Engagement
   {
     date: '2026-03-17',

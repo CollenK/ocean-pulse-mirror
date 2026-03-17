@@ -236,7 +236,7 @@ export interface Database {
           id: string;
           user_id: string | null;
           mpa_id: string | null;
-          report_type: 'species_sighting' | 'habitat_condition' | 'water_quality' | 'threat_concern' | 'enforcement_activity' | 'research_observation';
+          report_type: 'species_sighting' | 'habitat_condition' | 'water_quality' | 'threat_concern' | 'enforcement_activity' | 'research_observation' | 'marine_litter';
           species_name: string | null;
           species_type: string | null;
           quantity: number | null;
@@ -255,12 +255,15 @@ export interface Database {
           updated_at: string;
           quality_tier: 'casual' | 'needs_id' | 'community_verified' | 'research_grade';
           community_species_name: string | null;
+          litter_items: Json | null;
+          litter_weight_kg: number | null;
+          survey_length_m: number | null;
         };
         Insert: {
           id?: string;
           user_id?: string | null;
           mpa_id?: string | null;
-          report_type: 'species_sighting' | 'habitat_condition' | 'water_quality' | 'threat_concern' | 'enforcement_activity' | 'research_observation';
+          report_type: 'species_sighting' | 'habitat_condition' | 'water_quality' | 'threat_concern' | 'enforcement_activity' | 'research_observation' | 'marine_litter';
           species_name?: string | null;
           species_type?: string | null;
           quantity?: number | null;
@@ -279,6 +282,9 @@ export interface Database {
           updated_at?: string;
           quality_tier?: 'casual' | 'needs_id' | 'community_verified' | 'research_grade';
           community_species_name?: string | null;
+          litter_items?: Json | null;
+          litter_weight_kg?: number | null;
+          survey_length_m?: number | null;
         };
         Update: {
           id?: string;
@@ -303,6 +309,9 @@ export interface Database {
           updated_at?: string;
           quality_tier?: 'casual' | 'needs_id' | 'community_verified' | 'research_grade';
           community_species_name?: string | null;
+          litter_items?: Json | null;
+          litter_weight_kg?: number | null;
+          survey_length_m?: number | null;
         };
       };
       observation_verifications: {

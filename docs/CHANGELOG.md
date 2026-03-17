@@ -7,6 +7,21 @@ All notable changes to Ocean PULSE will be documented in this file.
 ## 2026-03-17
 
 ### Added
+- **Marine Litter Monitoring (Phase 1)**
+  - `marine_litter` report type added to `report_type` enum
+  - `litter_items` (JSONB), `litter_weight_kg` (NUMERIC), `survey_length_m` (INT) columns on observations
+  - Updated `create_observation_with_health` RPC with litter parameters
+  - `types/marine-litter.ts` with OSPAR J-code item definitions (70+ items), material/source configs
+  - `LitterDetails` component with Quick Report / OSPAR Survey mode toggle
+  - `LitterItemPicker` component with progressive disclosure (10 common items, expandable to full OSPAR list)
+  - `LitterHotspotLayer` map layer with heatmap (low zoom) and circle markers (high zoom)
+  - `LitterHotspotLegend` component with MSFD intensity classification
+  - EMODnet Chemistry beach litter data service (`lib/emodnet-litter.ts`) with fallback dataset
+  - `showLitterHotspots` filter toggle in MapFilterPanel
+  - Two litter gamification badges: `beach_guardian` (1 report) and `litter_tracker` (10 reports)
+  - Updated `check_and_award_badges` RPC with litter badge logic
+  - Observation form integration: litter section shown when marine_litter type selected
+
 - **Gamification & Community Engagement System**
   - 9 achievement badges across observation, collection, streak, and verification categories
   - `user_badges` and `user_streaks` tables with RLS policies

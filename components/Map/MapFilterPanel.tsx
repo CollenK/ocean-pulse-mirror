@@ -18,6 +18,7 @@ export interface MapFilters {
   showFishingPressure: boolean;
   showSST: boolean;
   showWindFarms: boolean;
+  showLitterHotspots: boolean;
 }
 
 export const DEFAULT_FILTERS: MapFilters = {
@@ -31,6 +32,7 @@ export const DEFAULT_FILTERS: MapFilters = {
   showFishingPressure: false,
   showSST: false,
   showWindFarms: false,
+  showLitterHotspots: false,
 };
 
 // Health status categories
@@ -576,6 +578,38 @@ export function MapFilterPanel({
                 <div className="px-4 pb-3">
                   <p className="text-[10px] text-balean-gray-400">
                     Global fishing heatmap coming soon. View fishing data on individual MPA detail pages.
+                  </p>
+                </div>
+              </div>
+
+              {/* Beach Litter Hotspots Layer Toggle */}
+              <div className="border-b border-balean-gray-100">
+                <label
+                  htmlFor="litter-hotspots-layer"
+                  className="flex items-center justify-between py-3 px-4 cursor-pointer group hover:bg-balean-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="litter-hotspots-layer"
+                      checked={filters.showLitterHotspots}
+                      onChange={(e) => onFiltersChange({ ...filters, showLitterHotspots: e.target.checked })}
+                      className="w-4 h-4 rounded border-balean-gray-300 text-balean-cyan focus:ring-balean-cyan"
+                    />
+                    <div className="flex items-center gap-2">
+                      <i className="fi fi-rr-trash text-teal-500" />
+                      <span className="font-semibold text-balean-navy text-sm group-hover:text-balean-navy transition-colors">
+                        Beach Litter Hotspots
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded font-medium">
+                    EMODnet
+                  </span>
+                </label>
+                <div className="px-4 pb-3">
+                  <p className="text-[10px] text-balean-gray-400">
+                    Beach litter survey data from EMODnet Chemistry and OSPAR monitoring. Colour-coded by litter density.
                   </p>
                 </div>
               </div>

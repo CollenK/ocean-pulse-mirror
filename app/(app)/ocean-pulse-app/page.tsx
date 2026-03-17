@@ -14,6 +14,7 @@ import { useSavedMPAs } from '@/hooks/useSavedMPAs';
 import dynamic from 'next/dynamic';
 import { MapFilterPanel, MapFilters, DEFAULT_FILTERS, filterMPAs } from '@/components/Map/MapFilterPanel';
 import { useWindFarmLayer } from '@/hooks/useWindFarmData';
+import { fetchBeachLitterHotspots, type LitterHotspotData } from '@/lib/emodnet-litter';
 
 // Dynamically import map component (no SSR due to Leaflet)
 const MobileMap = dynamic(
@@ -135,6 +136,14 @@ function HomeContent() {
     };
   }, [windFarmGeoJSON, filters.windFarmStatus]);
 
+  // Beach litter hotspot data (lazy-loaded when layer is toggled on)
+  const [litterData, setLitterData] = useState<LitterHotspotData | null>(null);
+  useEffect(() => {
+    if (filters.showLitterHotspots && !litterData) {
+      fetchBeachLitterHotspots().then(setLitterData).catch(console.error);
+    }
+  }, [filters.showLitterHotspots, litterData]);
+
   const loadMPAs = useCallback(async () => {
     setLoading(true);
     try {
@@ -236,6 +245,9 @@ function HomeContent() {
             showWindFarms={filters.showWindFarms}
             windFarmGeoJSON={filteredWindFarmGeoJSON}
             windFarmSummary={windFarmSummary}
+            showLitterHotspots={filters.showLitterHotspots}
+            litterGeoJSON={litterData?.geojson}
+            litterSurveyCount={litterData?.surveys.length}
             userLocation={position ? { latitude: position.latitude, longitude: position.longitude } : undefined}
           />
         </div>

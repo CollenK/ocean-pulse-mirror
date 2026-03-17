@@ -16,6 +16,7 @@ const categoryColors: Record<string, { bg: string; icon: string; ring: string }>
   verification: { bg: 'bg-cyan-50', icon: 'text-cyan-500', ring: 'ring-cyan-200' },
   streak: { bg: 'bg-amber-50', icon: 'text-amber-500', ring: 'ring-amber-200' },
   collection: { bg: 'bg-emerald-50', icon: 'text-emerald-500', ring: 'ring-emerald-200' },
+  litter: { bg: 'bg-teal-50', icon: 'text-teal-500', ring: 'ring-teal-200' },
 };
 
 export function AchievementBadge({ badge, earned, earnedAt }: AchievementBadgeProps) {

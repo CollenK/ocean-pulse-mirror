@@ -25,6 +25,9 @@ export interface CreateObservationInput {
   photoMetadata?: Json;
   healthScoreAssessment?: number;
   userId?: string;
+  litterItems?: Json;
+  litterWeightKg?: number;
+  surveyLengthM?: number;
 }
 
 export interface ObservationWithProfile extends ObservationRow {
@@ -61,6 +64,9 @@ export async function createObservation(input: CreateObservationInput): Promise<
         p_photo_url: input.photoUrl || null,
         p_photo_metadata: input.photoMetadata || null,
         p_health_score: input.healthScoreAssessment || null,
+        p_litter_items: input.litterItems || null,
+        p_litter_weight_kg: input.litterWeightKg || null,
+        p_survey_length_m: input.surveyLengthM || null,
       });
 
       if (error) {
@@ -167,6 +173,9 @@ export async function fetchObservationsForMPA(mpaId: string): Promise<Observatio
         updated_at: new Date(local.timestamp).toISOString(),
         quality_tier: determineInitialTier(local.photo as string || null, local.location?.lat ?? null, local.speciesName || null),
         community_species_name: null,
+        litter_items: null,
+        litter_weight_kg: null,
+        survey_length_m: null,
         profiles: null,
       });
     }

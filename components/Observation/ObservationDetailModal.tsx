@@ -1,9 +1,11 @@
 'use client';
 
+import { useMemo } from 'react';
 import { REPORT_TYPES } from '@/types';
 import { Badge, Modal, QualityTierBadge } from '@/components/ui';
 import { Icon } from '@/components/Icon';
 import { VerificationPanel } from '@/components/Verification/VerificationPanel';
+import { MATERIAL_CONFIG, type LitterTallyEntry, type LitterMaterial } from '@/types/marine-litter';
 import type { ObservationWithProfile } from '@/lib/observations-service';
 import type { QualityTier } from '@/types/verification';
 
@@ -33,6 +35,7 @@ function getReportTypeBadgeVariant(type: string): 'info' | 'healthy' | 'warning'
     case 'threat_concern': return 'at-risk';
     case 'enforcement_activity': return 'warning';
     case 'research_observation': return 'healthy';
+    case 'marine_litter': return 'healthy';
     default: return 'info';
   }
 }
@@ -59,6 +62,31 @@ export function ObservationDetailModal({
   const reportTypeInfo = observation.report_type ? REPORT_TYPES[observation.report_type] : null;
   const displayName = observation.profiles?.display_name || generateUsername(observation.user_id, observation.id);
   const isOwner = currentUserId === observation.user_id;
+
+  // Parse litter data
+  const litterItems: LitterTallyEntry[] = useMemo(() => {
+    if (observation.report_type !== 'marine_litter' || !observation.litter_items) return [];
+    try {
+      const parsed = typeof observation.litter_items === 'string'
+        ? JSON.parse(observation.litter_items)
+        : observation.litter_items;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
+  }, [observation.litter_items, observation.report_type]);
+
+  const litterTotalItems = useMemo(() => litterItems.reduce((sum, e) => sum + e.count, 0), [litterItems]);
+
+  // Group items by material for the breakdown
+  const litterByMaterial = useMemo(() => {
+    const groups: Record<string, { items: LitterTallyEntry[]; total: number }> = {};
+    for (const item of litterItems) {
+      if (!groups[item.material]) groups[item.material] = { items: [], total: 0 };
+      groups[item.material].items.push(item);
+      groups[item.material].total += item.count;
+    }
+    // Sort by total descending
+    return Object.entries(groups).sort((a, b) => b[1].total - a[1].total);
+  }, [litterItems]);
 
   return (
     <Modal
@@ -144,6 +172,123 @@ export function ObservationDetailModal({
             )}
             {observation.quantity && (
               <p className="text-xs text-gray-400">Quantity observed: {observation.quantity}</p>
+            )}
+          </div>
+        )}
+
+        {/* Litter report details */}
+        {observation.report_type === 'marine_litter' && (litterItems.length > 0 || observation.litter_weight_kg) && (
+          <div className="space-y-4">
+            {/* Summary stats */}
+            <div className="bg-teal-50 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <i className="fi fi-rr-trash text-teal-600" />
+                <span className="text-sm font-medium text-gray-700">Litter Report Summary</span>
+                {observation.survey_length_m && (
+                  <Badge variant="info" size="sm">OSPAR Survey</Badge>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {litterTotalItems > 0 && (
+                  <div className="bg-white rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-teal-600">{litterTotalItems}</p>
+                    <p className="text-xs text-gray-500">items found</p>
+                  </div>
+                )}
+                {observation.litter_weight_kg != null && (
+                  <div className="bg-white rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-teal-600">{observation.litter_weight_kg} kg</p>
+                    <p className="text-xs text-gray-500">total weight</p>
+                  </div>
+                )}
+                {observation.survey_length_m && litterTotalItems > 0 && (
+                  <div className="bg-white rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-teal-600">
+                      {Math.round((litterTotalItems / observation.survey_length_m) * 100)}
+                    </p>
+                    <p className="text-xs text-gray-500">items / 100m</p>
+                  </div>
+                )}
+                {observation.survey_length_m && (
+                  <div className="bg-white rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-teal-600">{observation.survey_length_m}m</p>
+                    <p className="text-xs text-gray-500">transect length</p>
+                  </div>
+                )}
+                {litterItems.length > 0 && (
+                  <div className="bg-white rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-teal-600">{litterItems.length}</p>
+                    <p className="text-xs text-gray-500">categories</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Material breakdown */}
+            {litterByMaterial.length > 0 && (
+              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <i className="fi fi-rr-chart-pie text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">Material Breakdown</span>
+                </div>
+
+                {/* Material bar chart */}
+                <div className="space-y-2">
+                  {litterByMaterial.map(([material, data]) => {
+                    const config = MATERIAL_CONFIG[material as LitterMaterial] || MATERIAL_CONFIG.other;
+                    const pct = litterTotalItems > 0 ? (data.total / litterTotalItems) * 100 : 0;
+                    return (
+                      <div key={material}>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className={`text-xs font-medium ${config.color}`}>{config.label}</span>
+                          <span className="text-xs text-gray-500">{data.total} ({Math.round(pct)}%)</span>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${config.bg} border ${config.color.replace('text-', 'border-')}`}
+                            style={{ width: `${Math.max(pct, 2)}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Full item list */}
+            {litterItems.length > 0 && (
+              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <i className="fi fi-rr-list text-gray-600" />
+                    <span className="text-sm font-medium text-gray-700">Items Found</span>
+                  </div>
+                  <span className="text-xs text-gray-400">{litterItems.length} types</span>
+                </div>
+
+                <div className="space-y-1 max-h-60 overflow-y-auto">
+                  {[...litterItems]
+                    .sort((a, b) => b.count - a.count)
+                    .map((item) => {
+                      const config = MATERIAL_CONFIG[item.material as LitterMaterial] || MATERIAL_CONFIG.other;
+                      return (
+                        <div
+                          key={item.code}
+                          className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white transition-colors"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${config.bg} border ${config.color.replace('text-', 'border-')}`} />
+                            <span className="text-sm text-gray-800 truncate">{item.name}</span>
+                            <span className="text-[10px] text-gray-400 flex-shrink-0">{item.code}</span>
+                          </div>
+                          <span className="text-sm font-semibold text-gray-900 flex-shrink-0 ml-2">{item.count}</span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
             )}
           </div>
         )}

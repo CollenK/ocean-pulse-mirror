@@ -12,6 +12,8 @@ import { SSTLayer } from './SSTLayer';
 import { SSTLegend } from './SSTLegend';
 import { WindFarmLayer } from './WindFarmLayer';
 import { WindFarmLegend } from './WindFarmLegend';
+import { LitterHotspotLayer } from './LitterHotspotLayer';
+import { LitterHotspotLegend } from './LitterHotspotLegend';
 import { toMapLibreCoords, boundsToGeoJSON, getHealthColor, normalizeAntimeridianGeometry } from './map-utils';
 import type { WindFarmSummary } from '@/types/wind-farms';
 
@@ -26,6 +28,9 @@ interface MobileMapProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   windFarmGeoJSON?: { type: 'FeatureCollection'; features: any[] };
   windFarmSummary?: WindFarmSummary | null;
+  showLitterHotspots?: boolean;
+  litterGeoJSON?: GeoJSON.FeatureCollection;
+  litterSurveyCount?: number;
   userLocation?: { latitude: number; longitude: number };
 }
 
@@ -62,6 +67,9 @@ export function MobileMap({
   showWindFarms = false,
   windFarmGeoJSON,
   windFarmSummary,
+  showLitterHotspots = false,
+  litterGeoJSON,
+  litterSurveyCount,
   userLocation,
 }: MobileMapProps) {
   const mapRef = useRef<MapRef>(null);
@@ -217,6 +225,15 @@ export function MobileMap({
           />
         )}
 
+        {/* Litter Hotspot Layer - rendered above wind farms but below MPA boundaries */}
+        {litterGeoJSON && (
+          <LitterHotspotLayer
+            geojson={litterGeoJSON}
+            visible={showLitterHotspots}
+            opacity={0.8}
+          />
+        )}
+
         {/* MPA Boundaries as GeoJSON layers */}
         <Source
           id="mpa-boundaries"
@@ -265,6 +282,15 @@ export function MobileMap({
         <div className="absolute bottom-44 left-4 z-10">
           <WindFarmLegend visible={showWindFarms} summary={windFarmSummary} />
         </div>
+      )}
+
+      {/* Litter Hotspot Legend */}
+      {showLitterHotspots && (
+        <LitterHotspotLegend
+          visible={showLitterHotspots}
+          surveyCount={litterSurveyCount}
+          className={`absolute ${showSST || showWindFarms ? 'bottom-44' : 'bottom-20'} left-4 z-10`}
+        />
       )}
     </div>
   );

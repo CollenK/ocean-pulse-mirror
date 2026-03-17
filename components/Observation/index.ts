@@ -4,3 +4,5 @@ export { MPASearchSelect } from './MPASearchSelect';
 export { PhotoUploader } from './PhotoUploader';
 export type { PhotoMetadata } from './PhotoUploader';
 export { ReportTypeSelector } from './ReportTypeSelector';
+export { LitterDetails } from './LitterDetails';
+export { LitterItemPicker } from './LitterItemPicker';

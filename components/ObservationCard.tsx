@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { REPORT_TYPES } from '@/types';
+import type { LitterTallyEntry } from '@/types/marine-litter';
 import { Badge, Button, Modal, QualityTierBadge } from '@/components/ui';
 import { Icon } from '@/components/Icon';
 import type { ObservationWithProfile } from '@/lib/observations-service';
@@ -46,6 +47,8 @@ function getReportTypeBadgeVariant(type: string): 'info' | 'healthy' | 'warning'
     case 'enforcement_activity':
       return 'warning';
     case 'research_observation':
+      return 'healthy';
+    case 'marine_litter':
       return 'healthy';
     default:
       return 'info';
@@ -97,6 +100,28 @@ export function ObservationCard({
   const timeAgo = formatTimeAgo(observation.observed_at);
   const displayName = observation.profiles?.display_name || generateUsername(observation.user_id, observation.id);
   const isSynced = !!observation.synced_at;
+
+  // Parse litter summary for card display
+  const litterSummary = useMemo(() => {
+    if (observation.report_type !== 'marine_litter') return null;
+    let totalItems = 0;
+    try {
+      const items: LitterTallyEntry[] = observation.litter_items
+        ? (typeof observation.litter_items === 'string'
+            ? JSON.parse(observation.litter_items)
+            : observation.litter_items)
+        : [];
+      totalItems = items.reduce((sum, e) => sum + e.count, 0);
+    } catch { /* empty */ }
+    return {
+      totalItems,
+      weight: observation.litter_weight_kg,
+      surveyLengthM: observation.survey_length_m,
+      itemsPer100m: observation.survey_length_m && totalItems > 0
+        ? Math.round((totalItems / observation.survey_length_m) * 100)
+        : null,
+    };
+  }, [observation.report_type, observation.litter_items, observation.litter_weight_kg, observation.survey_length_m]);
 
   return (
     <div className="bg-gray-50 rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
@@ -156,6 +181,35 @@ export function ObservationCard({
             <p className="text-xs text-amber-800">
               Community suggests: <span className="font-medium italic">{observation.community_species_name}</span>
             </p>
+          </div>
+        )}
+
+        {/* Litter summary (compact) */}
+        {litterSummary && (litterSummary.totalItems > 0 || litterSummary.weight) && (
+          <div className="flex items-center gap-3 mb-3 px-3 py-2.5 bg-teal-50 border border-teal-100 rounded-lg">
+            <i className="fi fi-rr-trash text-teal-500 text-sm" />
+            <div className="flex items-center gap-3 flex-wrap text-xs">
+              {litterSummary.totalItems > 0 && (
+                <span className="text-gray-700">
+                  <span className="font-semibold text-teal-700">{litterSummary.totalItems}</span> items
+                </span>
+              )}
+              {litterSummary.weight != null && (
+                <span className="text-gray-700">
+                  <span className="font-semibold text-teal-700">{litterSummary.weight} kg</span>
+                </span>
+              )}
+              {litterSummary.itemsPer100m != null && (
+                <span className="text-gray-700">
+                  <span className="font-semibold text-teal-700">{litterSummary.itemsPer100m}</span> /100m
+                </span>
+              )}
+              {litterSummary.surveyLengthM && (
+                <span className="text-teal-600 bg-teal-100 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                  OSPAR {litterSummary.surveyLengthM}m
+                </span>
+              )}
+            </div>
           </div>
         )}
 

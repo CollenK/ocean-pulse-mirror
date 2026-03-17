@@ -63,7 +63,8 @@ export type ReportType =
   | 'water_quality'
   | 'threat_concern'
   | 'enforcement_activity'
-  | 'research_observation';
+  | 'research_observation'
+  | 'marine_litter';
 
 export const REPORT_TYPES: Record<ReportType, { label: string; icon: string; description: string }> = {
   species_sighting: {
@@ -95,6 +96,11 @@ export const REPORT_TYPES: Record<ReportType, { label: string; icon: string; des
     label: 'Research Observation',
     icon: 'document',
     description: 'Log scientific research data or findings',
+  },
+  marine_litter: {
+    label: 'Marine Litter',
+    icon: 'trash',
+    description: 'Report beach litter with item counts and weight (OSPAR compatible)',
   },
 };
 

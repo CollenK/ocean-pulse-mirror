@@ -10,7 +10,9 @@ import {
   PhotoUploader,
   ReportTypeSelector,
   PhotoMetadata,
+  LitterDetails,
 } from '@/components/Observation';
+import type { LitterReportData } from '@/types/marine-litter';
 import { useAuth } from '@/hooks/useAuth';
 import { fetchAllMPAs } from '@/lib/mpa-service';
 import {
@@ -32,6 +34,7 @@ interface ObservationData {
   mpaId?: string;
   notes: string;
   healthScoreAssessment?: number;
+  litter?: LitterReportData;
 }
 
 // Sign-in prompt component for unauthenticated users
@@ -275,6 +278,11 @@ function ObservePageContent() {
         photoUrl: photoUrl || data.photo, // Use uploaded URL or base64 fallback
         healthScoreAssessment: data.healthScoreAssessment,
         userId: user?.id,
+        ...(data.reportType === 'marine_litter' && data.litter ? {
+          litterItems: data.litter.items.length > 0 ? JSON.parse(JSON.stringify(data.litter.items)) : undefined,
+          litterWeightKg: data.litter.totalWeight,
+          surveyLengthM: data.litter.surveyLengthM,
+        } : {}),
       });
 
       console.log('Observation saved:', result.synced ? 'to Supabase' : 'locally');
@@ -284,12 +292,12 @@ function ObservePageContent() {
         await deleteDraft(draftId);
       }
 
-      const selectedMPAName = selectedMPA?.name || '';
-      const successParams = new URLSearchParams({ observation: 'success' });
-      if (selectedMPAName) {
-        successParams.set('mpa_name', selectedMPAName);
+      // Redirect back to the MPA detail page the user was observing
+      if (selectedMPA) {
+        router.push(`/ocean-pulse-app/mpa/${selectedMPA.id}?observation=success`);
+      } else {
+        router.push('/ocean-pulse-app?observation=success');
       }
-      router.push(`/ocean-pulse-app?${successParams.toString()}`);
     } catch (error) {
       console.error('Failed to save observation:', error);
       alert('Failed to save observation. Please try again.');
@@ -427,6 +435,14 @@ function ObservePageContent() {
               </div>
             </div>
           </section>
+        )}
+
+        {/* Litter Details - Only show for marine litter */}
+        {data.reportType === 'marine_litter' && (
+          <LitterDetails
+            value={data.litter || { items: [], isSurvey: false }}
+            onChange={(litter) => setData(prev => ({ ...prev, litter }))}
+          />
         )}
 
         {/* Description */}

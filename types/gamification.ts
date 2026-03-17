@@ -10,7 +10,7 @@ export interface BadgeDefinition {
   name: string;
   description: string;
   icon: string;
-  category: 'observation' | 'verification' | 'streak' | 'collection';
+  category: 'observation' | 'verification' | 'streak' | 'collection' | 'litter';
   threshold: number;
 }
 
@@ -129,6 +129,22 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     icon: 'graduation-cap',
     category: 'observation',
     threshold: 100,
+  },
+  {
+    id: 'beach_guardian',
+    name: 'Beach Guardian',
+    description: 'Submit your first marine litter report',
+    icon: 'trash',
+    category: 'litter',
+    threshold: 1,
+  },
+  {
+    id: 'litter_tracker',
+    name: 'Litter Tracker',
+    description: 'Submit 10 marine litter reports',
+    icon: 'recycle',
+    category: 'litter',
+    threshold: 10,
   },
 ];
 
