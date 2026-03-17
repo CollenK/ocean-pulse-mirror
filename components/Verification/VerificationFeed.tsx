@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVerificationFeed } from '@/hooks/useVerifications';
 import { ObservationCard } from '@/components/ObservationCard';
+import { ObservationDetailModal } from '@/components/Observation/ObservationDetailModal';
 import { VerificationPanel } from './VerificationPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { Icon } from '@/components/Icon';
+import type { ObservationWithProfile } from '@/lib/observations-service';
 
 interface VerificationFeedProps {
   mpaId?: string;
@@ -16,6 +18,7 @@ export function VerificationFeed({ mpaId }: VerificationFeedProps) {
   const { observations, loading, refetch } = useVerificationFeed(mpaId);
   const { user } = useAuth();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [viewingObservation, setViewingObservation] = useState<ObservationWithProfile | null>(null);
 
   if (loading) {
     return (
@@ -54,6 +57,17 @@ export function VerificationFeed({ mpaId }: VerificationFeedProps) {
         {observations.length} observation{observations.length !== 1 ? 's' : ''} awaiting verification
       </p>
 
+      <ObservationDetailModal
+        observation={viewingObservation}
+        isOpen={!!viewingObservation}
+        onClose={() => setViewingObservation(null)}
+        currentUserId={user?.id}
+        onVerificationComplete={() => {
+          setViewingObservation(null);
+          refetch();
+        }}
+      />
+
       {observations.map(observation => (
         <motion.div
           key={observation.id}
@@ -63,9 +77,7 @@ export function VerificationFeed({ mpaId }: VerificationFeedProps) {
           <ObservationCard
             observation={observation}
             currentUserId={user?.id}
-            onViewDetails={() =>
-              setExpandedId(prev => prev === observation.id ? null : observation.id)
-            }
+            onViewDetails={() => setViewingObservation(observation)}
             onVerify={
               user?.id && user.id !== observation.user_id
                 ? () => setExpandedId(prev => prev === observation.id ? null : observation.id)

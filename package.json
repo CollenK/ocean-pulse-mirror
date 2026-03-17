@@ -26,6 +26,12 @@
     "url": "https://gitlab.com/balean1/ocean-pulse/issues"
   },
   "homepage": "https://gitlab.com/balean1/ocean-pulse#readme",
+  "overrides": {
+    "serialize-javascript": ">=7.0.3",
+    "rollup-plugin-terser": {
+      "serialize-javascript": ">=7.0.3"
+    }
+  },
   "dependencies": {
     "@flaticon/flaticon-uicons": "^3.3.1",
     "@sentry/nextjs": "^10.32.1",
