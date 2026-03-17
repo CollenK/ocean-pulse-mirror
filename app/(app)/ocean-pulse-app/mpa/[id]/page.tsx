@@ -33,6 +33,10 @@ import { useWindFarmConflictsForMPA } from '@/hooks/useWindFarmData';
 import { WindFarmConflictCard } from '@/components/WindFarmConflictCard';
 import { useCoastalConditions } from '@/hooks/useCoastalConditions';
 import { BeachConditionsCard, WhatsAroundToday } from '@/components/CoastalConditions';
+import { useLitterAnalytics } from '@/hooks/useLitterAnalytics';
+import { LitterBySourceChart, LitterByMaterialChart, LitterTrendChart } from '@/components/Charts/LitterCharts';
+import { SOURCE_CONFIG, MATERIAL_CONFIG } from '@/types/marine-litter';
+import { getMPAImage } from '@/lib/demo/mpa-images';
 
 export default function MPADetailPage() {
   const params = useParams();
@@ -135,6 +139,12 @@ export default function MPADetailPage() {
     !!mpa
   );
 
+  // Load litter analytics for source attribution dashboard
+  const {
+    analytics: litterAnalytics,
+    loading: litterLoading,
+  } = useLitterAnalytics(mpa?.id, !!mpa);
+
   // Extract fishing data for easier access
   const fishingEffort = fishingData.fishingEffort;
   const vesselActivity = fishingData.vesselActivity;
@@ -157,6 +167,8 @@ export default function MPADetailPage() {
     fishingComplianceLoading: fishingLoading,
     heatwaveAlert: heatwaveAlert,
     heatwaveLoading: heatwaveLoading,
+    litterPressureScore: litterAnalytics?.pressureScore ?? null,
+    litterPressureLoading: litterLoading,
   });
 
   useEffect(() => {
@@ -244,9 +256,45 @@ export default function MPADetailPage() {
 
   return (
     <main className="min-h-screen pb-32">
-      {/* Modern Hero Header with Gradient */}
-      <div className="bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-4 sm:px-6">
-        <div className="max-w-screen-xl mx-auto">
+      {/* Modern Hero Header with Image or Gradient */}
+      <div
+        className="relative bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-4 sm:px-6 overflow-hidden"
+      >
+        {/* Hero background image */}
+        {(() => {
+          const heroImage = getMPAImage(mpa.id);
+          if (!heroImage) return null;
+          return (
+            <>
+              <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${heroImage.url})` }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/70" />
+              <div className="absolute bottom-2 right-3 text-[10px] text-white/50">
+                Photo by{' '}
+                <a
+                  href={`https://unsplash.com/@${heroImage.username}?utm_source=ocean_pulse&utm_medium=referral`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-white/70"
+                >
+                  {heroImage.credit}
+                </a>
+                {' '}on{' '}
+                <a
+                  href="https://unsplash.com?utm_source=ocean_pulse&utm_medium=referral"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-white/70"
+                >
+                  Unsplash
+                </a>
+              </div>
+            </>
+          );
+        })()}
+        <div className="relative max-w-screen-xl mx-auto">
           {/* Save button */}
           <div className="flex justify-end mb-4">
             <SaveMPAButton mpaId={mpa.id} mpaDbId={mpa.dbId} variant="icon" size="md" />
@@ -862,6 +910,193 @@ export default function MPADetailPage() {
               <p className="text-balean-gray-500 mb-2 font-medium">Heatwave data unavailable</p>
               <p className="text-sm text-balean-gray-400">
                 Unable to fetch thermal conditions from Copernicus Marine Service
+              </p>
+            </div>
+          )}
+        </CollapsibleCard>
+
+        {/* Marine Litter Pressure - Community Reports */}
+        <CollapsibleCard
+          title="Marine Litter"
+          icon="trash"
+          iconColor="text-teal-600"
+          defaultOpen={!!litterAnalytics && litterAnalytics.totalReports > 0}
+          badge={
+            litterAnalytics?.cleanlinessRating ? (
+              <Badge
+                variant={
+                  litterAnalytics.cleanlinessRating === 'clean' ? 'healthy' :
+                  litterAnalytics.cleanlinessRating === 'moderate' ? 'warning' :
+                  'danger'
+                }
+                size="sm"
+              >
+                {litterAnalytics.cleanlinessRating === 'clean' ? 'Clean' :
+                 litterAnalytics.cleanlinessRating === 'moderate' ? 'Moderate' :
+                 litterAnalytics.cleanlinessRating === 'dirty' ? 'Dirty' : 'Very Dirty'}
+              </Badge>
+            ) : litterAnalytics ? (
+              <Badge variant="info" size="sm">
+                {litterAnalytics.totalReports} report{litterAnalytics.totalReports !== 1 ? 's' : ''}
+              </Badge>
+            ) : null
+          }
+          className="mb-4"
+        >
+          {litterLoading ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-teal-500 mb-4" />
+              <p className="text-balean-gray-500 mb-2">Analyzing litter data...</p>
+              <p className="text-sm text-balean-gray-400">
+                Aggregating community litter reports
+              </p>
+            </div>
+          ) : litterAnalytics && litterAnalytics.totalReports > 0 ? (
+            <>
+              {/* Summary Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                <div className="bg-teal-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-teal-700">{litterAnalytics.totalReports}</p>
+                  <p className="text-xs text-balean-gray-400">
+                    Report{litterAnalytics.totalReports !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <div className="bg-teal-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-teal-700">
+                    {litterAnalytics.totalItems >= 1000
+                      ? `${(litterAnalytics.totalItems / 1000).toFixed(1)}K`
+                      : litterAnalytics.totalItems}
+                  </p>
+                  <p className="text-xs text-balean-gray-400">Items Found</p>
+                </div>
+                {litterAnalytics.averageItemsPer100m !== null && (
+                  <div className={`rounded-xl p-3 text-center ${
+                    litterAnalytics.averageItemsPer100m <= 20 ? 'bg-green-50' :
+                    litterAnalytics.averageItemsPer100m <= 100 ? 'bg-amber-50' :
+                    'bg-red-50'
+                  }`}>
+                    <p className={`text-2xl font-bold ${
+                      litterAnalytics.averageItemsPer100m <= 20 ? 'text-green-700' :
+                      litterAnalytics.averageItemsPer100m <= 100 ? 'text-amber-700' :
+                      'text-red-700'
+                    }`}>
+                      {litterAnalytics.averageItemsPer100m}
+                    </p>
+                    <p className="text-xs text-balean-gray-400 flex items-center justify-center gap-1">
+                      Items/100m
+                      <InfoTip text="Average litter density per 100 metres of beach, calculated from OSPAR-standard surveys. The EU MSFD Descriptor 10 considers fewer than 20 items/100m as 'clean'." />
+                    </p>
+                  </div>
+                )}
+                {litterAnalytics.totalWeightKg !== null && (
+                  <div className="bg-teal-50 rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-teal-700">{litterAnalytics.totalWeightKg} kg</p>
+                    <p className="text-xs text-balean-gray-400">Weight Collected</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Source Attribution + Material Breakdown */}
+              {(litterAnalytics.sourceBreakdown.length > 0 || litterAnalytics.materialBreakdown.length > 0) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  {litterAnalytics.sourceBreakdown.length > 0 && (
+                    <div className="bg-white rounded-xl p-4 shadow-sm">
+                      <h4 className="font-semibold text-balean-navy mb-1 flex items-center gap-2">
+                        <i className="fi fi-rr-chart-pie text-teal-500" />
+                        Source Attribution
+                      </h4>
+                      <p className="text-xs text-balean-gray-400 mb-3">
+                        Where the litter likely comes from
+                      </p>
+                      <LitterBySourceChart data={litterAnalytics.sourceBreakdown} />
+                      {/* Legend */}
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 justify-center">
+                        {litterAnalytics.sourceBreakdown.slice(0, 5).map(s => (
+                          <div key={s.source} className="flex items-center gap-1.5 text-xs text-gray-600">
+                            <i className={`fi fi-rr-${SOURCE_CONFIG[s.source]?.icon || 'question'} text-[10px]`} />
+                            <span>{SOURCE_CONFIG[s.source]?.label || s.source}</span>
+                            <span className="text-gray-400">({Math.round(s.percentage)}%)</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {litterAnalytics.materialBreakdown.length > 0 && (
+                    <div className="bg-white rounded-xl p-4 shadow-sm">
+                      <h4 className="font-semibold text-balean-navy mb-1 flex items-center gap-2">
+                        <i className="fi fi-rr-layers text-teal-500" />
+                        Material Breakdown
+                      </h4>
+                      <p className="text-xs text-balean-gray-400 mb-3">
+                        Composition by material type
+                      </p>
+                      <LitterByMaterialChart data={litterAnalytics.materialBreakdown} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Monthly Trend */}
+              {litterAnalytics.monthlyTrend.length >= 2 && (
+                <div className="bg-white rounded-xl p-4 shadow-sm mb-6">
+                  <h4 className="font-semibold text-balean-navy mb-3 flex items-center gap-2">
+                    <i className="fi fi-rr-chart-line-up text-teal-500" />
+                    Litter Trend Over Time
+                  </h4>
+                  <LitterTrendChart data={litterAnalytics.monthlyTrend} />
+                </div>
+              )}
+
+              {/* Top Items */}
+              {litterAnalytics.topItems.length > 0 && (
+                <div className="bg-white rounded-xl p-4 shadow-sm mb-6">
+                  <h4 className="font-semibold text-balean-navy mb-3 flex items-center gap-2">
+                    <i className="fi fi-rr-list text-teal-500" />
+                    Most Common Items
+                  </h4>
+                  <div className="space-y-1.5">
+                    {litterAnalytics.topItems.slice(0, 5).map((item, i) => {
+                      const config = MATERIAL_CONFIG[item.material];
+                      const pct = litterAnalytics.totalItems > 0
+                        ? (item.count / litterAnalytics.totalItems) * 100
+                        : 0;
+                      return (
+                        <div key={item.code} className="flex items-center gap-3">
+                          <span className="text-xs text-gray-400 w-4 text-right">{i + 1}</span>
+                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${config?.bg || 'bg-gray-200'}`} />
+                          <span className="text-sm text-gray-800 flex-1 truncate">{item.name}</span>
+                          <span className="text-sm font-semibold text-gray-900">{item.count}</span>
+                          <span className="text-xs text-gray-400 w-10 text-right">{Math.round(pct)}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Data attribution */}
+              <div className="p-3 bg-balean-gray-50 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <Icon name="info" size="sm" className="text-balean-gray-400 mt-0.5" />
+                  <div className="text-xs text-balean-gray-400">
+                    <p>Data from <strong>community litter reports</strong> submitted through Ocean PULSE</p>
+                    <p className="mt-1">
+                      Survey methodology aligned with OSPAR Beach Litter Monitoring Guidelines
+                      and EU Marine Strategy Framework Directive (MSFD) Descriptor 10.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-teal-50 mx-auto mb-4 flex items-center justify-center">
+                <i className="fi fi-rr-trash text-teal-300 text-3xl" />
+              </div>
+              <p className="text-balean-gray-500 mb-2 font-medium">No litter data yet</p>
+              <p className="text-sm text-balean-gray-400 max-w-md mx-auto">
+                Be the first to submit a marine litter report for this MPA.
+                Your data helps track pollution and inform policy.
               </p>
             </div>
           )}

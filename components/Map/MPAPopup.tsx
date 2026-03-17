@@ -6,6 +6,7 @@ import Link from 'next/link';
 import type { MPA } from '@/types';
 import { HealthBadge } from '@/components/ui';
 import { toMapLibreCoords } from './map-utils';
+import { getMPAImage } from '@/lib/demo/mpa-images';
 
 interface MPAPopupProps {
   mpa: MPA;
@@ -62,6 +63,16 @@ export function MPAPopup({ mpa, onClose, mapRef }: MPAPopupProps) {
       className="mpa-popup"
     >
       <div className="p-2">
+        {(() => {
+          const img = getMPAImage(mpa.id);
+          if (!img) return null;
+          return (
+            <div
+              className="w-full h-24 rounded-lg bg-cover bg-center mb-2 -mt-0.5"
+              style={{ backgroundImage: `url(${img.url.replace('w=1200&h=500', 'w=400&h=200')})` }}
+            />
+          );
+        })()}
         <h3 className="font-bold text-balean-navy mb-2">{mpa.name}</h3>
         <p className="text-sm text-balean-gray-500 mb-2">{mpa.country}</p>
 

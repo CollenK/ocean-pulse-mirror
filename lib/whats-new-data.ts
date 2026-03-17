@@ -18,6 +18,45 @@ export const CATEGORY_CONFIG: Record<ChangeCategory, { label: string; icon: stri
  * Keep language simple and non-technical. Any user should understand these.
  */
 export const CHANGELOG: ChangeEntry[] = [
+  // 2026-03-17 - UK, Netherlands, and hero images
+  {
+    date: '2026-03-17',
+    category: 'new',
+    title: 'UK and Netherlands Marine Protected Areas',
+    description: 'Lundy Island, Skomer, Flamborough Head, Strangford Lough (UK) and Voordelta, Noordzeekustzone, Vlakte van de Raan (Netherlands) now have demo observations and health assessments to explore.',
+  },
+  {
+    date: '2026-03-17',
+    category: 'improved',
+    title: 'Photo headers on MPA detail pages',
+    description: 'Marine Protected Area pages now feature a beautiful cover photo at the top, giving you a feel for each location before diving into the data.',
+  },
+  // 2026-03-17 - Demo Account
+  {
+    date: '2026-03-17',
+    category: 'new',
+    title: 'Try the app without signing up',
+    description: 'A new "Try Demo" button on the login page lets you explore the full app with pre-loaded observations across European Marine Protected Areas. No account needed.',
+  },
+  // 2026-03-17 - Marine Litter Phase 2: Source Attribution & Health Score
+  {
+    date: '2026-03-17',
+    category: 'new',
+    title: 'Litter source attribution on MPA pages',
+    description: 'Each MPA detail page now shows where beach litter likely comes from: fishing, food and drink, shipping, smoking, sewage, and more. Pie and bar charts break down the composition by source and material, helping you see the biggest contributors.',
+  },
+  {
+    date: '2026-03-17',
+    category: 'new',
+    title: 'Litter trends and top items',
+    description: 'MPA pages now display a timeline of litter reports and a ranked list of the most common items found. Track whether your beach is getting cleaner or dirtier over time.',
+  },
+  {
+    date: '2026-03-17',
+    category: 'improved',
+    title: 'Litter data now influences health scores',
+    description: 'The MPA health score now considers beach litter density from community surveys. Cleaner beaches boost the score, while high litter density brings it down, aligned with the EU clean-beach threshold of fewer than 20 items per 100 metres.',
+  },
   // 2026-03-17 - Marine Litter Monitoring
   {
     date: '2026-03-17',

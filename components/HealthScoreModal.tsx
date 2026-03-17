@@ -14,6 +14,7 @@ interface HealthScoreBreakdown {
     productivity?: { score: number; weight: number; available: boolean };
     communityAssessment?: { score: number; weight: number; available: boolean; count: number };
     fishingCompliance?: { score: number; weight: number; available: boolean; violations: number };
+    litterPressure?: { score: number; weight: number; available: boolean; reportCount: number };
   };
   confidence: 'high' | 'medium' | 'low';
   dataSourcesAvailable: number;
@@ -128,6 +129,7 @@ export function HealthScoreModal({
     breakdown.productivity !== undefined,
     breakdown.communityAssessment !== undefined,
     breakdown.fishingCompliance !== undefined,
+    breakdown.litterPressure !== undefined,
   ].filter(Boolean).length;
 
   const confidenceInfo = {
@@ -266,14 +268,31 @@ export function HealthScoreModal({
             unavailableMessage="Global Fishing Watch data not available for this MPA"
           />
         )}
+
+        {breakdown.litterPressure !== undefined && (
+          <DataSourceCard
+            name="Litter Pressure"
+            description="Beach litter density from community survey reports, aligned with EU MSFD Descriptor 10 thresholds"
+            icon="trash"
+            iconColor="text-teal-600"
+            score={Math.round(breakdown.litterPressure.score)}
+            weight={breakdown.litterPressure.weight}
+            available={breakdown.litterPressure.available}
+            subtitle={breakdown.litterPressure.available
+              ? `Based on ${breakdown.litterPressure.reportCount} litter report${breakdown.litterPressure.reportCount !== 1 ? 's' : ''}`
+              : undefined
+            }
+            unavailableMessage="No litter survey data yet. Submit a marine litter report to contribute!"
+          />
+        )}
       </div>
 
       {/* Footer Note */}
       <div className="mt-6 pt-4 border-t border-gray-100">
         <p className="text-xs text-gray-500 text-center">
           All scores are preliminary estimates. Scientific data sources are dynamically
-          weighted based on availability. Fishing compliance data from Global Fishing Watch
-          and community observations each contribute up to 10-15% of the overall score.
+          weighted based on availability. Fishing compliance, litter pressure, and
+          community observations each contribute up to 10-15% of the overall score.
         </p>
       </div>
     </Modal>

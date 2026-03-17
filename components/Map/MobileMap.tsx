@@ -32,6 +32,7 @@ interface MobileMapProps {
   litterGeoJSON?: GeoJSON.FeatureCollection;
   litterSurveyCount?: number;
   userLocation?: { latitude: number; longitude: number };
+  highlightedMpaIds?: Set<string>;
 }
 
 // OpenFreeMap style URL (free, no API key required)
@@ -71,6 +72,7 @@ export function MobileMap({
   litterGeoJSON,
   litterSurveyCount,
   userLocation,
+  highlightedMpaIds,
 }: MobileMapProps) {
   const mapRef = useRef<MapRef>(null);
   const [hoveredMPA, setHoveredMPA] = useState<MPA | null>(null);
@@ -252,6 +254,7 @@ export function MobileMap({
             onClick={handleMarkerClick}
             onMouseEnter={handleMarkerMouseEnter}
             onMouseLeave={handleMarkerMouseLeave}
+            highlighted={highlightedMpaIds?.has(mpa.id)}
           />
         ))}
 

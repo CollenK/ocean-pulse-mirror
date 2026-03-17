@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Icon } from '@/components/Icon';
 import { storeAuthRedirect } from '@/lib/auth-redirect';
+import { isDemoConfigured, DEMO_USER_EMAIL, DEMO_USER_PASSWORD } from '@/lib/demo/demo-config';
 
 function LoginContent() {
   const [isLoading, setIsLoading] = useState<string | null>(null);
@@ -294,6 +295,49 @@ function LoginContent() {
             <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-600">{error}</p>
             </div>
+          )}
+
+          {/* Try Demo */}
+          {isDemoConfigured() && (
+            <>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">or try it out</span>
+                </div>
+              </div>
+
+              <button
+                onClick={async () => {
+                  try {
+                    setIsLoading('demo');
+                    setError(null);
+                    const supabase = createClient();
+                    const { error } = await supabase.auth.signInWithPassword({
+                      email: DEMO_USER_EMAIL,
+                      password: DEMO_USER_PASSWORD,
+                    });
+                    if (error) throw error;
+                    router.push(redirectTo);
+                    router.refresh();
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Failed to load demo');
+                    setIsLoading(null);
+                  }
+                }}
+                disabled={isLoading !== null}
+                className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-xl hover:from-teal-600 hover:to-cyan-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm"
+              >
+                {isLoading === 'demo' ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <i className="fi fi-rr-play text-sm" />
+                )}
+                <span>Try Demo</span>
+              </button>
+            </>
           )}
 
           {/* Divider */}

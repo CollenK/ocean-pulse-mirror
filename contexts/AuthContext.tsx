@@ -5,6 +5,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import type { User, Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Profile } from '@/types/supabase';
 import { consumeAuthRedirect } from '@/lib/auth-redirect';
+import { isDemoUser as checkIsDemoUser } from '@/lib/demo/demo-config';
 
 interface AuthState {
   user: User | null;
@@ -12,6 +13,7 @@ interface AuthState {
   session: Session | null;
   loading: boolean;
   isAuthenticated: boolean;
+  isDemoUser: boolean;
 }
 
 interface AuthContextValue extends AuthState {
@@ -28,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session: null,
     loading: true,
     isAuthenticated: false,
+    isDemoUser: false,
   });
 
   const supabaseRef = useRef<SupabaseClient<Database> | null>(null);
@@ -45,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session: null,
         loading: false,
         isAuthenticated: false,
+        isDemoUser: false,
       });
       return;
     }
@@ -92,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             session,
             loading: false,
             isAuthenticated: true,
+            isDemoUser: checkIsDemoUser(session.user.id, session.user.email),
           });
 
           // Fetch profile in background
@@ -107,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             session: null,
             loading: false,
             isAuthenticated: false,
+            isDemoUser: false,
           });
         }
       } catch (error) {
@@ -118,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             session: null,
             loading: false,
             isAuthenticated: false,
+            isDemoUser: false,
           });
         }
       }
@@ -138,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             session,
             loading: false,
             isAuthenticated: true,
+            isDemoUser: checkIsDemoUser(session.user.id, session.user.email),
           });
 
           // On fresh sign-in, redirect to the stored path (if any)
@@ -161,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             session: null,
             loading: false,
             isAuthenticated: false,
+            isDemoUser: false,
           });
         }
       }

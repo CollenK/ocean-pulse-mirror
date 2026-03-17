@@ -15,6 +15,9 @@ import dynamic from 'next/dynamic';
 import { MapFilterPanel, MapFilters, DEFAULT_FILTERS, filterMPAs } from '@/components/Map/MapFilterPanel';
 import { useWindFarmLayer } from '@/hooks/useWindFarmData';
 import { fetchBeachLitterHotspots, type LitterHotspotData } from '@/lib/emodnet-litter';
+import { useAuth } from '@/hooks/useAuth';
+import { DEMO_MPA_EXTERNAL_IDS } from '@/lib/demo/demo-config';
+import { DemoBanner } from '@/components/DemoBanner';
 
 // Dynamically import map component (no SSR due to Leaflet)
 const MobileMap = dynamic(
@@ -94,6 +97,7 @@ function HomeContent() {
   const [filters, setFilters] = useState<MapFilters>(DEFAULT_FILTERS);
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const { savedMPAIds } = useSavedMPAs();
+  const { isDemoUser } = useAuth();
   const searchParams = useSearchParams();
   const { position, permission, requestPermission } = useGeolocation();
   const locationRequested = useRef(false);
@@ -135,6 +139,18 @@ function HomeContent() {
       ),
     };
   }, [windFarmGeoJSON, filters.windFarmStatus]);
+
+  // Compute highlighted MPA IDs for demo mode (using external_id -> id mapping)
+  const highlightedMpaIds = useMemo(() => {
+    if (!isDemoUser) return undefined;
+    const ids = new Set<string>();
+    for (const mpa of mpas) {
+      if (DEMO_MPA_EXTERNAL_IDS.has(mpa.id)) {
+        ids.add(mpa.id);
+      }
+    }
+    return ids.size > 0 ? ids : undefined;
+  }, [isDemoUser, mpas]);
 
   // Beach litter hotspot data (lazy-loaded when layer is toggled on)
   const [litterData, setLitterData] = useState<LitterHotspotData | null>(null);
@@ -203,6 +219,7 @@ function HomeContent() {
 
     return (
       <main id="main-content" className="overflow-hidden" style={{ height: 'calc(100vh - 64px)' }}>
+        {isDemoUser && <DemoBanner />}
         {/* Map Container - fills remaining height below shared AppHeader */}
         <div className="relative h-full">
           {/* Top toolbar for filters */}
@@ -249,6 +266,7 @@ function HomeContent() {
             litterGeoJSON={litterData?.geojson}
             litterSurveyCount={litterData?.surveys.length}
             userLocation={position ? { latitude: position.latitude, longitude: position.longitude } : undefined}
+            highlightedMpaIds={highlightedMpaIds}
           />
         </div>
       </main>

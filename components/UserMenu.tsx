@@ -20,7 +20,7 @@ function hasUnviewedChanges(): boolean {
 }
 
 export function UserMenu() {
-  const { user, profile, isAuthenticated, loading, signOut } = useAuth();
+  const { user, profile, isAuthenticated, isDemoUser, loading, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [showNewDot, setShowNewDot] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -130,7 +130,14 @@ export function UserMenu() {
         <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
           {/* User Info */}
           <div className="px-4 py-3 border-b border-gray-100">
-            <p className="font-medium text-gray-900 truncate">{displayName}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-gray-900 truncate">{displayName}</p>
+              {isDemoUser && (
+                <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200">
+                  DEMO
+                </span>
+              )}
+            </div>
             <p className="text-sm text-gray-500 truncate">{user?.email}</p>
           </div>
 
@@ -196,12 +203,25 @@ export function UserMenu() {
               )}
             </button>
 
+            {isDemoUser && (
+              <button
+                onClick={() => {
+                  router.push('/login?signup=true');
+                  setIsOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-left text-teal-600 hover:bg-teal-50 transition-colors"
+              >
+                <Icon name="user-add" className="text-teal-500" size="sm" />
+                <span>Create Account</span>
+              </button>
+            )}
+
             <button
               onClick={handleSignOut}
               className="w-full flex items-center gap-3 px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors"
             >
               <Icon name="sign-out-alt" className="text-red-400" size="sm" />
-              <span>Sign out</span>
+              <span>{isDemoUser ? 'Exit Demo' : 'Sign out'}</span>
             </button>
           </div>
         </div>

@@ -15,6 +15,7 @@ import type { VerificationStats } from '@/types/verification';
 import { useGamification } from '@/hooks/useGamification';
 import { BadgesGrid, StreakCounter, SpeciesCollection, LeaderboardCard } from '@/components/Gamification';
 import { BADGE_DEFINITIONS, getBadgeDefinition } from '@/types/gamification';
+import { isDemoUser as checkIsDemoUser } from '@/lib/demo/demo-config';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function ProfilePage() {
   const [exporting, setExporting] = useState(false);
   const [verificationStats, setVerificationStats] = useState<VerificationStats | null>(null);
   const { stats: gamStats, speciesCollection, loading: gamLoading } = useGamification(user?.id);
+  const isDemoAccount = checkIsDemoUser(user?.id, user?.email);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -407,13 +409,43 @@ export default function ProfilePage() {
           </Card>
         </motion.div>
 
+        {/* Demo Account Notice */}
+        {isDemoAccount && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Card className="shadow-lg border-amber-200 bg-amber-50/50">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <Icon name="info" className="text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-amber-800 mb-1">Shared demo account</p>
+                    <p className="text-sm text-amber-700">
+                      This is a shared demo account. Profile settings and account actions are disabled.
+                      To customize your profile and save your own observations, create a personal account.
+                    </p>
+                    <Link
+                      href="/login?signup=true"
+                      className="inline-flex items-center gap-1 mt-3 text-sm font-semibold text-teal-600 hover:text-teal-700"
+                    >
+                      Create your own account <Icon name="arrow-right" size="sm" />
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         {/* Profile Settings */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card className="shadow-lg">
+          <Card className={`shadow-lg ${isDemoAccount ? 'opacity-60 pointer-events-none' : ''}`}>
             <CardTitle className="flex items-center gap-2">
               <Icon name="user" className="text-balean-cyan" />
               Profile Settings
@@ -441,7 +473,8 @@ export default function ProfilePage() {
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full px-4 py-2 border border-balean-gray-300 rounded-lg focus:ring-2 focus:ring-balean-cyan focus:border-balean-cyan outline-none transition-colors"
+                    disabled={isDemoAccount}
+                    className="w-full px-4 py-2 border border-balean-gray-300 rounded-lg focus:ring-2 focus:ring-balean-cyan focus:border-balean-cyan outline-none transition-colors disabled:bg-balean-gray-50 disabled:cursor-not-allowed"
                     placeholder="Enter your display name"
                   />
                 </div>
@@ -461,7 +494,7 @@ export default function ProfilePage() {
 
                 <Button
                   onClick={handleSave}
-                  disabled={saving || displayName === (profile?.display_name || user?.email?.split('@')[0])}
+                  disabled={isDemoAccount || saving || displayName === (profile?.display_name || user?.email?.split('@')[0])}
                   className="mt-2"
                 >
                   {saving ? (
@@ -604,7 +637,7 @@ export default function ProfilePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <Card className="shadow-lg">
+          <Card className={`shadow-lg ${isDemoAccount ? 'opacity-60 pointer-events-none' : ''}`}>
             <CardTitle className="flex items-center gap-2">
               <Icon name="document" className="text-balean-cyan" />
               Data &amp; Privacy

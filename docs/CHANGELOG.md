@@ -7,6 +7,44 @@ All notable changes to Ocean PULSE will be documented in this file.
 ## 2026-03-17
 
 ### Added
+- **UK & Netherlands MPA Demo Data**
+  - Added 7 new MPAs to demo set: Lundy Island, Skomer, Flamborough Head, Strangford Lough (UK), Voordelta, Noordzeekustzone, Vlakte van de Raan (NL)
+  - 14 new seed observations across UK/NL MPAs covering species sightings, habitat conditions, water quality, litter surveys, and threat concerns
+  - Health assessments for all 7 new MPAs
+
+- **MPA Hero Images (Unsplash)**
+  - `lib/demo/mpa-images.ts` maps 18 MPAs to curated Unsplash cover photos with photographer attribution
+  - MPA detail page hero section renders background image with gradient overlay when available
+  - Map popup cards show thumbnail preview image for mapped MPAs
+  - Proper Unsplash attribution links (photographer + Unsplash) per their license terms
+
+- **Demo Account & Pre-Populated Data**
+  - `lib/demo/demo-config.ts` with demo user config, helpers (`isDemoUser`, `isDemoConfigured`), and `DEMO_MPA_EXTERNAL_IDS` set
+  - `lib/demo/demo-seed-data.ts` with 31 seed observations across 18 European MPAs covering all report types
+  - `app/api/demo/seed/route.ts` server-side seed/restore endpoint (protected by CRON_SECRET, uses service role key)
+  - `components/DemoBanner.tsx` sticky amber banner with "Create your own account" CTA (dismissible per session)
+  - "Try Demo" button on login page with teal gradient, signs into shared demo account
+  - `isDemoUser` flag in AuthContext, exposed via `useAuth()` hook
+  - Demo-specific UserMenu: "DEMO" badge, "Create Account" button, "Exit Demo" label
+  - Read-only profile page for demo users with explanatory notice
+  - Pulsing teal ring on MPA markers for demo-highlighted MPAs on the map
+  - `highlightedMpaIds` prop on MobileMap and `highlighted` prop on MPAMarker
+  - Daily cron job calls demo seed endpoint to restore demo data
+  - What's New entry: "Try the app without signing up"
+
+- **Marine Litter Source Attribution & Health Score (Phase 2)**
+  - `lib/litter-analytics-service.ts` with MPA-level litter aggregation (source/material breakdown, monthly trends, top items, pressure score)
+  - `hooks/useLitterAnalytics.ts` React hook wrapping the analytics service
+  - `components/Charts/LitterCharts.tsx` with `LitterBySourceChart` (pie), `LitterByMaterialChart` (horizontal bar), `LitterTrendChart` (area)
+  - Litter Pressure dashboard section on MPA detail page (between Heatwave and Fishing sections)
+  - Source attribution pie chart mapping OSPAR J-codes to source categories (fishing, food_drink, shipping, etc.)
+  - Cleanliness rating badge based on MSFD Descriptor 10 thresholds (clean/moderate/dirty/very dirty)
+  - `litterPressure` metric added to `useHybridHealthScore` breakdown (10% weight, 0-100 score inversely scaled from items/100m)
+  - `HealthScoreModal` shows litter pressure data source card with report count
+  - Summary stats grid: report count, total items, items/100m, total weight
+  - Top 5 most common items list with material color indicators
+  - Monthly trend area chart (when 2+ months of data available)
+
 - **Marine Litter Monitoring (Phase 1)**
   - `marine_litter` report type added to `report_type` enum
   - `litter_items` (JSONB), `litter_weight_kg` (NUMERIC), `survey_length_m` (INT) columns on observations

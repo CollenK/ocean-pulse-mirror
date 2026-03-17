@@ -40,6 +40,9 @@ interface HybridHealthScoreInput {
   // Marine heatwave alert from Copernicus
   heatwaveAlert?: MarineHeatwaveAlert | null;
   heatwaveLoading?: boolean;
+  // Litter pressure score from community litter reports
+  litterPressureScore?: number | null;
+  litterPressureLoading?: boolean;
 }
 
 interface HybridHealthScore {
@@ -56,6 +59,8 @@ interface HybridHealthScore {
     communityAssessment?: { score: number; weight: number; available: boolean; count: number };
     // Fishing compliance from Global Fishing Watch
     fishingCompliance?: { score: number; weight: number; available: boolean; violations: number };
+    // Litter pressure from community reports
+    litterPressure?: { score: number; weight: number; available: boolean; reportCount: number };
   };
   confidence: 'high' | 'medium' | 'low';
   dataSourcesAvailable: number;
@@ -99,6 +104,8 @@ export function useHybridHealthScore({
   fishingComplianceLoading = false,
   heatwaveAlert = null,
   heatwaveLoading = false,
+  litterPressureScore = null,
+  litterPressureLoading = false,
 }: HybridHealthScoreInput): HybridHealthScore {
   // State for community assessments
   const [communityData, setCommunityData] = useState<UserHealthData>({ averageScore: null, count: 0 });
@@ -235,6 +242,17 @@ export function useHybridHealthScore({
         };
       }
 
+      // Add litter pressure if available (from community litter reports)
+      const hasLitterData = litterPressureScore !== null && litterPressureScore > 0;
+      if (hasLitterData) {
+        breakdown.litterPressure = {
+          score: litterPressureScore!,
+          weight: 10,
+          available: true,
+          reportCount: 0, // Will be set from analytics in the page
+        };
+      }
+
       // Count available data sources
       const dataSourcesAvailable = [
         breakdown.populationTrends.available,
@@ -244,6 +262,7 @@ export function useHybridHealthScore({
         breakdown.productivity?.available,
         breakdown.communityAssessment?.available,
         breakdown.fishingCompliance?.available,
+        breakdown.litterPressure?.available,
       ].filter(Boolean).length;
 
       // Map environmental data
@@ -288,11 +307,17 @@ export function useHybridHealthScore({
         finalScore = finalScore * (1 - fishingWeight) + fishingCompliance!.score * fishingWeight;
       }
 
+      if (hasLitterData) {
+        // Litter pressure gets 10% weight
+        const litterWeight = 0.1;
+        finalScore = finalScore * (1 - litterWeight) + litterPressureScore! * litterWeight;
+      }
+
       finalScore = Math.round(finalScore);
 
       return {
         score: finalScore,
-        loading: backendLoading || communityLoading || fishingComplianceLoading,
+        loading: backendLoading || communityLoading || fishingComplianceLoading || litterPressureLoading,
         breakdown,
         confidence: confidence as 'high' | 'medium' | 'low',
         dataSourcesAvailable,
@@ -323,26 +348,30 @@ export function useHybridHealthScore({
     const hasThermalData = heatwaveAlert !== null;
     const hasCommunityData = communityData.averageScore !== null && communityData.count > 0;
     const hasFishingData = fishingCompliance !== null;
+    const hasLitterData = litterPressureScore !== null && litterPressureScore > 0;
 
     // Community score normalized to 0-100
     const communityScore = hasCommunityData ? (communityData.averageScore! / 10) * 100 : 0;
     // Fishing compliance score (already 0-100)
     const fishingScore = hasFishingData ? fishingCompliance!.score : 0;
+    // Litter pressure score (already 0-100)
+    const litterScore = hasLitterData ? litterPressureScore! : 0;
 
-    // Base weights (adjusted to include thermal stress, community and fishing)
+    // Base weights (adjusted to include thermal stress, community, fishing, and litter)
     let populationWeight = 0.25;
     let habitatWeight = 0.20;
     let diversityWeight = 0.15;
     let thermalWeight = hasThermalData ? 0.15 : 0;
     let communityWeight = hasCommunityData ? 0.10 : 0;
     let fishingWeight = hasFishingData ? 0.15 : 0;
+    let litterWeight = hasLitterData ? 0.10 : 0;
 
-    const availableSources = [hasPopulationData, hasHabitatData, hasDiversityData, hasThermalData, hasCommunityData, hasFishingData].filter(Boolean).length;
+    const availableSources = [hasPopulationData, hasHabitatData, hasDiversityData, hasThermalData, hasCommunityData, hasFishingData, hasLitterData].filter(Boolean).length;
 
     if (availableSources === 0) {
       return {
         score: 0,
-        loading: clientLoading || communityLoading || fishingComplianceLoading || heatwaveLoading,
+        loading: clientLoading || communityLoading || fishingComplianceLoading || heatwaveLoading || litterPressureLoading,
         breakdown: {
           populationTrends: { score: 0, weight: 25, available: false },
           habitatQuality: { score: 0, weight: 20, available: false },
@@ -350,6 +379,7 @@ export function useHybridHealthScore({
           thermalStress: { score: 0, weight: 15, available: false },
           communityAssessment: { score: 0, weight: 10, available: false, count: 0 },
           fishingCompliance: { score: 0, weight: 15, available: false, violations: 0 },
+          litterPressure: { score: 0, weight: 10, available: false, reportCount: 0 },
         },
         confidence: 'low',
         dataSourcesAvailable: 0,
@@ -367,7 +397,7 @@ export function useHybridHealthScore({
     };
 
     const totalDataWeight = dataWeights.population + dataWeights.habitat + dataWeights.diversity + dataWeights.thermal;
-    const targetDataWeight = 1 - communityWeight - fishingWeight;
+    const targetDataWeight = 1 - communityWeight - fishingWeight - litterWeight;
 
     if (totalDataWeight > 0) {
       const scaleFactor = targetDataWeight / totalDataWeight;
@@ -384,7 +414,8 @@ export function useHybridHealthScore({
       (hasDiversityData ? diversityScore * diversityWeight : 0) +
       (hasThermalData ? thermalScore * thermalWeight : 0) +
       (hasCommunityData ? communityScore * communityWeight : 0) +
-      (hasFishingData ? fishingScore * fishingWeight : 0)
+      (hasFishingData ? fishingScore * fishingWeight : 0) +
+      (hasLitterData ? litterScore * litterWeight : 0)
     );
 
     const confidence: 'high' | 'medium' | 'low' =
@@ -393,7 +424,7 @@ export function useHybridHealthScore({
 
     return {
       score: Math.min(100, Math.max(0, compositeScore)),
-      loading: clientLoading || communityLoading || fishingComplianceLoading || heatwaveLoading,
+      loading: clientLoading || communityLoading || fishingComplianceLoading || heatwaveLoading || litterPressureLoading,
       breakdown: {
         populationTrends: {
           score: populationScore,
@@ -427,6 +458,12 @@ export function useHybridHealthScore({
           available: hasFishingData,
           violations: hasFishingData ? fishingCompliance!.violations : 0,
         },
+        litterPressure: {
+          score: litterScore,
+          weight: Math.round(litterWeight * 100),
+          available: hasLitterData,
+          reportCount: 0,
+        },
       },
       confidence,
       dataSourcesAvailable: availableSources,
@@ -458,6 +495,8 @@ export function useHybridHealthScore({
     fishingComplianceLoading,
     heatwaveAlert,
     heatwaveLoading,
+    litterPressureScore,
+    litterPressureLoading,
   ]);
 }
 

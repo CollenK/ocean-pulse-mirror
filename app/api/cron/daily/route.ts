@@ -40,7 +40,24 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 2. OBIS data pipeline (process a batch of stale MPAs)
+  // 2. Demo data restore
+  if (supabaseUrl && supabaseServiceKey && process.env.NEXT_PUBLIC_DEMO_USER_ID) {
+    try {
+      const baseUrl = request.nextUrl.origin;
+      const seedResponse = await fetch(`${baseUrl}/api/demo/seed`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
+      });
+      const seedData = await seedResponse.json();
+      results.demoSeed = seedResponse.ok
+        ? seedData
+        : { error: seedData.error || 'Seed failed' };
+    } catch (error) {
+      results.demoSeed = { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // 3. OBIS data pipeline (process a batch of stale MPAs)
   try {
     const pipelineResult = await runPipeline(3);
     results.pipeline = pipelineResult;
