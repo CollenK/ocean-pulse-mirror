@@ -5,9 +5,9 @@
  * client-side to call signInWithPassword directly.
  */
 
-export const DEMO_USER_EMAIL = process.env.NEXT_PUBLIC_DEMO_USER_EMAIL ?? '';
-export const DEMO_USER_PASSWORD = process.env.NEXT_PUBLIC_DEMO_USER_PASSWORD ?? '';
-export const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID ?? '';
+export const DEMO_USER_EMAIL = process.env.NEXT_PUBLIC_DEMO_USER_EMAIL || 'demo@oceanpulse.app';
+export const DEMO_USER_PASSWORD = process.env.NEXT_PUBLIC_DEMO_USER_PASSWORD || 'Password123!';
+export const DEMO_USER_ID = process.env.NEXT_PUBLIC_DEMO_USER_ID || '00bdbf9f-9b81-46a9-9258-64376ac14acf';
 
 /** Returns true when all three demo env vars are set. */
 export function isDemoConfigured(): boolean {
