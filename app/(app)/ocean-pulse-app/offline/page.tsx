@@ -5,7 +5,6 @@ import { Card, CardTitle, CardContent, Button, Badge, HealthBadge } from '@/comp
 import { Icon } from '@/components/Icon';
 import {
   getAllCachedMPAs,
-  getCachedMPACount,
   getStorageInfo,
   clearAllCache,
   deleteCachedMPA,

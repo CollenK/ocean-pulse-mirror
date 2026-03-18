@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { MarineHeatwaveAlert, HeatwaveCategory } from '@/hooks/useHeatwaveAlert';
-import { Icon, InfoTip } from './ui';
+import { InfoTip } from './ui';
 
 interface HeatwaveAlertProps {
   alert: MarineHeatwaveAlert;

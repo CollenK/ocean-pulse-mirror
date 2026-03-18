@@ -126,8 +126,8 @@ export function useHybridHealthScore({
         try {
           const supabase = createClient();
           // Only count health assessments linked to verified observations
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data, error } = await (supabase
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .from('user_health_assessments') as any)
             .select('score, observation_id, observations!inner(quality_tier)')
             .eq('mpa_id', mpaId)
@@ -184,7 +184,7 @@ export function useHybridHealthScore({
     // Determine if we should use backend data
     const backendAvailable = !backendError && !!backendData;
     const clientLoading = abundanceLoading || environmentalLoading;
-    const loading = preferBackend ? (backendLoading && clientLoading) : clientLoading;
+    const _loading = preferBackend ? (backendLoading && clientLoading) : clientLoading;
 
     // If backend is available and has valid data, prefer it
     if (backendAvailable && backendData) {
@@ -292,13 +292,11 @@ export function useHybridHealthScore({
 
       // Blend community and fishing scores into overall score if available
       let finalScore = overall_score;
-      let remainingWeight = 1.0;
 
       if (hasCommunityData && communityData.averageScore !== null) {
         const communityScoreNormalized = (communityData.averageScore / 10) * 100;
         // Community gets 10% weight
         finalScore = finalScore * 0.9 + communityScoreNormalized * 0.1;
-        remainingWeight -= 0.1;
       }
 
       if (hasFishingData) {
@@ -362,9 +360,9 @@ export function useHybridHealthScore({
     let habitatWeight = 0.20;
     let diversityWeight = 0.15;
     let thermalWeight = hasThermalData ? 0.15 : 0;
-    let communityWeight = hasCommunityData ? 0.10 : 0;
-    let fishingWeight = hasFishingData ? 0.15 : 0;
-    let litterWeight = hasLitterData ? 0.10 : 0;
+    const communityWeight = hasCommunityData ? 0.10 : 0;
+    const fishingWeight = hasFishingData ? 0.15 : 0;
+    const litterWeight = hasLitterData ? 0.10 : 0;
 
     const availableSources = [hasPopulationData, hasHabitatData, hasDiversityData, hasThermalData, hasCommunityData, hasFishingData, hasLitterData].filter(Boolean).length;
 
@@ -408,7 +406,7 @@ export function useHybridHealthScore({
     }
 
     // Calculate weighted score
-    let compositeScore = Math.round(
+    const compositeScore = Math.round(
       (hasPopulationData ? populationScore * populationWeight : 0) +
       (hasHabitatData ? habitatScore * habitatWeight : 0) +
       (hasDiversityData ? diversityScore * diversityWeight : 0) +

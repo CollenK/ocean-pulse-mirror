@@ -11,7 +11,6 @@ import type {
   GFWVesselActivity,
   GFWComplianceScore,
   GFWIUURiskAssessment,
-  GFWRegion,
 } from '@/types/gfw';
 import type { MPAGeometry } from '@/types';
 
@@ -176,7 +175,7 @@ function calculateComplianceLocally(
 
   // Calculate compliance based on protection level
   let score: number;
-  let violations = 0;
+  let violations: number;
 
   const isNoTake = protectionLevel.toLowerCase().includes('no-take') ||
                    protectionLevel.toLowerCase().includes('no take') ||

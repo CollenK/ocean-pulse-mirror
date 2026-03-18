@@ -14,9 +14,8 @@ export async function getNotifications(userId: string, limit: number = 20): Prom
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase
-    .from('notifications') as any)
+  const { data, error } = await supabase
+    .from('notifications')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
@@ -38,9 +37,8 @@ export async function getUnreadCount(userId: string): Promise<number> {
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { count, error } = await (supabase
-    .from('notifications') as any)
+  const { count, error } = await supabase
+    .from('notifications')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('read', false);
@@ -61,9 +59,8 @@ export async function markAsRead(notificationId: string, userId: string): Promis
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase
-    .from('notifications') as any)
+  await supabase
+    .from('notifications')
     .update({ read: true })
     .eq('id', notificationId)
     .eq('user_id', userId);
@@ -77,9 +74,8 @@ export async function markAllAsRead(userId: string): Promise<void> {
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase
-    .from('notifications') as any)
+  await supabase
+    .from('notifications')
     .update({ read: true })
     .eq('user_id', userId)
     .eq('read', false);

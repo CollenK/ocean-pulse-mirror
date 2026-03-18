@@ -9,7 +9,7 @@
 
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { captureError } from '@/lib/error-reporting';
-import type { LitterMaterial, LitterSource, LitterTallyEntry, LitterItemDefinition } from '@/types/marine-litter';
+import type { LitterMaterial, LitterSource, LitterTallyEntry } from '@/types/marine-litter';
 import { OSPAR_LITTER_ITEMS } from '@/types/marine-litter';
 
 // ----- Types -----
@@ -106,8 +106,8 @@ export async function getLitterAnalytics(mpaId: string): Promise<LitterAnalytics
     const supabase = createClient();
 
     // Fetch all non-draft marine_litter observations for this MPA
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: observations, error } = await (supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from('observations') as any)
       .select('id, litter_items, litter_weight_kg, survey_length_m, observed_at')
       .eq('mpa_id', mpaId)

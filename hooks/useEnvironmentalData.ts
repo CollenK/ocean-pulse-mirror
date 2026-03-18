@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { MPAEnvironmentalSummary } from '@/types/obis-environmental';
+import { MPAEnvironmentalSummary, EnvironmentalAnomaly } from '@/types/obis-environmental';
 import {
   getCachedEnvironmentalSummary,
   cacheEnvironmentalSummary,
@@ -106,7 +106,7 @@ export function useEnvironmentalData(
         setProgress(80);
 
         // Detect anomalies
-        const allAnomalies: any[] = [];
+        const allAnomalies: EnvironmentalAnomaly[] = [];
         for (const param of parameters) {
           const paramAnomalies = detectAnomalies(param.dataPoints, param.threshold);
           allAnomalies.push(...paramAnomalies.map(a => ({ ...a, parameter: param.name })));

@@ -14,7 +14,7 @@ import { WindFarmLayer } from './WindFarmLayer';
 import { WindFarmLegend } from './WindFarmLegend';
 import { LitterHotspotLayer } from './LitterHotspotLayer';
 import { LitterHotspotLegend } from './LitterHotspotLegend';
-import { toMapLibreCoords, boundsToGeoJSON, getHealthColor, normalizeAntimeridianGeometry } from './map-utils';
+import { toMapLibreCoords, getHealthColor, normalizeAntimeridianGeometry } from './map-utils';
 import type { WindFarmSummary } from '@/types/wind-farms';
 
 interface MobileMapProps {
@@ -63,7 +63,7 @@ export function MobileMap({
   center,
   zoom,
   onMPAClick,
-  focusMpaId,
+  focusMpaId: _focusMpaId,
   showSST = false,
   showWindFarms = false,
   windFarmGeoJSON,

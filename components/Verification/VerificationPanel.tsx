@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useVerifications, useSubmitVerification } from '@/hooks/useVerifications';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui';
-import { Icon } from '@/components/Icon';
 import type { ObservationWithProfile } from '@/lib/observations-service';
 
 interface VerificationPanelProps {
@@ -106,8 +105,6 @@ export function VerificationPanel({ observation, onVerificationComplete }: Verif
   }
 
   // Previous verifications summary (shown on all steps)
-  const agreements = verifications.filter(v => v.is_agreement);
-  const disagreements = verifications.filter(v => !v.is_agreement);
 
   return (
     <div className="space-y-5">

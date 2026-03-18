@@ -124,7 +124,7 @@ async function gfwFetch<T>(
         console.log('[GFW API] Request timeout, retrying...');
         return gfwFetch<T>(endpoint, options, retries - 1);
       }
-      throw new Error('GFW API request timed out');
+      throw new Error('GFW API request timed out', { cause: error });
     }
 
     throw error;
@@ -444,12 +444,12 @@ export async function getVesselActivityForMPA(
   return [];
 }
 
-function formatVesselEvent(event: GFWEvent, mpaId: string): GFWVesselActivity {
+function _formatVesselEvent(event: GFWEvent, mpaId: string): GFWVesselActivity {
   const duration = event.end && event.start
     ? (new Date(event.end).getTime() - new Date(event.start).getTime()) / (1000 * 60 * 60)
     : undefined;
 
-  let description = '';
+  let description: string;
   let severity: 'info' | 'warning' | 'alert' = 'info';
 
   switch (event.type) {
@@ -686,7 +686,7 @@ export async function calculateComplianceScore(
 
   // Calculate compliance based on protection level
   let score: number;
-  let violations = 0;
+  let violations: number;
 
   const isNoTake = protectionLevel.toLowerCase().includes('no-take') ||
                    protectionLevel.toLowerCase().includes('no take') ||
@@ -765,7 +765,7 @@ export async function calculateComplianceScore(
 /**
  * Expand a geometry by a rough degree offset (simplified buffer)
  */
-function expandGeometry(geometry: GFWRegion, degreeOffset: number): GFWRegion {
+function _expandGeometry(geometry: GFWRegion, degreeOffset: number): GFWRegion {
   if (geometry.type === 'Polygon') {
     const coords = geometry.coordinates as number[][][];
     const expandedCoords = coords.map(ring =>

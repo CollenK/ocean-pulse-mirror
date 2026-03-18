@@ -28,7 +28,6 @@ import type {
   GFWFishingEffortSummary,
   GFWFlagBreakdown,
   GFWGearTypeBreakdown,
-  GFWMonthlyData,
 } from '@/types/gfw';
 
 // ============================================================================
@@ -307,7 +306,7 @@ export function FishingByFlagChart({
 
       {/* Legend */}
       <div className="mt-2 space-y-1">
-        {chartData.map((item, index) => (
+        {chartData.map((item) => (
           <div key={item.flag} className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
               <div
@@ -412,13 +411,19 @@ function formatNumber(value: number): string {
 }
 
 // Custom tooltip component
-function CustomTooltip({ active, payload, label }: any) {
+interface TooltipPayloadEntry {
+  color: string;
+  name: string;
+  value: number;
+}
+
+function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadEntry[]; label?: string }) {
   if (!active || !payload || !payload.length) return null;
 
   return (
     <div className="bg-white rounded-lg shadow-lg border border-balean-gray-100 p-2">
       <p className="text-xs font-medium text-balean-navy mb-1">{label}</p>
-      {payload.map((entry: any, index: number) => (
+      {payload.map((entry: TooltipPayloadEntry, index: number) => (
         <div key={index} className="flex items-center gap-2 text-xs">
           <div
             className="w-2 h-2 rounded-full"

@@ -192,8 +192,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabaseRef.current) return { error: new Error('Supabase not configured') };
     if (!state.user) return { error: new Error('Not authenticated') };
 
-    const client = supabaseRef.current as any;
-    const { data, error } = await client
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabaseRef.current as any)
       .from('profiles')
       .update(updates)
       .eq('id', state.user.id)

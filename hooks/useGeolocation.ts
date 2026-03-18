@@ -147,15 +147,13 @@ export function useGeolocation(
   useEffect(() => {
     if (!watch || permission === 'denied' || permission === 'unsupported') return;
 
-    let watchId: number;
-
     const geoOptions: PositionOptions = {
       enableHighAccuracy,
       timeout,
       maximumAge,
     };
 
-    watchId = navigator.geolocation.watchPosition(
+    const watchId = navigator.geolocation.watchPosition(
       handleSuccess,
       handleError,
       geoOptions

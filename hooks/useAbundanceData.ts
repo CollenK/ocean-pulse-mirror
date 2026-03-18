@@ -4,7 +4,7 @@
  * Filters data to show only indicator species
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { MPAAbundanceSummary } from '@/types/obis-abundance';
 import {
   getCachedAbundanceSummary,

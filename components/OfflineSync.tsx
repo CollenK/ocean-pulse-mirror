@@ -30,6 +30,7 @@ export function OfflineSync() {
 
         for (const obs of unsynced) {
           try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const { error } = await (supabase.from('observations') as any).insert({
               mpa_id: obs.mpaId,
               user_id: obs.userId || null,

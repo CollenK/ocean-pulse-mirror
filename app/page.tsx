@@ -68,27 +68,27 @@ const stats = [
   { value: '1M+', label: 'Observations' },
 ];
 
-// Testimonials
-const testimonials = [
-  {
-    quote: 'Ocean PULSE has transformed how we monitor reef health. The real-time data integration is invaluable.',
-    author: 'Dr. Sarah Chen',
-    role: 'Marine Biologist',
-    org: 'Coral Research Institute',
-  },
-  {
-    quote: 'Finally, a tool that works in the field. The offline capability means we never miss recording important sightings.',
-    author: 'Marcus Rivera',
-    role: 'Field Researcher',
-    org: 'Pacific Conservation',
-  },
-  {
-    quote: 'The community-contributed observations have helped us identify previously unknown migration patterns.',
-    author: 'Prof. Aiko Tanaka',
-    role: 'Research Director',
-    org: 'Ocean Sciences Lab',
-  },
-];
+// Testimonials (used in commented-out section below, kept for future re-enable)
+// const testimonials = [
+//   {
+//     quote: 'Ocean PULSE has transformed how we monitor reef health. The real-time data integration is invaluable.',
+//     author: 'Dr. Sarah Chen',
+//     role: 'Marine Biologist',
+//     org: 'Coral Research Institute',
+//   },
+//   {
+//     quote: 'Finally, a tool that works in the field. The offline capability means we never miss recording important sightings.',
+//     author: 'Marcus Rivera',
+//     role: 'Field Researcher',
+//     org: 'Pacific Conservation',
+//   },
+//   {
+//     quote: 'The community-contributed observations have helped us identify previously unknown migration patterns.',
+//     author: 'Prof. Aiko Tanaka',
+//     role: 'Research Director',
+//     org: 'Ocean Sciences Lab',
+//   },
+// ];
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

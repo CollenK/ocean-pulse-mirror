@@ -93,14 +93,14 @@ export function PhotoUploader({
       }
 
       setMode('camera');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Camera access error:', error);
       setCameraPermission('denied');
       trackPermissionRequest('camera', false);
 
-      if (error.name === 'NotAllowedError') {
+      if (error instanceof DOMException && error.name === 'NotAllowedError') {
         setCameraError('Camera access denied. Please enable camera permissions in your device settings.');
-      } else if (error.name === 'NotFoundError') {
+      } else if (error instanceof DOMException && error.name === 'NotFoundError') {
         setCameraError('No camera found on this device.');
       } else {
         setCameraError('Failed to access camera. Please try again or upload a photo instead.');

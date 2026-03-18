@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Card, CardContent, Button, Input, Textarea, Badge } from '@/components/ui';
+import { Card, CardContent, Button, Input, Textarea } from '@/components/ui';
 import { Icon } from '@/components/Icon';
 import {
   HealthScoreSlider,
@@ -22,7 +22,7 @@ import {
 } from '@/lib/offline-storage';
 import { createObservation, uploadObservationPhoto } from '@/lib/observations-service';
 import { storeAuthRedirect } from '@/lib/auth-redirect';
-import { MPA, ReportType, REPORT_TYPES } from '@/types';
+import { MPA, ReportType } from '@/types';
 
 interface ObservationData {
   reportType?: ReportType;
@@ -327,8 +327,6 @@ function ObservePageContent() {
   if (!user) {
     return <SignInPrompt />;
   }
-
-  const reportTypeInfo = data.reportType ? REPORT_TYPES[data.reportType] : null;
 
   return (
     <main className="min-h-screen pb-24 bg-balean-off-white">

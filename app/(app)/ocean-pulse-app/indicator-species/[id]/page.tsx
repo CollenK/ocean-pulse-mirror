@@ -6,17 +6,16 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Card, CardTitle, CardContent, Icon, Badge } from '@/components/ui';
+import { Card, CardTitle, CardContent, Icon } from '@/components/ui';
 import {
   SpeciesCategory,
   CATEGORY_INFO,
   CONSERVATION_STATUS_INFO,
   ECOSYSTEM_INFO,
   EcosystemType,
-  type IndicatorSpecies,
 } from '@/types/indicator-species';
 import { INDICATOR_SPECIES, getSpeciesByCategory } from '@/data/indicator-species';
 
@@ -63,7 +62,6 @@ const SENSITIVITY_INFO = {
 
 export default function IndicatorSpeciesDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const speciesId = params.id as string;
 
   // Find the species

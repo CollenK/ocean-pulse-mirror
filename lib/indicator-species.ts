@@ -4,7 +4,7 @@
  */
 
 import { initDB } from './offline-storage';
-import { INDICATOR_SPECIES, getSpeciesByEcosystem, findByObisTaxonId } from '@/data/indicator-species';
+import { INDICATOR_SPECIES } from '@/data/indicator-species';
 import { EcosystemType } from '@/types/indicator-species';
 import type {
   IndicatorSpecies,
@@ -13,7 +13,6 @@ import type {
   IndicatorSpeciesCache,
   SpeciesPresence,
   IndicatorHealthScore,
-  CategoryHealthScore,
 } from '@/types/indicator-species';
 
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -307,6 +306,7 @@ export async function getIndicatorSpeciesMap(): Promise<Map<string, IndicatorSpe
 export async function getIndicatorByTaxonId(taxonId: number): Promise<IndicatorSpecies | undefined> {
   const db = await initDB();
   const index = db.transaction('indicator-species').store.index('by-taxon-id');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return await index.get(taxonId as any);
 }
 

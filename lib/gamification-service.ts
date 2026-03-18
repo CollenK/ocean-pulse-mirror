@@ -23,9 +23,8 @@ export async function getUserBadges(userId: string): Promise<UserBadge[]> {
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase
-    .from('user_badges') as any)
+  const { data, error } = await supabase
+    .from('user_badges')
     .select('*')
     .eq('user_id', userId)
     .order('earned_at', { ascending: true });
@@ -46,9 +45,8 @@ export async function getUserStreak(userId: string): Promise<UserStreak | null> 
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase
-    .from('user_streaks') as any)
+  const { data, error } = await supabase
+    .from('user_streaks')
     .select('*')
     .eq('user_id', userId)
     .maybeSingle();
@@ -69,9 +67,8 @@ export async function getUserSpeciesCollection(userId: string): Promise<SpeciesC
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase
-    .from('user_species_collection') as any)
+  const { data, error } = await supabase
+    .from('user_species_collection')
     .select('*')
     .eq('user_id', userId)
     .order('first_seen_at', { ascending: false });
@@ -97,8 +94,7 @@ export async function getLeaderboard(
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.rpc as any)('get_leaderboard', {
+  const { data, error } = await supabase.rpc('get_leaderboard', {
     p_type: type,
     p_period: period,
     p_mpa_id: mpaId || null,
@@ -110,7 +106,7 @@ export async function getLeaderboard(
     return [];
   }
 
-  return (data || []) as LeaderboardEntry[];
+  return (data || []) as unknown as LeaderboardEntry[];
 }
 
 /**
@@ -135,9 +131,8 @@ export async function getGamificationStats(userId: string): Promise<Gamification
   const supabase = createClient();
 
   // Get total observation count
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { count, error } = await (supabase
-    .from('observations') as any)
+  const { count, error } = await supabase
+    .from('observations')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('is_draft', false);
@@ -164,8 +159,7 @@ export async function checkAndAwardBadges(userId: string): Promise<string[]> {
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.rpc as any)('check_and_award_badges', {
+  const { data, error } = await supabase.rpc('check_and_award_badges', {
     p_user_id: userId,
   });
 

@@ -23,6 +23,7 @@ export interface OceanPulseDB extends DBSchema {
     key: string;
     value: {
       id: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data: any;
       lastUpdated: number;
       cached: boolean;
@@ -43,7 +44,7 @@ export interface OceanPulseDB extends DBSchema {
     key: string;
     value: {
       key: string;
-      value: any;
+      value: unknown;
       lastUpdated: number;
     };
   };
@@ -116,7 +117,7 @@ const DB_VERSION = 7;
  */
 export async function initDB(): Promise<IDBPDatabase<OceanPulseDB>> {
   return openDB<OceanPulseDB>(DB_NAME, DB_VERSION, {
-    upgrade(db, oldVersion, newVersion, transaction) {
+    upgrade(db, _oldVersion, _newVersion, _transaction) {
       // MPA data store
       if (!db.objectStoreNames.contains('mpas')) {
         const mpaStore = db.createObjectStore('mpas', { keyPath: 'id' });
@@ -239,7 +240,7 @@ export async function getAllCachedMPAs(): Promise<MPA[]> {
   const db = await initDB();
   const mpas = await db.getAll('mpas');
   return mpas.map((mpa) => {
-    const { lastUpdated, cached, ...mpaData } = mpa;
+    const { lastUpdated: _lastUpdated, cached: _cached, ...mpaData } = mpa;
     return mpaData as MPA;
   });
 }
@@ -308,7 +309,7 @@ export async function saveObservation(observation: Omit<Observation, 'id'>): Pro
     ...observation,
     timestamp: Date.now(),
     synced: false,
-  } as any);
+  } as Observation & { id: number });
 }
 
 /**
@@ -338,7 +339,7 @@ export async function markObservationSynced(id: number): Promise<void> {
 export async function getObservationsForMPA(mpaId: string): Promise<(Observation & { id: number })[]> {
   const db = await initDB();
   const index = db.transaction('observations').store.index('by-mpa');
-  return await index.getAll(mpaId as any);
+  return await index.getAll(IDBKeyRange.only(mpaId));
 }
 
 /**
@@ -362,7 +363,7 @@ export async function deleteLocalObservation(id: number): Promise<void> {
 /**
  * Save a setting
  */
-export async function saveSetting(key: string, value: any): Promise<void> {
+export async function saveSetting(key: string, value: unknown): Promise<void> {
   const db = await initDB();
   await db.put('settings', {
     key,
@@ -374,10 +375,10 @@ export async function saveSetting(key: string, value: any): Promise<void> {
 /**
  * Get a setting
  */
-export async function getSetting<T = any>(key: string): Promise<T | null> {
+export async function getSetting<T = unknown>(key: string): Promise<T | null> {
   const db = await initDB();
   const setting = await db.get('settings', key);
-  return setting?.value || null;
+  return (setting?.value as T) ?? null;
 }
 
 // ==================== STORAGE MANAGEMENT ====================
@@ -465,7 +466,7 @@ export async function saveDraft(observation: Omit<Observation, 'id' | 'synced'>)
     isDraft: true,
     synced: false,
     timestamp: observation.timestamp || Date.now(),
-  } as any);
+  } as Observation & { id: number });
 }
 
 /**
@@ -528,7 +529,7 @@ export async function saveHealthAssessment(
     ...assessment,
     timestamp: assessment.timestamp || Date.now(),
     synced: false,
-  } as any);
+  } as UserHealthAssessment & { id: number });
 }
 
 /**
@@ -537,7 +538,7 @@ export async function saveHealthAssessment(
 export async function getHealthAssessmentsForMPA(mpaId: string): Promise<(UserHealthAssessment & { id: number })[]> {
   const db = await initDB();
   const index = db.transaction('user-health-assessments').store.index('by-mpa');
-  return await index.getAll(mpaId as any);
+  return await index.getAll(IDBKeyRange.only(mpaId));
 }
 
 /**

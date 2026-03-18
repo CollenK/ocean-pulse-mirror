@@ -30,14 +30,6 @@ function getSwimSafetyColor(safety: CoastalConditions['swimSafety']) {
   }
 }
 
-function getWaterQualityColor(level: CoastalConditions['waterQuality']['level']) {
-  switch (level) {
-    case 'good': return 'good' as const;
-    case 'moderate': return 'caution' as const;
-    case 'poor': return 'danger' as const;
-  }
-}
-
 function getWaterQualityBorderColor(level: CoastalConditions['waterQuality']['level']) {
   switch (level) {
     case 'good': return 'border-green-300';

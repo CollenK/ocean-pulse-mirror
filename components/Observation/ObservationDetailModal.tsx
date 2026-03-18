@@ -3,7 +3,6 @@
 import { useMemo } from 'react';
 import { REPORT_TYPES } from '@/types';
 import { Badge, Modal, QualityTierBadge } from '@/components/ui';
-import { Icon } from '@/components/Icon';
 import { VerificationPanel } from '@/components/Verification/VerificationPanel';
 import { MATERIAL_CONFIG, type LitterTallyEntry, type LitterMaterial } from '@/types/marine-litter';
 import type { ObservationWithProfile } from '@/lib/observations-service';

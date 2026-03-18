@@ -9,7 +9,6 @@ import { ObservationDetailModal } from './Observation/ObservationDetailModal';
 import { VerificationPanel } from './Verification/VerificationPanel';
 import { Button, Icon, Modal } from '@/components/ui';
 import { deleteObservation, type ObservationWithProfile } from '@/lib/observations-service';
-import type { QualityTier } from '@/types/verification';
 import Link from 'next/link';
 
 type TierFilter = 'all' | 'needs_id' | 'community_verified' | 'research_grade';
@@ -30,7 +29,7 @@ export function LiveReports({ mpaId, maxHeight = 500 }: LiveReportsProps) {
   const { observations, loading, refetch } = useObservations(mpaId);
   const { user } = useAuth();
   const [editingObservation, setEditingObservation] = useState<ObservationWithProfile | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [_deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [verifyingObservation, setVerifyingObservation] = useState<ObservationWithProfile | null>(null);
   const [viewingObservation, setViewingObservation] = useState<ObservationWithProfile | null>(null);
   const [tierFilter, setTierFilter] = useState<TierFilter>('all');

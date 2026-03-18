@@ -8,7 +8,7 @@
  * conflicts between industrial development and marine conservation.
  */
 
-import type { WindFarm, WindFarmStatus } from '@/types/wind-farms';
+import type { WindFarm } from '@/types/wind-farms';
 import { WIND_FARM_STATUS_COLORS, WIND_FARM_STATUS_LABELS } from '@/types/wind-farms';
 import type { WindFarmMPAConflict } from '@/types/wind-farms';
 

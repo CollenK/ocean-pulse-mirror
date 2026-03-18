@@ -74,8 +74,8 @@ export function useSavedMPAs() {
     }
 
     try {
-      const client = supabase as any;
-      const { error: saveError } = await client
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: saveError } = await (supabase as any)
         .from('saved_mpas')
         .insert({
           user_id: user.id,
@@ -100,8 +100,8 @@ export function useSavedMPAs() {
     }
 
     try {
-      const client = supabase as any;
-      const { error: deleteError } = await client
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: deleteError } = await (supabase as any)
         .from('saved_mpas')
         .delete()
         .eq('user_id', user.id)

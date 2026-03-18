@@ -4,8 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardTitle, Badge, Button } from '@/components/ui';
-import { Icon } from '@/components/Icon';
+import { Card, CardContent, CardTitle } from '@/components/ui';
 import { QualityTierBadge } from '@/components/ui/QualityTierBadge';
 import { storeAuthRedirect } from '@/lib/auth-redirect';
 import type { AdminStats, AdminUser, RecentObservation, RecentVerification } from '@/lib/admin-service';
@@ -16,7 +15,7 @@ type Tab = 'overview' | 'users' | 'observations' | 'verifications';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const { user, profile, isAuthenticated, loading: authLoading } = useAuth();
+  const { profile, isAuthenticated, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);

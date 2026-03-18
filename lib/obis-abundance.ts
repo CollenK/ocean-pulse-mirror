@@ -91,22 +91,42 @@ async function fetchSpeciesOccurrences(
     const data = await response.json();
     const results = data.results || [];
 
-    return results
-      .filter((r: any) => r.occurrenceStatus === 'present' || r.occurrenceStatus === undefined)
-      .map((r: any) => ({
-        occurrenceID: r.occurrenceID || r.id,
+    interface RawOccurrence {
+      occurrenceID?: string;
+      id?: string;
+      scientificName?: string;
+      scientificname?: string;
+      genus?: string;
+      family?: string;
+      eventDate?: string;
+      eventID?: string;
+      decimalLatitude?: number;
+      decimalLongitude?: number;
+      individualCount?: number;
+      organismQuantity?: string;
+      organismQuantityType?: string;
+      occurrenceStatus?: string;
+      basisOfRecord?: string;
+      datasetID?: string;
+      institutionCode?: string;
+    }
+
+    return (results as RawOccurrence[])
+      .filter((r) => r.occurrenceStatus === 'present' || r.occurrenceStatus === undefined)
+      .map((r) => ({
+        occurrenceID: r.occurrenceID || r.id || '',
         scientificName: r.scientificName || r.scientificname || scientificName,
         genus: r.genus,
         family: r.family,
-        eventDate: r.eventDate,
+        eventDate: r.eventDate || '',
         eventID: r.eventID,
-        decimalLatitude: r.decimalLatitude,
-        decimalLongitude: r.decimalLongitude,
+        decimalLatitude: r.decimalLatitude ?? 0,
+        decimalLongitude: r.decimalLongitude ?? 0,
         individualCount: r.individualCount || 1,
         organismQuantity: r.organismQuantity,
         organismQuantityType: r.organismQuantityType,
-        occurrenceStatus: r.occurrenceStatus || 'present',
-        basisOfRecord: r.basisOfRecord,
+        occurrenceStatus: (r.occurrenceStatus as 'present' | 'absent') || 'present',
+        basisOfRecord: r.basisOfRecord || 'HumanObservation',
         datasetID: r.datasetID,
         institutionCode: r.institutionCode,
       }));

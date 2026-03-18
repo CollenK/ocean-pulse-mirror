@@ -12,8 +12,9 @@ export function reportWebVitals(metric: {
   label: 'web-vital' | 'custom';
 }) {
   // Send to analytics service
-  if (typeof window !== 'undefined' && (window as any).gtag) {
-    (window as any).gtag('event', metric.name, {
+  const w = window as Window & { gtag?: (...args: unknown[]) => void };
+  if (typeof window !== 'undefined' && w.gtag) {
+    w.gtag('event', metric.name, {
       value: Math.round(metric.value),
       event_label: metric.id,
       non_interaction: true,
@@ -31,7 +32,7 @@ export function measureRender(componentName: string, callback: () => void) {
 /**
  * Debounce function for performance
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -53,7 +54,7 @@ export function debounce<T extends (...args: any[]) => any>(
 /**
  * Throttle function for performance
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: never[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
@@ -76,7 +77,7 @@ export function isSlowConnection(): boolean {
     return false;
   }
 
-  const conn = (navigator as any).connection;
+  const conn = (navigator as Navigator & { connection?: { effectiveType?: string } }).connection;
   return conn?.effectiveType === 'slow-2g' || conn?.effectiveType === '2g';
 }
 

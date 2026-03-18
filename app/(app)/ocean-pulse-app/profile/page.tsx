@@ -14,7 +14,7 @@ import { getUserVerificationStats } from '@/lib/verification-service';
 import type { VerificationStats } from '@/types/verification';
 import { useGamification } from '@/hooks/useGamification';
 import { BadgesGrid, StreakCounter, SpeciesCollection, LeaderboardCard } from '@/components/Gamification';
-import { BADGE_DEFINITIONS, getBadgeDefinition } from '@/types/gamification';
+import { getBadgeDefinition } from '@/types/gamification';
 import { isDemoUser as checkIsDemoUser } from '@/lib/demo/demo-config';
 
 export default function ProfilePage() {

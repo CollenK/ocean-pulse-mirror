@@ -5,7 +5,6 @@
 
 import { useState, useEffect } from 'react';
 import type { CoastalConditions } from '@/types/coastal-conditions';
-import { COASTAL_CONDITIONS_TTL } from '@/types/coastal-conditions';
 import { fetchCoastalConditions } from '@/lib/coastal-conditions-service';
 import {
   getCachedCoastalConditions,
@@ -106,7 +105,6 @@ export function useCoastalConditions(
     return () => {
       isMounted = false;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mpaId, lat, lon, enabled, refetchTrigger]);
 
   const refetch = () => {

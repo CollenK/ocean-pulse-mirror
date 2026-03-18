@@ -18,8 +18,7 @@ export async function submitVerification(input: SubmitVerificationInput): Promis
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.rpc as any)('submit_verification', {
+  const { data, error } = await supabase.rpc('submit_verification', {
     p_observation_id: input.observationId,
     p_user_id: input.userId,
     p_species_name: input.speciesName,
@@ -33,7 +32,7 @@ export async function submitVerification(input: SubmitVerificationInput): Promis
     throw error;
   }
 
-  return data as VerificationConsensus;
+  return data as unknown as VerificationConsensus;
 }
 
 /**
@@ -44,9 +43,8 @@ export async function getVerificationsForObservation(observationId: string): Pro
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase
-    .from('observation_verifications') as any)
+  const { data, error } = await supabase
+    .from('observation_verifications')
     .select(`
       *,
       profiles:user_id (
@@ -74,9 +72,8 @@ export async function getUserVerification(observationId: string, userId: string)
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase
-    .from('observation_verifications') as any)
+  const { data, error } = await supabase
+    .from('observation_verifications')
     .select('*')
     .eq('observation_id', observationId)
     .eq('user_id', userId)
@@ -100,9 +97,8 @@ export async function deleteVerification(observationId: string, userId: string):
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase
-    .from('observation_verifications') as any)
+  const { error } = await supabase
+    .from('observation_verifications')
     .delete()
     .eq('observation_id', observationId)
     .eq('user_id', userId);
@@ -113,8 +109,7 @@ export async function deleteVerification(observationId: string, userId: string):
   }
 
   // Recompute consensus after deletion
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.rpc as any)('compute_observation_consensus', {
+  await supabase.rpc('compute_observation_consensus', {
     p_observation_id: observationId,
   });
 }
@@ -130,9 +125,8 @@ export async function fetchObservationsNeedingVerification(
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase
-    .from('observations') as any)
+  let query = supabase
+    .from('observations')
     .select(`
       *,
       profiles:user_id (
@@ -167,9 +161,8 @@ export async function getUserVerificationStats(userId: string): Promise<Verifica
 
   const supabase = createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase
-    .from('user_verification_stats') as any)
+  const { data, error } = await supabase
+    .from('user_verification_stats')
     .select('*')
     .eq('user_id', userId)
     .maybeSingle();

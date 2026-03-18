@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useGeolocation, GeolocationData } from '@/hooks/useGeolocation';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button, Input } from '@/components/ui';
 import { Icon } from '@/components/Icon';
 

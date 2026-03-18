@@ -10,7 +10,7 @@ const LAST_VIEWED_KEY = 'ocean-pulse-whats-new-last-viewed';
 function markAsViewed() {
   try {
     localStorage.setItem(LAST_VIEWED_KEY, getLatestChangeDate());
-  } catch {}
+  } catch { /* localStorage unavailable */ }
 }
 
 function formatDate(dateStr: string): string {

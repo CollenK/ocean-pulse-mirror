@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card, CardTitle, CardContent, Button, Badge } from '@/components/ui';
 import { MPACardSkeleton } from '@/components/ui';
 import { Icon } from '@/components/Icon';
-import { getSpeciesDetailsCached, formatSpeciesName } from '@/lib/species-service';
+import { getSpeciesDetailsCached } from '@/lib/species-service';
 import { formatTaxonomy, getCommonName, OBISSpecies } from '@/lib/obis-client';
 
 export default function SpeciesDetailPage() {

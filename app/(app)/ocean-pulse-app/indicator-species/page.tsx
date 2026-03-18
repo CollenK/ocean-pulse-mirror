@@ -7,11 +7,10 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Card, CardTitle, CardContent, Icon, Badge } from '@/components/ui';
 import { IndicatorSpeciesFilter } from '@/components/IndicatorSpeciesFilter';
-import { SpeciesCard, SpeciesCardGrid, SpeciesCardSkeleton } from '@/components/SpeciesCard';
+import { SpeciesCardGrid, SpeciesCardSkeleton } from '@/components/SpeciesCard';
 import {
   SpeciesCategory,
   ConservationStatus,
@@ -19,7 +18,7 @@ import {
   CONSERVATION_STATUS_INFO,
   type IndicatorSpecies,
 } from '@/types/indicator-species';
-import { INDICATOR_SPECIES, getSpeciesByCategory } from '@/data/indicator-species';
+import { INDICATOR_SPECIES } from '@/data/indicator-species';
 
 export default function IndicatorSpeciesPage() {
   const router = useRouter();
@@ -66,7 +65,7 @@ export default function IndicatorSpeciesPage() {
 
   // Group species by category for statistics
   const categoryStats = useMemo(() => {
-    const stats: Record<SpeciesCategory, { total: number; filtered: number }> = {} as any;
+    const stats = {} as Record<SpeciesCategory, { total: number; filtered: number }>;
     for (const category of Object.values(SpeciesCategory)) {
       stats[category] = {
         total: INDICATOR_SPECIES.filter(s => s.category === category).length,
@@ -168,9 +167,6 @@ export default function IndicatorSpeciesPage() {
                     {Object.values(SpeciesCategory).map((category) => {
                       const info = CATEGORY_INFO[category];
                       const stats = categoryStats[category];
-                      const percentage = stats.total > 0
-                        ? Math.round((stats.filtered / stats.total) * 100)
-                        : 0;
 
                       return (
                         <div key={category} className="flex items-center gap-2">

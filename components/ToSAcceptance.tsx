@@ -21,6 +21,7 @@ export function ToSAcceptance() {
 
     async function checkAcceptance() {
       const supabase = createClient();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await (supabase.from('profiles') as any)
         .select('preferences')
         .eq('id', user!.id)
@@ -45,6 +46,7 @@ export function ToSAcceptance() {
       const supabase = createClient();
 
       // Get current preferences
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await (supabase.from('profiles') as any)
         .select('preferences')
         .eq('id', user.id)
@@ -53,6 +55,7 @@ export function ToSAcceptance() {
       const currentPrefs = data?.preferences || {};
 
       // Update with ToS acceptance
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from('profiles') as any).update({
         preferences: {
           ...currentPrefs,

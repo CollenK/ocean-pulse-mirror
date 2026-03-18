@@ -49,8 +49,7 @@ export async function createObservation(input: CreateObservationInput): Promise<
       const supabase = createClient();
 
       // Use atomic function to create observation + health assessment in one transaction
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)('create_observation_with_health', {
+      const { data, error } = await supabase.rpc('create_observation_with_health', {
         p_mpa_id: input.mpaId,
         p_user_id: input.userId || null,
         p_report_type: input.reportType,
@@ -275,9 +274,8 @@ export async function updateObservation(input: UpdateObservationInput): Promise<
     if (input.notes !== undefined) updateData.notes = input.notes;
     if (input.healthScoreAssessment !== undefined) updateData.health_score_assessment = input.healthScoreAssessment;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase
-      .from('observations') as any)
+    const { error } = await supabase
+      .from('observations')
       .update(updateData)
       .eq('id', input.id)
       .eq('user_id', input.userId); // Ensure user can only update their own observations
@@ -325,9 +323,8 @@ export async function deleteObservation(observationId: string, userId: string): 
     const supabase = createClient();
 
     // Health assessments cascade-delete via FK constraint
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase
-      .from('observations') as any)
+    const { error } = await supabase
+      .from('observations')
       .delete()
       .eq('id', observationId)
       .eq('user_id', userId);
@@ -461,9 +458,8 @@ export async function getUserObservationStats(userId: string): Promise<UserObser
     }
 
     // Fetch distinct species count
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: speciesData, error: speciesError } = await (supabase
-      .from('observations') as any)
+    const { data: speciesData, error: speciesError } = await supabase
+      .from('observations')
       .select('species_name')
       .eq('user_id', userId)
       .eq('is_draft', false)
@@ -477,9 +473,8 @@ export async function getUserObservationStats(userId: string): Promise<UserObser
     }
 
     // Fetch health assessment stats
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: healthData, error: healthError } = await (supabase
-      .from('user_health_assessments') as any)
+    const { data: healthData, error: healthError } = await supabase
+      .from('user_health_assessments')
       .select('score, mpa_id')
       .eq('user_id', userId);
 

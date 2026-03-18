@@ -225,7 +225,7 @@ interface FilterCheckboxProps {
   description?: string;
 }
 
-function FilterCheckbox({ id, label, count, checked, onChange, color, hexColor, description }: FilterCheckboxProps) {
+function FilterCheckbox({ id, label, count, checked, onChange, color, hexColor, description: _description }: FilterCheckboxProps) {
   return (
     <label
       htmlFor={id}

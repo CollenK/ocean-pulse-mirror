@@ -8,9 +8,7 @@
  * planned, etc.) to visualize spatial conflicts with Marine Protected Areas.
  */
 
-import { useMemo } from 'react';
 import { Source, Layer } from 'react-map-gl/maplibre';
-import type { LayerProps } from 'react-map-gl/maplibre';
 import { WIND_FARM_STATUS_COLORS } from '@/types/wind-farms';
 
 interface WindFarmLayerProps {
@@ -27,52 +25,7 @@ for (const [status, color] of Object.entries(WIND_FARM_STATUS_COLORS)) {
 }
 statusColorExpression.push('#9ca3af'); // fallback
 
-// Fill layer: semi-transparent polygons colored by status
-const windFarmFillLayer: LayerProps = {
-  id: 'wind-farms-fill',
-  type: 'fill',
-  paint: {
-    'fill-color': statusColorExpression as unknown as string,
-    'fill-opacity': 0.35,
-  },
-};
-
-// Line layer: polygon outlines
-const windFarmLineLayer: LayerProps = {
-  id: 'wind-farms-line',
-  type: 'line',
-  paint: {
-    'line-color': statusColorExpression as unknown as string,
-    'line-width': [
-      'interpolate',
-      ['linear'],
-      ['zoom'],
-      3, 0.5,
-      6, 1.5,
-      10, 2.5,
-    ],
-    'line-opacity': 0.8,
-  },
-};
-
-// Symbol layer: wind farm labels at higher zoom
-const windFarmLabelLayer: LayerProps = {
-  id: 'wind-farms-label',
-  type: 'symbol',
-  minzoom: 8,
-  layout: {
-    'text-field': ['get', 'name'],
-    'text-size': 11,
-    'text-anchor': 'center',
-    'text-max-width': 8,
-    'text-allow-overlap': false,
-  },
-  paint: {
-    'text-color': '#1e293b',
-    'text-halo-color': '#ffffff',
-    'text-halo-width': 1.5,
-  },
-};
+// Note: layer paint/layout properties are inlined in the JSX below.
 
 export function WindFarmLayer({
   geojson,

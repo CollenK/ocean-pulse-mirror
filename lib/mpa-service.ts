@@ -32,24 +32,26 @@ function getSupabase() {
  * Extract polygon coordinates from GeoJSON geometry
  * Returns coordinates in GeoJSON format [[lng, lat], ...]
  */
-function extractPolygonFromGeometry(geometry: any): number[][][] | undefined {
+function extractPolygonFromGeometry(geometry: unknown): number[][][] | undefined {
   if (!geometry) return undefined;
 
   try {
     // Handle string (JSON that needs parsing)
-    let geom = geometry;
+    let geom: Record<string, unknown> | null = null;
     if (typeof geometry === 'string') {
       geom = JSON.parse(geometry);
+    } else if (typeof geometry === 'object' && geometry !== null) {
+      geom = geometry as Record<string, unknown>;
     }
 
     if (!geom || !geom.type) return undefined;
 
     // Handle different geometry types
     if (geom.type === 'Polygon' && geom.coordinates) {
-      return geom.coordinates;
+      return geom.coordinates as number[][][];
     } else if (geom.type === 'MultiPolygon' && geom.coordinates) {
       // For MultiPolygon, return the largest polygon (first one typically)
-      return geom.coordinates[0];
+      return (geom.coordinates as number[][][][])[0];
     }
 
     return undefined;
@@ -91,7 +93,8 @@ function boundsFromPolygon(polygon: number[][][]): number[][] {
 /**
  * Transform database row to MPA type
  */
-function transformMPARow(row: any): MPA {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformMPARow(row: Record<string, any>): MPA {
   // Parse center point from PostGIS format or stored coordinates
   let center: [number, number] = [0, 0];
 
@@ -276,13 +279,11 @@ export async function fetchMPAById(id: string): Promise<MPA | null> {
 
   try {
     // Try to find by external_id first (WDPA ID), then by UUID
-    let query = supabase
+    const { data, error } = await supabase
       .from('mpas')
       .select('id, external_id, name, country, center, area_km2, established_year, protection_level, description, metadata')
       .eq('external_id', id)
       .single();
-
-    let { data, error } = await query;
 
     // If not found by external_id, try by UUID id
     if (error || !data) {
@@ -295,7 +296,7 @@ export async function fetchMPAById(id: string): Promise<MPA | null> {
       if (uuidError || !byUuid) {
         return null;
       }
-      data = byUuid;
+      return transformMPARow(byUuid);
     }
 
     return transformMPARow(data);
@@ -336,7 +337,8 @@ export async function findNearestMPAs(
       return [];
     }
 
-    return (data || []).map((row: any) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data || []).map((row: Record<string, any>) => ({
       ...transformMPARow(row),
       distance: row.distance_km,
     }));
@@ -379,7 +381,7 @@ export async function searchMPAs(query: string): Promise<MPA[]> {
  * Calculate distance between two points using Haversine formula
  * Returns distance in kilometers
  */
-function calculateDistance(
+function _calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,

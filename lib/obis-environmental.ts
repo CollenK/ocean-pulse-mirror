@@ -299,7 +299,7 @@ export function processEnvironmentalParameters(
 
     parameters.push({
       name,
-      type: type as any,
+      type: type as keyof typeof PRIORITY_MEASUREMENTS,
       currentValue,
       unit,
       historicalAvg,
@@ -419,7 +419,7 @@ function evaluateThreshold(
  */
 export function detectAnomalies(
   dataPoints: EnvironmentalDataPoint[],
-  threshold: EnvironmentalThreshold | undefined
+  _threshold: EnvironmentalThreshold | undefined
 ): EnvironmentalAnomaly[] {
   if (dataPoints.length < 10) return [];
 

@@ -5,13 +5,31 @@
 
 import { isAnalyticsConsented } from '@/lib/cookie-consent';
 
+/** Extended window type for analytics providers */
+interface AnalyticsWindow {
+  doNotTrack?: string;
+  dataLayer?: unknown[];
+  gtag?: (...args: unknown[]) => void;
+  plausible?: (event: string, options?: Record<string, unknown>) => void;
+}
+
+/** Get window as analytics-typed object */
+function getAnalyticsWindow(): AnalyticsWindow {
+  return window as unknown as AnalyticsWindow;
+}
+
+/** Access dynamic GA disable flag */
+function getGaRecord(): Record<string, unknown> {
+  return window as unknown as Record<string, unknown>;
+}
+
 // Analytics event types
 export type AnalyticsEvent = {
   action: string;
   category: string;
   label?: string;
   value?: number;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
 };
 
 // Custom event types for Ocean PULSE
@@ -69,7 +87,7 @@ function isAnalyticsEnabled(): boolean {
   if (typeof window === 'undefined') return false;
 
   // Check for DNT (Do Not Track)
-  if (navigator.doNotTrack === '1' || (window as any).doNotTrack === '1') {
+  if (navigator.doNotTrack === '1' || getAnalyticsWindow().doNotTrack === '1') {
     return false;
   }
 
@@ -97,7 +115,7 @@ export function loadGoogleAnalytics(): void {
   if (!gaId) return;
 
   // Clear any previous disable flag (in case consent was revoked then re-granted)
-  delete (window as any)[`ga-disable-${gaId}`];
+  delete getGaRecord()[`ga-disable-${gaId}`];
 
   // Inject the gtag.js script
   const script = document.createElement('script');
@@ -106,11 +124,12 @@ export function loadGoogleAnalytics(): void {
   document.head.appendChild(script);
 
   // Initialize dataLayer and gtag
-  (window as any).dataLayer = (window as any).dataLayer || [];
+  const aw = getAnalyticsWindow();
+  aw.dataLayer = aw.dataLayer || [];
   function gtag(...args: unknown[]) {
-    (window as any).dataLayer.push(args);
+    aw.dataLayer!.push(args);
   }
-  (window as any).gtag = gtag;
+  getAnalyticsWindow().gtag = gtag;
 
   gtag('js', new Date());
   gtag('config', gaId, { send_page_view: false });
@@ -127,7 +146,7 @@ export function disableGoogleAnalytics(): void {
 
   const gaId = process.env.NEXT_PUBLIC_GA_ID;
   if (gaId) {
-    (window as any)[`ga-disable-${gaId}`] = true;
+    getGaRecord()[`ga-disable-${gaId}`] = true;
   }
 
   // Remove GA cookies
@@ -147,9 +166,10 @@ export function disableGoogleAnalytics(): void {
  * Track event with Google Analytics
  */
 function trackWithGoogleAnalytics(event: AnalyticsEvent) {
-  if (typeof window === 'undefined' || !(window as any).gtag) return;
+  const aw = typeof window !== 'undefined' ? getAnalyticsWindow() : null;
+  if (!aw?.gtag) return;
 
-  (window as any).gtag('event', event.action, {
+  aw.gtag('event', event.action, {
     event_category: event.category,
     event_label: event.label,
     value: event.value,
@@ -161,9 +181,10 @@ function trackWithGoogleAnalytics(event: AnalyticsEvent) {
  * Track event with Plausible
  */
 function trackWithPlausible(event: AnalyticsEvent) {
-  if (typeof window === 'undefined' || !(window as any).plausible) return;
+  const aw = typeof window !== 'undefined' ? getAnalyticsWindow() : null;
+  if (!aw?.plausible) return;
 
-  (window as any).plausible(event.action, {
+  aw.plausible(event.action, {
     props: {
       category: event.category,
       label: event.label,
@@ -324,7 +345,7 @@ export function initializeAnalytics() {
   if (typeof window === 'undefined') return;
 
   // Track PWA install prompt
-  window.addEventListener('beforeinstallprompt', (e) => {
+  window.addEventListener('beforeinstallprompt', (_e) => {
     trackEvent({
       action: 'pwa_prompt_shown',
       category: EventCategory.USER,

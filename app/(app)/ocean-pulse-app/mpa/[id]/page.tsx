@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { MPA } from '@/types';
 import { fetchMPAById, formatArea } from '@/lib/mpa-service';
-import { cacheMPA, getCachedMPA, isMPACached } from '@/lib/offline-storage';
+import { cacheMPA, getCachedMPA } from '@/lib/offline-storage';
 import { Card, CardTitle, CardContent, CollapsibleCard, Button, Badge, Icon, InfoTip, CircularProgress, getHealthColor } from '@/components/ui';
 import { MPACardSkeleton } from '@/components/ui';
 import { motion } from 'framer-motion';

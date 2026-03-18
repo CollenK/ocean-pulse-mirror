@@ -6,7 +6,6 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import Link from 'next/link';
 import { Icon } from './ui';
 import type { IndicatorSpecies } from '@/types/indicator-species';
 import {

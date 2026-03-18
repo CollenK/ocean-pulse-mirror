@@ -28,10 +28,26 @@ export function useNetworkStatus(): NetworkStatus {
     setIsOnline(navigator.onLine);
 
     // Get connection information
+    interface NetworkInformation {
+      type?: string;
+      effectiveType?: string;
+      downlink?: number;
+      rtt?: number;
+      saveData?: boolean;
+      addEventListener(type: string, listener: () => void): void;
+      removeEventListener(type: string, listener: () => void): void;
+    }
+
+    const nav = navigator as Navigator & {
+      connection?: NetworkInformation;
+      mozConnection?: NetworkInformation;
+      webkitConnection?: NetworkInformation;
+    };
+
     const connection =
-      (navigator as any).connection ||
-      (navigator as any).mozConnection ||
-      (navigator as any).webkitConnection;
+      nav.connection ||
+      nav.mozConnection ||
+      nav.webkitConnection;
 
     if (connection) {
       // Set initial values
@@ -62,8 +78,8 @@ export function useNetworkStatus(): NetworkStatus {
     const handleOnline = () => {
       setIsOnline(true);
       // Trigger sync when coming back online
-      if ('serviceWorker' in navigator && 'sync' in (ServiceWorkerRegistration.prototype as any)) {
-        navigator.serviceWorker.ready.then((reg: any) => {
+      if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
+        navigator.serviceWorker.ready.then((reg: ServiceWorkerRegistration & { sync?: { register: (tag: string) => Promise<void> } }) => {
           if (reg.sync) {
             reg.sync.register('sync-data').catch((err: Error) => {
               console.log('Background sync failed:', err);

@@ -7,7 +7,6 @@ import {
   searchSpecies,
   getSpeciesDetails,
   getSpeciesInArea,
-  getSpeciesOccurrences,
   createBoundingBox,
   OBISSpecies,
   OBISOccurrence,
@@ -29,7 +28,6 @@ export async function searchSpeciesCached(
   }
 
   const cacheKey = `search:${query.toLowerCase()}`;
-  const lowerQuery = query.toLowerCase();
 
   // Try cache first
   if (useCache) {
@@ -265,12 +263,9 @@ export async function getPopularSpecies(limit: number = 10): Promise<OBISSpecies
 export async function getNearbyOccurrences(
   lat: number,
   lng: number,
-  radiusKm: number = 10,
-  limit: number = 50
+  _radiusKm: number = 10,
+  _limit: number = 50
 ): Promise<OBISOccurrence[]> {
-  const bounds = createBoundingBox([lat, lng], radiusKm);
-  const wkt = `POLYGON((${bounds.west} ${bounds.south}, ${bounds.east} ${bounds.south}, ${bounds.east} ${bounds.north}, ${bounds.west} ${bounds.north}, ${bounds.west} ${bounds.south}))`;
-
   try {
     // This would need to be implemented with OBIS occurrence endpoint
     // For now, return empty array

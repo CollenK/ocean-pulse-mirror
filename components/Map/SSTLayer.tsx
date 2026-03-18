@@ -1,7 +1,6 @@
 'use client';
 
 import { Source, Layer } from 'react-map-gl/maplibre';
-import type { LayerProps } from 'react-map-gl/maplibre';
 
 interface SSTLayerProps {
   visible: boolean;

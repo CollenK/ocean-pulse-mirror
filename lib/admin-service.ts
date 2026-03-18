@@ -68,6 +68,7 @@ export interface RecentVerification {
 
 export async function checkIsAdmin(userId: string): Promise<boolean> {
   const supabase = getSupabase();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (supabase.from('profiles') as any)
     .select('is_admin')
     .eq('id', userId)

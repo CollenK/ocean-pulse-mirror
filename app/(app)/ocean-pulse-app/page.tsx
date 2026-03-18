@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Card, CardTitle, CardContent, Badge } from '@/components/ui';
+import { Button, Card, Badge } from '@/components/ui';
 import { CircularProgress, getHealthColor } from '@/components/CircularProgress';
 import Link from 'next/link';
 import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from 'react';

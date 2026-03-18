@@ -12,13 +12,6 @@ import type {
   SensitivityRating,
 } from '@/types/indicator-species';
 import { CATEGORY_INFO, SpeciesCategory } from '@/types/indicator-species';
-import {
-  getIndicatorSpeciesForMPA,
-  getIndicatorSpeciesByCategory,
-  cacheIndicatorData,
-  getCachedIndicatorData,
-} from '../indicator-species';
-import { INDICATOR_SPECIES } from '@/data/indicator-species';
 
 /**
  * Weight multipliers for conservation status
@@ -209,8 +202,15 @@ function determineDataQuality(
 /**
  * Process OBIS occurrence data into species presence records
  */
+interface OccurrenceRecord {
+  scientificName?: string;
+  taxonID?: number;
+  aphiaID?: number;
+  eventDate?: string;
+}
+
 export function processOccurrenceData(
-  occurrences: any[],
+  occurrences: OccurrenceRecord[],
   relevantSpecies: IndicatorSpecies[]
 ): SpeciesPresence[] {
   // Create lookup maps
@@ -232,7 +232,7 @@ export function processOccurrenceData(
     const taxonId = occ.taxonID || occ.aphiaID;
 
     // Find matching indicator species
-    let species = speciesByName.get(scientificName);
+    let species = scientificName ? speciesByName.get(scientificName) : undefined;
     if (!species && taxonId) {
       species = speciesByTaxonId.get(taxonId);
     }

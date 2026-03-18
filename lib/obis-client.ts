@@ -118,9 +118,28 @@ async function fetchTaxonComplete(name: string): Promise<OBISSpecies[]> {
   }
 
   // Transform the results to match our interface
-  const results = data.map((item: any, index: number) => ({
+  interface RawTaxonResult {
+    id?: number;
+    taxonID?: number;
+    scientificName?: string;
+    scientificname?: string;
+    acceptedNameUsage?: string;
+    kingdom?: string;
+    phylum?: string;
+    class?: string;
+    order?: string;
+    family?: string;
+    genus?: string;
+    species?: string;
+    vernacularName?: string;
+    rank?: string;
+    taxonRank?: string;
+    records?: number;
+  }
+
+  const results = (data as RawTaxonResult[]).map((item, index) => ({
     id: item.id || item.taxonID || index,
-    scientificName: item.scientificName || item.scientificname,
+    scientificName: item.scientificName || item.scientificname || '',
     acceptedNameUsage: item.acceptedNameUsage,
     kingdom: item.kingdom,
     phylum: item.phylum,
