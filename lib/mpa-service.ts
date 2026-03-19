@@ -91,67 +91,79 @@ function boundsFromPolygon(polygon: number[][][]): number[][] {
 }
 
 /**
- * Transform database row to MPA type
+ * Parse center point from PostGIS format or stored coordinates.
+ * Returns [lat, lon] tuple.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function transformMPARow(row: Record<string, any>): MPA {
-  // Parse center point from PostGIS format or stored coordinates
-  let center: [number, number] = [0, 0];
+function parseCenterPoint(row: Record<string, any>): [number, number] {
+  if (!row.center) return [0, 0];
 
-  if (row.center) {
-    // Handle different PostGIS return formats
-    if (typeof row.center === 'string') {
-      // Parse WKT: "POINT(lon lat)" or "SRID=4326;POINT(lon lat)"
-      const match = row.center.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
-      if (match) {
-        center = [parseFloat(match[2]), parseFloat(match[1])]; // [lat, lon]
-      }
-    } else if (row.center.coordinates) {
-      // GeoJSON format
-      center = [row.center.coordinates[1], row.center.coordinates[0]];
-    }
+  if (typeof row.center === 'string') {
+    const match = row.center.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
+    if (match) return [parseFloat(match[2]), parseFloat(match[1])];
+  } else if (row.center.coordinates) {
+    return [row.center.coordinates[1], row.center.coordinates[0]];
   }
 
-  // Extract real polygon from PostGIS geometry (returned as GeoJSON via cast)
-  const polygon = extractPolygonFromGeometry(row.geometry_geojson);
+  return [0, 0];
+}
 
-  // Calculate bounds from real polygon if available, otherwise approximate from center
-  let bounds: number[][] = [];
+/**
+ * Extract health score and species count from a database row.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractHealthMetrics(row: Record<string, any>): { healthScore: number; speciesCount: number } {
+  const abundanceSummary = row.mpa_abundance_summaries?.[0] || row.mpa_abundance_summaries || null;
+  return {
+    healthScore: abundanceSummary?.health_score ?? row.health_score ?? 0,
+    speciesCount: abundanceSummary?.species_count ?? row.metadata?.species_count ?? 0,
+  };
+}
+
+/**
+ * Build a description string from row metadata when no explicit description is set.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildDescription(row: Record<string, any>): string | undefined {
+  if (row.description) return row.description;
+  if (!row.metadata) return undefined;
+
+  const parts: string[] = [];
+  if (row.metadata.designation) parts.push(row.metadata.designation);
+  if (row.metadata.governance_type) parts.push(`Governance: ${row.metadata.governance_type}`);
+  return parts.length > 0 ? parts.join('. ') : undefined;
+}
+
+/**
+ * Compute bounds from polygon or approximate from center.
+ */
+function computeBounds(polygon: number[][][] | undefined, center: [number, number]): number[][] {
   if (polygon) {
-    bounds = boundsFromPolygon(polygon);
+    const bounds = boundsFromPolygon(polygon);
+    if (bounds.length > 0) return bounds;
   }
 
-  // Fallback to approximate bounds if no polygon or bounds extraction failed
-  if (bounds.length === 0 && center[0] !== 0 && center[1] !== 0) {
+  if (center[0] !== 0 && center[1] !== 0) {
     const [lat, lon] = center;
     const delta = 0.5; // ~50km approximate
-    bounds = [
+    return [
       [lat - delta, lon - delta],
       [lat + delta, lon + delta],
     ];
   }
 
-  // Get health score from pipeline abundance summary (joined via mpa_abundance_summaries)
-  const abundanceSummary = row.mpa_abundance_summaries?.[0] || row.mpa_abundance_summaries || null;
-  const healthScore = abundanceSummary?.health_score ?? row.health_score ?? 0;
+  return [];
+}
 
-  // Get species count from pipeline data or metadata
-  const speciesCount = abundanceSummary?.species_count ?? row.metadata?.species_count ?? 0;
-
-  // Build description from metadata if not set
-  let description = row.description;
-  if (!description && row.metadata) {
-    const parts = [];
-    if (row.metadata.designation) {
-      parts.push(row.metadata.designation);
-    }
-    if (row.metadata.governance_type) {
-      parts.push(`Governance: ${row.metadata.governance_type}`);
-    }
-    if (parts.length > 0) {
-      description = parts.join('. ');
-    }
-  }
+/**
+ * Transform database row to MPA type
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformMPARow(row: Record<string, any>): MPA {
+  const center = parseCenterPoint(row);
+  const polygon = extractPolygonFromGeometry(row.geometry_geojson);
+  const bounds = computeBounds(polygon, center);
+  const { healthScore, speciesCount } = extractHealthMetrics(row);
 
   return {
     id: row.external_id || row.id,
@@ -165,7 +177,7 @@ function transformMPARow(row: Record<string, any>): MPA {
     speciesCount,
     establishedYear: row.established_year || 0,
     protectionLevel: row.protection_level || 'Not Reported',
-    description,
+    description: buildDescription(row),
     regulations: row.metadata?.regulations,
     polygon,
   };
@@ -180,6 +192,37 @@ const EUROPEAN_COUNTRY_CODES = [
 ];
 
 const MPA_SELECT_COLUMNS = 'id, external_id, name, country, center, area_km2, established_year, protection_level, description, metadata';
+
+/**
+ * Fetch pipeline health scores and merge them into the MPA array.
+ * Gracefully handles missing tables.
+ */
+async function mergeHealthScores(
+  supabase: ReturnType<typeof createBrowserClient>,
+  mpas: MPA[]
+): Promise<void> {
+  try {
+    const { data: healthData } = await supabase
+      .from('mpa_abundance_summaries')
+      .select('mpa_id, health_score, species_count');
+
+    if (!healthData || healthData.length === 0) return;
+
+    type HealthRow = { mpa_id: string; health_score: number | null; species_count: number | null };
+    const healthMap = new Map<string, HealthRow>(
+      (healthData as HealthRow[]).map((h) => [h.mpa_id, h])
+    );
+    for (const mpa of mpas) {
+      const h = healthMap.get(mpa.id);
+      if (h) {
+        mpa.healthScore = h.health_score ?? mpa.healthScore;
+        mpa.speciesCount = h.species_count ?? mpa.speciesCount;
+      }
+    }
+  } catch {
+    // Pipeline tables may not exist yet; continue with default scores
+  }
+}
 
 /**
  * Fetch MPAs from Supabase
@@ -236,28 +279,7 @@ export async function fetchAllMPAs(): Promise<MPA[]> {
       }
     }
 
-    // Fetch pipeline health scores and merge (graceful if table doesn't exist yet)
-    try {
-      const { data: healthData } = await supabase
-        .from('mpa_abundance_summaries')
-        .select('mpa_id, health_score, species_count');
-
-      if (healthData && healthData.length > 0) {
-        type HealthRow = { mpa_id: string; health_score: number | null; species_count: number | null };
-        const healthMap = new Map<string, HealthRow>(
-          (healthData as HealthRow[]).map((h) => [h.mpa_id, h])
-        );
-        for (const mpa of merged) {
-          const h = healthMap.get(mpa.id);
-          if (h) {
-            mpa.healthScore = h.health_score ?? mpa.healthScore;
-            mpa.speciesCount = h.species_count ?? mpa.speciesCount;
-          }
-        }
-      }
-    } catch {
-      // Pipeline tables may not exist yet; continue with default scores
-    }
+    await mergeHealthScores(supabase, merged);
 
     return merged;
   } catch (error) {
@@ -378,35 +400,6 @@ export async function searchMPAs(query: string): Promise<MPA[]> {
 }
 
 /**
- * Calculate distance between two points using Haversine formula
- * Returns distance in kilometers
- */
-function _calculateDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const R = 6371; // Earth's radius in km
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-function toRad(degrees: number): number {
-  return degrees * (Math.PI / 180);
-}
-
-/**
  * Get health category based on score
  */
 export function getHealthCategory(
@@ -444,6 +437,26 @@ export function formatDistance(distanceKm: number): string {
 }
 
 /**
+ * Parse a single geometry row into an MPAGeometry, or return null if invalid.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseGeometryRow(row: Record<string, any>): MPAGeometry | null {
+  if (!row.geometry_geojson || !row.external_id) return null;
+
+  const geojson = row.geometry_geojson;
+  if (geojson.type === 'Polygon' && geojson.coordinates) {
+    console.log('GEOM DEBUG - Added Polygon for:', row.external_id);
+    return { type: 'Polygon', coordinates: geojson.coordinates };
+  }
+  if (geojson.type === 'MultiPolygon' && geojson.coordinates) {
+    console.log('GEOM DEBUG - Added MultiPolygon for:', row.external_id, 'with', geojson.coordinates.length, 'polygons');
+    return { type: 'MultiPolygon', coordinates: geojson.coordinates };
+  }
+  console.log('GEOM DEBUG - Skipped:', row.external_id, 'type:', geojson?.type);
+  return null;
+}
+
+/**
  * Fetch MPA geometries for map rendering
  * Returns a map of MPA external_id to GeoJSON geometry
  * @param externalIds - Optional array of external IDs to fetch geometries for
@@ -469,29 +482,10 @@ export async function fetchMPAGeometries(externalIds?: string[]): Promise<Map<st
 
     console.log('GEOM DEBUG - Fetched', data?.length || 0, 'geometries');
 
-    // Convert to map for easy lookup
-    // Store as { type, coordinates } to preserve MultiPolygon structure
     for (const row of data || []) {
-      if (row.geometry_geojson && row.external_id) {
-        const geojson = row.geometry_geojson;
-
-        if (geojson.type === 'Polygon' && geojson.coordinates) {
-          // Store Polygon coordinates directly
-          geometryMap.set(row.external_id, {
-            type: 'Polygon',
-            coordinates: geojson.coordinates,
-          });
-          console.log('GEOM DEBUG - Added Polygon for:', row.external_id);
-        } else if (geojson.type === 'MultiPolygon' && geojson.coordinates) {
-          // Keep full MultiPolygon structure
-          geometryMap.set(row.external_id, {
-            type: 'MultiPolygon',
-            coordinates: geojson.coordinates,
-          });
-          console.log('GEOM DEBUG - Added MultiPolygon for:', row.external_id, 'with', geojson.coordinates.length, 'polygons');
-        } else {
-          console.log('GEOM DEBUG - Skipped:', row.external_id, 'type:', geojson?.type);
-        }
+      const geometry = parseGeometryRow(row);
+      if (geometry) {
+        geometryMap.set(row.external_id, geometry);
       }
     }
 

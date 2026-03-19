@@ -39,47 +39,33 @@ export interface ObservationWithProfile extends ObservationRow {
 }
 
 /**
- * Create a new observation
- * Saves to Supabase if available, falls back to IndexedDB
+ * Build RPC parameters from observation input
  */
-export async function createObservation(input: CreateObservationInput): Promise<{ id: string; synced: boolean }> {
-  // Try Supabase first
-  if (isSupabaseConfigured()) {
-    try {
-      const supabase = createClient();
+function buildRpcParams(input: CreateObservationInput) {
+  return {
+    p_mpa_id: input.mpaId,
+    p_user_id: input.userId || null,
+    p_report_type: input.reportType,
+    p_species_name: input.speciesName || null,
+    p_species_type: input.speciesType || null,
+    p_quantity: input.quantity || null,
+    p_notes: input.notes || null,
+    p_latitude: input.latitude,
+    p_longitude: input.longitude,
+    p_location_accuracy_m: input.locationAccuracy || null,
+    p_photo_url: input.photoUrl || null,
+    p_photo_metadata: input.photoMetadata || null,
+    p_health_score: input.healthScoreAssessment || null,
+    p_litter_items: input.litterItems || null,
+    p_litter_weight_kg: input.litterWeightKg || null,
+    p_survey_length_m: input.surveyLengthM || null,
+  };
+}
 
-      // Use atomic function to create observation + health assessment in one transaction
-      const { data, error } = await supabase.rpc('create_observation_with_health', {
-        p_mpa_id: input.mpaId,
-        p_user_id: input.userId || null,
-        p_report_type: input.reportType,
-        p_species_name: input.speciesName || null,
-        p_species_type: input.speciesType || null,
-        p_quantity: input.quantity || null,
-        p_notes: input.notes || null,
-        p_latitude: input.latitude,
-        p_longitude: input.longitude,
-        p_location_accuracy_m: input.locationAccuracy || null,
-        p_photo_url: input.photoUrl || null,
-        p_photo_metadata: input.photoMetadata || null,
-        p_health_score: input.healthScoreAssessment || null,
-        p_litter_items: input.litterItems || null,
-        p_litter_weight_kg: input.litterWeightKg || null,
-        p_survey_length_m: input.surveyLengthM || null,
-      });
-
-      if (error) {
-        console.error('Supabase RPC error:', error);
-        throw error;
-      }
-
-      return { id: data as string, synced: true };
-    } catch (error) {
-      captureError(error, { context: 'createObservation', mpaId: input.mpaId, userId: input.userId ?? '' });
-    }
-  }
-
-  // Fallback to IndexedDB
+/**
+ * Save observation to IndexedDB as a local fallback
+ */
+async function saveObservationLocally(input: CreateObservationInput): Promise<{ id: string; synced: boolean }> {
   const localId = await saveObservationLocal({
     mpaId: input.mpaId,
     reportType: input.reportType,
@@ -93,8 +79,124 @@ export async function createObservation(input: CreateObservationInput): Promise<
     healthScoreAssessment: input.healthScoreAssessment,
     userId: input.userId,
   });
-
   return { id: String(localId), synced: false };
+}
+
+/**
+ * Create a new observation
+ * Saves to Supabase if available, falls back to IndexedDB
+ */
+export async function createObservation(input: CreateObservationInput): Promise<{ id: string; synced: boolean }> {
+  if (!isSupabaseConfigured()) {
+    return saveObservationLocally(input);
+  }
+
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc('create_observation_with_health', buildRpcParams(input));
+
+    if (error) {
+      console.error('Supabase RPC error:', error);
+      throw error;
+    }
+
+    return { id: data as string, synced: true };
+  } catch (error) {
+    captureError(error, { context: 'createObservation', mpaId: input.mpaId, userId: input.userId ?? '' });
+  }
+
+  return saveObservationLocally(input);
+}
+
+/**
+ * Fetch remote observations from Supabase for an MPA
+ */
+async function fetchRemoteObservations(mpaId: string): Promise<ObservationWithProfile[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('observations')
+      .select(`
+        *,
+        profiles:user_id (
+          display_name,
+          avatar_url
+        ),
+        observation_verifications (count)
+      `)
+      .eq('mpa_id', mpaId)
+      .eq('is_draft', false)
+      .order('observed_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error('Supabase fetch error:', error);
+      return [];
+    }
+    if (!data) return [];
+
+    return (data as Array<ObservationWithProfile & {
+      observation_verifications?: Array<{ count: number }>;
+    }>).map(obs => {
+      const count = obs.observation_verifications?.[0]?.count ?? 0;
+      const { observation_verifications: _, ...rest } = obs;
+      return { ...rest, verification_count: count } as ObservationWithProfile;
+    });
+  } catch (error) {
+    console.error('Failed to fetch from Supabase:', error);
+    return [];
+  }
+}
+
+/**
+ * Convert a local (IndexedDB) observation to the Supabase row format
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function convertLocalObservation(local: any): ObservationWithProfile {
+  const timestamp = new Date(local.timestamp).toISOString();
+  return {
+    id: String(local.id),
+    user_id: local.userId || null,
+    mpa_id: local.mpaId,
+    report_type: local.reportType,
+    species_name: local.speciesName || null,
+    species_type: null,
+    quantity: local.quantity || null,
+    notes: local.notes || null,
+    latitude: local.location.lat,
+    longitude: local.location.lng,
+    location_accuracy_m: local.location.accuracy || null,
+    location_manually_entered: local.location.manuallyEntered || false,
+    photo_url: local.photo as string || null,
+    photo_metadata: null,
+    health_score_assessment: local.healthScoreAssessment || null,
+    is_draft: local.isDraft || false,
+    synced_at: null,
+    observed_at: timestamp,
+    created_at: timestamp,
+    updated_at: timestamp,
+    quality_tier: determineInitialTier(local.photo as string || null, local.location?.lat ?? null, local.speciesName || null),
+    community_species_name: null,
+    litter_items: null,
+    litter_weight_kg: null,
+    survey_length_m: null,
+    profiles: null,
+  };
+}
+
+/**
+ * Fetch unsynced local observations for an MPA
+ */
+async function fetchUnsyncedLocalObservations(mpaId: string): Promise<ObservationWithProfile[]> {
+  try {
+    const localObs = await getLocalObservations(mpaId);
+    return localObs.filter(obs => !obs.synced).map(convertLocalObservation);
+  } catch (error) {
+    console.error('Failed to fetch local observations:', error);
+    return [];
+  }
 }
 
 /**
@@ -102,87 +204,10 @@ export async function createObservation(input: CreateObservationInput): Promise<
  * Fetches from Supabase if available, includes local unsynced observations
  */
 export async function fetchObservationsForMPA(mpaId: string): Promise<ObservationWithProfile[]> {
-  const observations: ObservationWithProfile[] = [];
+  const remote = await fetchRemoteObservations(mpaId);
+  const local = await fetchUnsyncedLocalObservations(mpaId);
 
-  // Try Supabase first
-  if (isSupabaseConfigured()) {
-    try {
-      const supabase = createClient();
-
-      const { data, error } = await supabase
-        .from('observations')
-        .select(`
-          *,
-          profiles:user_id (
-            display_name,
-            avatar_url
-          ),
-          observation_verifications (count)
-        `)
-        .eq('mpa_id', mpaId)
-        .eq('is_draft', false)
-        .order('observed_at', { ascending: false })
-        .limit(50);
-
-      if (error) {
-        console.error('Supabase fetch error:', error);
-      } else if (data) {
-        // Map the nested count to a flat verification_count field
-        const mapped = (data as Array<ObservationWithProfile & {
-          observation_verifications?: Array<{ count: number }>;
-        }>).map(obs => {
-          const count = obs.observation_verifications?.[0]?.count ?? 0;
-          const { observation_verifications: _, ...rest } = obs;
-          return { ...rest, verification_count: count } as ObservationWithProfile;
-        });
-        observations.push(...mapped);
-      }
-    } catch (error) {
-      console.error('Failed to fetch from Supabase:', error);
-    }
-  }
-
-  // Also get local unsynced observations
-  try {
-    const localObs = await getLocalObservations(mpaId);
-    const unsyncedLocal = localObs.filter(obs => !obs.synced);
-
-    // Convert local observations to match Supabase format
-    for (const local of unsyncedLocal) {
-      observations.push({
-        id: String(local.id),
-        user_id: local.userId || null,
-        mpa_id: local.mpaId,
-        report_type: local.reportType,
-        species_name: local.speciesName || null,
-        species_type: null,
-        quantity: local.quantity || null,
-        notes: local.notes || null,
-        latitude: local.location.lat,
-        longitude: local.location.lng,
-        location_accuracy_m: local.location.accuracy || null,
-        location_manually_entered: local.location.manuallyEntered || false,
-        photo_url: local.photo as string || null,
-        photo_metadata: null,
-        health_score_assessment: local.healthScoreAssessment || null,
-        is_draft: local.isDraft || false,
-        synced_at: null,
-        observed_at: new Date(local.timestamp).toISOString(),
-        created_at: new Date(local.timestamp).toISOString(),
-        updated_at: new Date(local.timestamp).toISOString(),
-        quality_tier: determineInitialTier(local.photo as string || null, local.location?.lat ?? null, local.speciesName || null),
-        community_species_name: null,
-        litter_items: null,
-        litter_weight_kg: null,
-        survey_length_m: null,
-        profiles: null,
-      });
-    }
-  } catch (error) {
-    console.error('Failed to fetch local observations:', error);
-  }
-
-  // Sort by observed_at, newest first
+  const observations = [...remote, ...local];
   observations.sort((a, b) =>
     new Date(b.observed_at).getTime() - new Date(a.observed_at).getTime()
   );
@@ -341,6 +366,34 @@ export async function deleteObservation(observationId: string, userId: string): 
   }
 }
 
+const MAX_PHOTO_SIZE = 5 * 1024 * 1024; // 5MB
+
+/**
+ * Decode a base64 data URI into a Uint8Array
+ */
+function decodeBase64ToBytes(photoBase64: string): Uint8Array {
+  const base64Data = photoBase64.split(',')[1];
+  const byteCharacters = atob(base64Data);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  return new Uint8Array(byteNumbers);
+}
+
+/**
+ * Detect image format from magic bytes.
+ * Returns content type and extension, or null if unsupported.
+ */
+function detectImageFormat(bytes: Uint8Array): { contentType: string; extension: string } | null {
+  const isJPEG = bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF;
+  const isPNG = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47;
+
+  if (isJPEG) return { contentType: 'image/jpeg', extension: 'jpg' };
+  if (isPNG) return { contentType: 'image/png', extension: 'png' };
+  return null;
+}
+
 /**
  * Upload photo to Supabase Storage
  * Returns the public URL of the uploaded photo
@@ -349,64 +402,38 @@ export async function uploadObservationPhoto(
   photoBase64: string,
   userId: string
 ): Promise<string | null> {
-  if (!isSupabaseConfigured()) {
-    return null;
-  }
-
-  if (!isUUID(userId)) {
-    console.error('Invalid userId format for photo upload');
+  if (!isSupabaseConfigured() || !isUUID(userId)) {
+    if (!isUUID(userId)) console.error('Invalid userId format for photo upload');
     return null;
   }
 
   try {
-    const supabase = createClient();
+    const byteArray = decodeBase64ToBytes(photoBase64);
 
-    // Convert base64 to blob
-    const base64Data = photoBase64.split(',')[1];
-    const byteCharacters = atob(base64Data);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-
-    // Validate file size (max 5MB)
-    const MAX_FILE_SIZE = 5 * 1024 * 1024;
-    if (byteArray.length > MAX_FILE_SIZE) {
+    if (byteArray.length > MAX_PHOTO_SIZE) {
       console.error('Photo exceeds maximum file size of 5MB');
       return null;
     }
 
-    // Validate image magic bytes (JPEG: FF D8 FF, PNG: 89 50 4E 47)
-    const isJPEG = byteArray[0] === 0xFF && byteArray[1] === 0xD8 && byteArray[2] === 0xFF;
-    const isPNG = byteArray[0] === 0x89 && byteArray[1] === 0x50 && byteArray[2] === 0x4E && byteArray[3] === 0x47;
-
-    if (!isJPEG && !isPNG) {
+    const format = detectImageFormat(byteArray);
+    if (!format) {
       console.error('Invalid image format. Only JPEG and PNG are supported.');
       return null;
     }
 
-    const contentType = isJPEG ? 'image/jpeg' : 'image/png';
-    const extension = isJPEG ? 'jpg' : 'png';
-
-    const blob = new Blob([byteArray], { type: contentType });
-
-    // Generate unique filename
-    const filename = `${userId}/${Date.now()}.${extension}`;
+    const supabase = createClient();
+    const blob = new Blob([byteArray.buffer as ArrayBuffer], { type: format.contentType });
+    const filename = `${userId}/${Date.now()}.${format.extension}`;
 
     const { data, error } = await supabase.storage
       .from('observation-photos')
-      .upload(filename, blob, {
-        contentType,
-        upsert: false,
-      });
+      .upload(filename, blob, { contentType: format.contentType, upsert: false });
 
     if (error) {
       captureError(error, { context: 'uploadObservationPhoto', userId, action: 'storageUpload' });
       return null;
     }
 
-    // Get public URL
     const { data: urlData } = supabase.storage
       .from('observation-photos')
       .getPublicUrl(data.path);

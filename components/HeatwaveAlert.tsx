@@ -59,6 +59,83 @@ const categoryConfig: Record<HeatwaveCategory, {
   },
 };
 
+function getIntensityBarColor(ratio: number): string {
+  if (ratio < 1) return 'bg-green-500';
+  if (ratio < 2) return 'bg-yellow-500';
+  if (ratio < 3) return 'bg-orange-500';
+  return 'bg-red-500';
+}
+
+function TemperatureMetrics({ alert, config }: { alert: MarineHeatwaveAlert; config: typeof categoryConfig[HeatwaveCategory] }) {
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      <div className="text-center">
+        <p className="text-xs text-gray-500 mb-1">Current SST</p>
+        <p className={`text-lg font-bold ${alert.active ? config.textColor : 'text-gray-700'}`}>
+          {alert.current_sst !== null ? `${alert.current_sst}°C` : '--'}
+        </p>
+      </div>
+      <div className="text-center">
+        <p className="text-xs text-gray-500 mb-1">Expected</p>
+        <p className="text-lg font-bold text-gray-700">
+          {alert.climatological_mean !== null ? `${alert.climatological_mean}°C` : '--'}
+        </p>
+      </div>
+      <div className="text-center">
+        <p className="text-xs text-gray-500 mb-1">Anomaly</p>
+        <p className={`text-lg font-bold ${alert.anomaly && alert.anomaly > 0 ? 'text-red-600' : 'text-gray-700'}`}>
+          {alert.anomaly !== null ? `${alert.anomaly > 0 ? '+' : ''}${alert.anomaly}°C` : '--'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function IntensityBar({ ratio }: { ratio: number }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+        <span>Intensity</span>
+        <span>{ratio.toFixed(1)}x threshold</span>
+      </div>
+      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${Math.min(100, (ratio / 4) * 100)}%` }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          className={`h-full ${getIntensityBarColor(ratio)}`}
+        />
+      </div>
+      <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
+        <span>Normal</span>
+        <span>1x</span>
+        <span>2x</span>
+        <span>3x</span>
+        <span>4x+</span>
+      </div>
+    </div>
+  );
+}
+
+function Recommendations({ recommendations, iconColor }: { recommendations: string[]; iconColor: string }) {
+  return (
+    <div>
+      <h4 className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1">
+        <i className="fi fi-rr-clipboard-list text-gray-500" />
+        Monitoring Recommendations
+      </h4>
+      <ul className="space-y-1">
+        {recommendations.map((rec, index) => (
+          <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
+            <i className={`fi fi-rr-angle-right ${iconColor} mt-0.5 text-xs`} />
+            <span>{rec}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function HeatwaveAlert({ alert, className = '' }: HeatwaveAlertProps) {
   const config = categoryConfig[alert.category];
 
@@ -88,59 +165,12 @@ export function HeatwaveAlert({ alert, className = '' }: HeatwaveAlertProps) {
 
       {/* Content */}
       <div className="p-4 space-y-4">
-        {/* Temperature metrics */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="text-center">
-            <p className="text-xs text-gray-500 mb-1">Current SST</p>
-            <p className={`text-lg font-bold ${alert.active ? config.textColor : 'text-gray-700'}`}>
-              {alert.current_sst !== null ? `${alert.current_sst}°C` : '--'}
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs text-gray-500 mb-1">Expected</p>
-            <p className="text-lg font-bold text-gray-700">
-              {alert.climatological_mean !== null ? `${alert.climatological_mean}°C` : '--'}
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs text-gray-500 mb-1">Anomaly</p>
-            <p className={`text-lg font-bold ${alert.anomaly && alert.anomaly > 0 ? 'text-red-600' : 'text-gray-700'}`}>
-              {alert.anomaly !== null ? `${alert.anomaly > 0 ? '+' : ''}${alert.anomaly}°C` : '--'}
-            </p>
-          </div>
-        </div>
+        <TemperatureMetrics alert={alert} config={config} />
 
-        {/* Intensity bar */}
         {alert.intensity_ratio !== null && (
-          <div>
-            <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-              <span>Intensity</span>
-              <span>{alert.intensity_ratio.toFixed(1)}x threshold</span>
-            </div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.min(100, (alert.intensity_ratio / 4) * 100)}%` }}
-                transition={{ duration: 0.8, ease: 'easeOut' }}
-                className={`h-full ${
-                  alert.intensity_ratio < 1 ? 'bg-green-500' :
-                  alert.intensity_ratio < 2 ? 'bg-yellow-500' :
-                  alert.intensity_ratio < 3 ? 'bg-orange-500' :
-                  'bg-red-500'
-                }`}
-              />
-            </div>
-            <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
-              <span>Normal</span>
-              <span>1x</span>
-              <span>2x</span>
-              <span>3x</span>
-              <span>4x+</span>
-            </div>
-          </div>
+          <IntensityBar ratio={alert.intensity_ratio} />
         )}
 
-        {/* Duration estimate */}
         {alert.active && alert.duration_days !== null && (
           <div className="flex items-center gap-2 text-sm">
             <i className="fi fi-rr-clock text-gray-400" />
@@ -150,7 +180,6 @@ export function HeatwaveAlert({ alert, className = '' }: HeatwaveAlertProps) {
           </div>
         )}
 
-        {/* Ecological impact */}
         <div className={`p-3 rounded-lg ${alert.active ? 'bg-white/60' : 'bg-white/40'}`}>
           <h4 className="text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
             <i className="fi fi-rr-leaf text-gray-500" />
@@ -161,25 +190,10 @@ export function HeatwaveAlert({ alert, className = '' }: HeatwaveAlertProps) {
           </p>
         </div>
 
-        {/* Recommendations */}
         {alert.recommendations.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1">
-              <i className="fi fi-rr-clipboard-list text-gray-500" />
-              Monitoring Recommendations
-            </h4>
-            <ul className="space-y-1">
-              {alert.recommendations.map((rec, index) => (
-                <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
-                  <i className={`fi fi-rr-angle-right ${config.iconColor} mt-0.5 text-xs`} />
-                  <span>{rec}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <Recommendations recommendations={alert.recommendations} iconColor={config.iconColor} />
         )}
 
-        {/* Data source */}
         <p className="text-[10px] text-gray-400 pt-2 border-t border-gray-200">
           Data: Copernicus Marine Service SST Analysis. Classification: Hobday et al. 2018.
         </p>

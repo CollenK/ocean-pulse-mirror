@@ -91,117 +91,21 @@ interface WindFarmItemProps {
   farm: WindFarm;
 }
 
+function formatCapacity(capacity: number): string {
+  return capacity >= 1000
+    ? `${(capacity / 1000).toFixed(1)} GW`
+    : `${capacity} MW`;
+}
+
 function WindFarmItem({ farm }: WindFarmItemProps) {
   const statusColor = WIND_FARM_STATUS_COLORS[farm.status];
   const statusLabel = WIND_FARM_STATUS_LABELS[farm.status];
 
   return (
     <div className="bg-white border border-balean-gray-100 rounded-xl p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: `${statusColor}15` }}
-          >
-            <i className="fi fi-rr-wind text-lg" style={{ color: statusColor }} />
-          </div>
-          <div className="min-w-0">
-            <h4 className="font-semibold text-balean-navy text-sm truncate">
-              {farm.name}
-            </h4>
-            <p className="text-xs text-balean-gray-400 flex items-center gap-1 mt-0.5">
-              <i className="fi fi-rr-marker text-[10px]" />
-              {farm.country}
-            </p>
-          </div>
-        </div>
-        <span
-          className="text-[10px] font-medium px-2 py-1 rounded-full flex-shrink-0"
-          style={{
-            color: statusColor,
-            backgroundColor: `${statusColor}15`,
-          }}
-        >
-          {statusLabel}
-        </span>
-      </div>
-
-      {/* Details grid */}
-      <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-balean-gray-100">
-        {farm.capacity !== null && (
-          <div className="text-center">
-            <div className="text-sm font-bold text-balean-navy">
-              {farm.capacity >= 1000
-                ? `${(farm.capacity / 1000).toFixed(1)} GW`
-                : `${farm.capacity} MW`}
-            </div>
-            <div className="text-[10px] text-balean-gray-400">Capacity</div>
-          </div>
-        )}
-        {farm.numberOfTurbines !== null && (
-          <div className="text-center">
-            <div className="text-sm font-bold text-balean-navy">
-              {farm.numberOfTurbines}
-            </div>
-            <div className="text-[10px] text-balean-gray-400">Turbines</div>
-          </div>
-        )}
-        {farm.yearCommissioned !== null ? (
-          <div className="text-center">
-            <div className="text-sm font-bold text-balean-navy">
-              {farm.yearCommissioned}
-            </div>
-            <div className="text-[10px] text-balean-gray-400">Year</div>
-          </div>
-        ) : farm.distanceToCoast !== null ? (
-          <div className="text-center">
-            <div className="text-sm font-bold text-balean-navy">
-              {farm.distanceToCoast.toFixed(0)} km
-            </div>
-            <div className="text-[10px] text-balean-gray-400">To Shore</div>
-          </div>
-        ) : null}
-      </div>
-
-      {/* OSPAR-enriched metadata */}
-      {(farm.operator || farm.foundation || farm.waterDepth || farm.hasEIA !== null) && (
-        <div className="mt-2 pt-2 border-t border-balean-gray-100 space-y-1">
-          {farm.operator && (
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-balean-gray-400">Operator</span>
-              <span className="text-[10px] text-balean-gray-600 font-medium">{farm.operator}</span>
-            </div>
-          )}
-          {farm.foundation && (
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-balean-gray-400">Foundation</span>
-              <span className="text-[10px] text-balean-gray-600">{farm.foundation}</span>
-            </div>
-          )}
-          {farm.waterDepth && (
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-balean-gray-400">Water Depth</span>
-              <span className="text-[10px] text-balean-gray-600">{farm.waterDepth}</span>
-            </div>
-          )}
-          {farm.hasEIA !== null && (
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-balean-gray-400">EIA Conducted</span>
-              <span className={`text-[10px] font-medium ${farm.hasEIA ? 'text-green-600' : 'text-red-500'}`}>
-                {farm.hasEIA ? 'Yes' : 'No'}
-              </span>
-            </div>
-          )}
-          {farm.deviceType && farm.deviceType !== 'wind turbine' && (
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-balean-gray-400">Type</span>
-              <span className="text-[10px] text-balean-gray-600 capitalize">{farm.deviceType}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Source badge */}
+      <WindFarmItemHeader farm={farm} statusColor={statusColor} statusLabel={statusLabel} />
+      <WindFarmStatsGrid farm={farm} />
+      <WindFarmMetadata farm={farm} />
       {farm.source === 'merged' && (
         <div className="mt-2 pt-2 border-t border-balean-gray-100">
           <div className="flex items-center gap-1">
@@ -210,6 +114,98 @@ function WindFarmItem({ farm }: WindFarmItemProps) {
             <span className="text-[9px] text-balean-gray-400 bg-balean-gray-50 px-1.5 py-0.5 rounded">OSPAR</span>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function WindFarmItemHeader({ farm, statusColor, statusLabel }: { farm: WindFarm; statusColor: string; statusLabel: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start gap-3 flex-1 min-w-0">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: `${statusColor}15` }}
+        >
+          <i className="fi fi-rr-wind text-lg" style={{ color: statusColor }} />
+        </div>
+        <div className="min-w-0">
+          <h4 className="font-semibold text-balean-navy text-sm truncate">
+            {farm.name}
+          </h4>
+          <p className="text-xs text-balean-gray-400 flex items-center gap-1 mt-0.5">
+            <i className="fi fi-rr-marker text-[10px]" />
+            {farm.country}
+          </p>
+        </div>
+      </div>
+      <span
+        className="text-[10px] font-medium px-2 py-1 rounded-full flex-shrink-0"
+        style={{ color: statusColor, backgroundColor: `${statusColor}15` }}
+      >
+        {statusLabel}
+      </span>
+    </div>
+  );
+}
+
+function WindFarmStatsGrid({ farm }: { farm: WindFarm }) {
+  return (
+    <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-balean-gray-100">
+      {farm.capacity !== null && (
+        <div className="text-center">
+          <div className="text-sm font-bold text-balean-navy">{formatCapacity(farm.capacity)}</div>
+          <div className="text-[10px] text-balean-gray-400">Capacity</div>
+        </div>
+      )}
+      {farm.numberOfTurbines !== null && (
+        <div className="text-center">
+          <div className="text-sm font-bold text-balean-navy">{farm.numberOfTurbines}</div>
+          <div className="text-[10px] text-balean-gray-400">Turbines</div>
+        </div>
+      )}
+      {farm.yearCommissioned !== null ? (
+        <div className="text-center">
+          <div className="text-sm font-bold text-balean-navy">{farm.yearCommissioned}</div>
+          <div className="text-[10px] text-balean-gray-400">Year</div>
+        </div>
+      ) : farm.distanceToCoast !== null ? (
+        <div className="text-center">
+          <div className="text-sm font-bold text-balean-navy">{farm.distanceToCoast.toFixed(0)} km</div>
+          <div className="text-[10px] text-balean-gray-400">To Shore</div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MetadataRow({ label, value, className = 'text-balean-gray-600' }: { label: string; value: string; className?: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-[10px] text-balean-gray-400">{label}</span>
+      <span className={`text-[10px] ${className}`}>{value}</span>
+    </div>
+  );
+}
+
+function WindFarmMetadata({ farm }: { farm: WindFarm }) {
+  const hasMetadata = farm.operator || farm.foundation || farm.waterDepth || farm.hasEIA !== null;
+  if (!hasMetadata) return null;
+
+  return (
+    <div className="mt-2 pt-2 border-t border-balean-gray-100 space-y-1">
+      {farm.operator && <MetadataRow label="Operator" value={farm.operator} className="text-balean-gray-600 font-medium" />}
+      {farm.foundation && <MetadataRow label="Foundation" value={farm.foundation} />}
+      {farm.waterDepth && <MetadataRow label="Water Depth" value={farm.waterDepth} />}
+      {farm.hasEIA !== null && (
+        <MetadataRow
+          label="EIA Conducted"
+          value={farm.hasEIA ? 'Yes' : 'No'}
+          className={`font-medium ${farm.hasEIA ? 'text-green-600' : 'text-red-500'}`}
+        />
+      )}
+      {farm.deviceType && farm.deviceType !== 'wind turbine' && (
+        <MetadataRow label="Type" value={farm.deviceType} className="text-balean-gray-600 capitalize" />
       )}
     </div>
   );

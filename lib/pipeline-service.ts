@@ -184,73 +184,59 @@ async function fetchOBISEnvironmental(
     'chlorophyll': { key: 'chlorophyll', unit: 'mg/m\u00B3' },
   };
 
-  for (const record of records) {
-    if (!record.mof) continue;
-    for (const mof of record.mof) {
-      const typeLC = (mof.measurementType || '').toLowerCase();
-      for (const [keyword, info] of Object.entries(MEASUREMENT_TYPES)) {
-        if (typeLC.includes(keyword)) {
-          const val = parseFloat(mof.measurementValue);
-          if (!isNaN(val)) {
-            if (!parameters[info.key]) {
-              parameters[info.key] = { values: [], unit: info.unit };
-            }
-            parameters[info.key].values.push(val);
-          }
-        }
-      }
+  // Flatten all MOF entries from all records
+  const mofEntries = records.flatMap(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (record: any) => (record.mof || []).map((mof: any) => mof)
+  );
+
+  for (const mof of mofEntries) {
+    const typeLC = (mof.measurementType || '').toLowerCase();
+    const matched = Object.entries(MEASUREMENT_TYPES).find(([keyword]) => typeLC.includes(keyword));
+    if (!matched) continue;
+
+    const [, info] = matched;
+    const val = parseFloat(mof.measurementValue);
+    if (isNaN(val)) continue;
+
+    if (!parameters[info.key]) {
+      parameters[info.key] = { values: [], unit: info.unit };
     }
+    parameters[info.key].values.push(val);
   }
 
   return { parameters };
 }
 
-/** Process environmental data into summary format */
-function processEnvironmentalSummary(
-  rawParams: Record<string, { values: number[]; unit: string }>
-) {
-  const parameters = [];
-  const anomalies = [];
+const ENV_THRESHOLDS: Record<string, { min: number; max: number }> = {
+  temperature: { min: -2, max: 35 },
+  salinity: { min: 0, max: 45 },
+  pH: { min: 7.5, max: 8.5 },
+  oxygen: { min: 2, max: 10 },
+  chlorophyll: { min: 0, max: 30 },
+};
 
-  const THRESHOLDS: Record<string, { min: number; max: number }> = {
-    temperature: { min: -2, max: 35 },
-    salinity: { min: 0, max: 45 },
-    pH: { min: 7.5, max: 8.5 },
-    oxygen: { min: 2, max: 10 },
-    chlorophyll: { min: 0, max: 30 },
-  };
+function classifyParameterStatus(name: string, current: number, avg: number, stdDev: number): string {
+  const threshold = ENV_THRESHOLDS[name];
+  if (!threshold) return 'normal';
+  if (current < threshold.min || current > threshold.max) return 'critical';
+  if (stdDev > 0 && Math.abs(current - avg) / stdDev > 2) return 'warning';
+  return 'normal';
+}
 
-  for (const [name, data] of Object.entries(rawParams)) {
-    if (data.values.length === 0) continue;
+function processParameterData(name: string, data: { values: number[]; unit: string }) {
+  const sorted = [...data.values].sort((a, b) => a - b);
+  const avg = data.values.reduce((a, b) => a + b, 0) / data.values.length;
+  const min = sorted[0];
+  const max = sorted[sorted.length - 1];
+  const current = sorted[sorted.length - 1];
+  const stdDev = Math.sqrt(
+    data.values.reduce((sum, v) => sum + Math.pow(v - avg, 2), 0) / data.values.length
+  );
+  const status = classifyParameterStatus(name, current, avg, stdDev);
 
-    const sorted = [...data.values].sort((a, b) => a - b);
-    const avg = data.values.reduce((a, b) => a + b, 0) / data.values.length;
-    const min = sorted[0];
-    const max = sorted[sorted.length - 1];
-    const current = sorted[sorted.length - 1]; // most recent proxy
-
-    // Z-score anomaly detection
-    const stdDev = Math.sqrt(
-      data.values.reduce((sum, v) => sum + Math.pow(v - avg, 2), 0) / data.values.length
-    );
-
-    const threshold = THRESHOLDS[name];
-    let status = 'normal';
-    if (threshold) {
-      if (current < threshold.min || current > threshold.max) status = 'critical';
-      else if (stdDev > 0 && Math.abs(current - avg) / stdDev > 2) status = 'warning';
-    }
-
-    if (status !== 'normal') {
-      anomalies.push({
-        parameter: name,
-        value: current,
-        expected: avg,
-        severity: status,
-      });
-    }
-
-    parameters.push({
+  return {
+    param: {
       name,
       type: name,
       currentValue: Math.round(current * 100) / 100,
@@ -261,13 +247,27 @@ function processEnvironmentalSummary(
       trend: 'stable',
       dataPoints: data.values.length,
       status,
-    });
+    },
+    anomaly: status !== 'normal' ? { parameter: name, value: current, expected: avg, severity: status } : null,
+  };
+}
+
+/** Process environmental data into summary format */
+function processEnvironmentalSummary(
+  rawParams: Record<string, { values: number[]; unit: string }>
+) {
+  const parameters = [];
+  const anomalies = [];
+
+  for (const [name, data] of Object.entries(rawParams)) {
+    if (data.values.length === 0) continue;
+    const { param, anomaly } = processParameterData(name, data);
+    parameters.push(param);
+    if (anomaly) anomalies.push(anomaly);
   }
 
-  // Calculate habitat quality score (0-100)
-  let qualityScore = 70; // baseline
-  const anomalyPenalty = anomalies.length * 10;
-  qualityScore = Math.max(0, qualityScore - anomalyPenalty);
+  let qualityScore = 70 - anomalies.length * 10;
+  qualityScore = Math.max(0, qualityScore);
   if (parameters.length >= 4) qualityScore = Math.min(100, qualityScore + 10);
 
   return {

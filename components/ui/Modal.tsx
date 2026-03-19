@@ -46,20 +46,7 @@ const variantClasses: Record<ModalVariant, { container: string; header: string; 
   },
 };
 
-export function Modal({
-  isOpen,
-  onClose,
-  title,
-  subtitle,
-  children,
-  size = 'md',
-  variant = 'default',
-  showCloseButton = true,
-  closeOnBackdrop = true,
-  closeOnEscape = true,
-  footer,
-}: ModalProps) {
-  // Close on escape key
+function useModalEscape(isOpen: boolean, onClose: () => void, closeOnEscape: boolean) {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (closeOnEscape && e.key === 'Escape') {
       onClose();
@@ -76,12 +63,68 @@ export function Modal({
       document.body.style.overflow = 'unset';
     };
   }, [isOpen, handleKeyDown]);
+}
 
-  const handleBackdropClick = () => {
-    if (closeOnBackdrop) {
-      onClose();
-    }
-  };
+interface ModalHeaderProps {
+  title?: string;
+  subtitle?: string;
+  variant: ModalVariant;
+  showCloseButton: boolean;
+  onClose: () => void;
+  styles: { header: string; title: string };
+}
+
+function ModalHeader({ title, subtitle, variant, showCloseButton, onClose, styles }: ModalHeaderProps) {
+  if (!title && !showCloseButton) return null;
+
+  return (
+    <div className={`flex items-start justify-between px-6 py-4 ${styles.header}`}>
+      <div className="flex-1 pr-4">
+        {title && (
+          <h2 id="modal-title" className={`text-xl font-semibold ${styles.title}`}>
+            {title}
+          </h2>
+        )}
+        {subtitle && (
+          <p className={`mt-1 text-sm ${variant === 'navy' ? 'text-white/70' : 'text-balean-gray-500'}`}>
+            {subtitle}
+          </p>
+        )}
+      </div>
+      {showCloseButton && (
+        <button
+          onClick={onClose}
+          className={`
+            w-9 h-9 rounded-xl flex items-center justify-center
+            transition-all duration-200
+            ${variant === 'navy'
+              ? 'bg-white/10 hover:bg-white/20 text-white'
+              : 'bg-balean-gray-100 hover:bg-balean-gray-200 text-balean-gray-500 hover:text-balean-navy'
+            }
+          `}
+          aria-label="Close modal"
+        >
+          <i className="fi fi-rr-cross-small text-lg" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function Modal({
+  isOpen,
+  onClose,
+  title,
+  subtitle,
+  children,
+  size = 'md',
+  variant = 'default',
+  showCloseButton = true,
+  closeOnBackdrop = true,
+  closeOnEscape = true,
+  footer,
+}: ModalProps) {
+  useModalEscape(isOpen, onClose, closeOnEscape);
 
   const styles = variantClasses[variant];
 
@@ -89,18 +132,16 @@ export function Modal({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 bg-balean-navy/60 backdrop-blur-sm z-[60]"
-            onClick={handleBackdropClick}
+            onClick={closeOnBackdrop ? onClose : undefined}
             aria-hidden="true"
           />
 
-          {/* Modal */}
           <motion.div
             role="dialog"
             aria-modal="true"
@@ -117,49 +158,19 @@ export function Modal({
               ${styles.container}
             `}
           >
-            {/* Header */}
-            {(title || showCloseButton) && (
-              <div className={`flex items-start justify-between px-6 py-4 ${styles.header}`}>
-                <div className="flex-1 pr-4">
-                  {title && (
-                    <h2
-                      id="modal-title"
-                      className={`text-xl font-semibold ${styles.title}`}
-                    >
-                      {title}
-                    </h2>
-                  )}
-                  {subtitle && (
-                    <p className={`mt-1 text-sm ${variant === 'navy' ? 'text-white/70' : 'text-balean-gray-500'}`}>
-                      {subtitle}
-                    </p>
-                  )}
-                </div>
-                {showCloseButton && (
-                  <button
-                    onClick={onClose}
-                    className={`
-                      w-9 h-9 rounded-xl flex items-center justify-center
-                      transition-all duration-200
-                      ${variant === 'navy'
-                        ? 'bg-white/10 hover:bg-white/20 text-white'
-                        : 'bg-balean-gray-100 hover:bg-balean-gray-200 text-balean-gray-500 hover:text-balean-navy'
-                      }
-                    `}
-                    aria-label="Close modal"
-                  >
-                    <i className="fi fi-rr-cross-small text-lg" />
-                  </button>
-                )}
-              </div>
-            )}
+            <ModalHeader
+              title={title}
+              subtitle={subtitle}
+              variant={variant}
+              showCloseButton={showCloseButton}
+              onClose={onClose}
+              styles={styles}
+            />
 
-            {/* Content */}
             <div className="flex-1 px-6 py-4 overflow-y-auto">
               {children}
             </div>
 
-            {/* Footer */}
             {footer && (
               <div className={`px-6 py-4 ${styles.header}`}>
                 {footer}

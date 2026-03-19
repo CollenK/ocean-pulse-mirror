@@ -8,6 +8,88 @@ import { Icon } from '@/components/Icon';
 import { getSpeciesDetailsCached } from '@/lib/species-service';
 import { formatTaxonomy, getCommonName, OBISSpecies } from '@/lib/obis-client';
 
+const TAXONOMY_RANKS: ReadonlyArray<{ key: string; label: string; italic?: boolean }> = [
+  { key: 'kingdom', label: 'Kingdom' },
+  { key: 'phylum', label: 'Phylum' },
+  { key: 'class', label: 'Class' },
+  { key: 'order', label: 'Order' },
+  { key: 'family', label: 'Family' },
+  { key: 'genus', label: 'Genus', italic: true },
+  { key: 'species', label: 'Species', italic: true },
+];
+
+function SpeciesHeroHeader({ species, onBack }: { species: OBISSpecies; onBack: () => void }) {
+  const commonName = getCommonName(species);
+  return (
+    <div className="bg-gradient-to-br from-balean-cyan to-balean-navy text-white p-6 pb-12">
+      <div className="max-w-screen-xl mx-auto">
+        <Button onClick={onBack} variant="ghost" size="sm" className="mb-4 text-white border-white hover:bg-white/20">
+          &#8592; Back
+        </Button>
+        <div className="mb-4"><Icon name="fish" className="text-6xl" /></div>
+        <h1 className="text-3xl font-bold mb-2">{commonName}</h1>
+        <p className="text-lg opacity-90 mb-4" style={species.vernacularName ? { fontStyle: 'italic' } : undefined}>
+          {species.vernacularName ? species.scientificName : 'Scientific Name'}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {species.taxonRank && <Badge variant="info" size="md">{species.taxonRank}</Badge>}
+          {species.kingdom && <Badge variant="info" size="md">{species.kingdom}</Badge>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TaxonomyCard({ species }: { species: OBISSpecies }) {
+  const taxonomy = formatTaxonomy(species);
+  return (
+    <Card className="mb-6 shadow-lg">
+      <CardTitle>Taxonomy</CardTitle>
+      <CardContent>
+        <div className="space-y-3">
+          {TAXONOMY_RANKS.map(({ key, label, italic }, i) => {
+            const value = species[key as keyof OBISSpecies] as string | undefined;
+            if (!value) return null;
+            const isLast = i === TAXONOMY_RANKS.length - 1 || !TAXONOMY_RANKS.slice(i + 1).some(r => species[r.key as keyof OBISSpecies]);
+            return (
+              <div key={key} className={`flex justify-between ${isLast ? '' : 'border-b pb-2'}`}>
+                <span className="text-balean-gray-500">{label}:</span>
+                <span className={`font-semibold ${italic ? 'italic' : ''}`}>{value}</span>
+              </div>
+            );
+          })}
+        </div>
+        {taxonomy && (
+          <div className="mt-4 p-3 bg-balean-cyan/10 rounded-lg">
+            <p className="text-sm text-balean-navy"><strong>Classification:</strong> {taxonomy}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecordsCard({ records }: { records: number }) {
+  return (
+    <Card className="mb-6">
+      <CardTitle>Observation Data</CardTitle>
+      <CardContent>
+        <div className="text-center p-4">
+          <p className="text-4xl font-bold text-balean-cyan mb-2">{records.toLocaleString()}</p>
+          <p className="text-balean-gray-500">Recorded Observations in OBIS Database</p>
+        </div>
+        <div className="mt-4 p-4 bg-balean-off-white rounded-lg">
+          <p className="text-sm text-balean-gray-600">
+            This species has been observed and documented {records.toLocaleString()} times
+            by researchers and citizen scientists around the world, contributing to our
+            understanding of marine biodiversity.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SpeciesDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -17,15 +99,8 @@ export default function SpeciesDetailPage() {
 
   useEffect(() => {
     const scientificName = decodeURIComponent(params.name as string);
-
     getSpeciesDetailsCached(scientificName)
-      .then((data) => {
-        if (data) {
-          setSpecies(data);
-        } else {
-          setError('Species not found');
-        }
-      })
+      .then((data) => { if (data) setSpecies(data); else setError('Species not found'); })
       .catch(() => setError('Failed to load species data'))
       .finally(() => setLoading(false));
   }, [params.name]);
@@ -34,13 +109,8 @@ export default function SpeciesDetailPage() {
     return (
       <main className="min-h-screen p-6 pb-24 bg-balean-off-white">
         <div className="max-w-screen-xl mx-auto">
-          <div className="mb-4">
-            <div className="h-10 w-32 bg-balean-gray-200 animate-pulse rounded" />
-          </div>
-          <MPACardSkeleton />
-          <div className="mt-4">
-            <MPACardSkeleton />
-          </div>
+          <div className="mb-4"><div className="h-10 w-32 bg-balean-gray-200 animate-pulse rounded" /></div>
+          <MPACardSkeleton /><div className="mt-4"><MPACardSkeleton /></div>
         </div>
       </main>
     );
@@ -50,15 +120,10 @@ export default function SpeciesDetailPage() {
     return (
       <main className="min-h-screen p-6 pb-24 bg-balean-off-white">
         <div className="max-w-screen-xl mx-auto">
-          <Card>
-            <CardTitle>Error</CardTitle>
+          <Card><CardTitle>Error</CardTitle>
             <CardContent>
-              <p className="text-balean-gray-500 mb-4">
-                {error || 'Species not found'}
-              </p>
-              <Button onClick={() => router.back()} variant="secondary">
-                ← Go Back
-              </Button>
+              <p className="text-balean-gray-500 mb-4">{error || 'Species not found'}</p>
+              <Button onClick={() => router.back()} variant="secondary">&#8592; Go Back</Button>
             </CardContent>
           </Card>
         </div>
@@ -66,140 +131,12 @@ export default function SpeciesDetailPage() {
     );
   }
 
-  const commonName = getCommonName(species);
-  const taxonomy = formatTaxonomy(species);
-
   return (
     <main className="min-h-screen pb-24 bg-balean-off-white">
-      {/* Hero Header */}
-      <div className="bg-gradient-to-br from-balean-cyan to-balean-navy text-white p-6 pb-12">
-        <div className="max-w-screen-xl mx-auto">
-          <Button
-            onClick={() => router.back()}
-            variant="ghost"
-            size="sm"
-            className="mb-4 text-white border-white hover:bg-white/20"
-          >
-            ← Back
-          </Button>
-
-          <div className="mb-4"><Icon name="fish" className="text-6xl" /></div>
-
-          <h1 className="text-3xl font-bold mb-2">{commonName}</h1>
-
-          {species.vernacularName && (
-            <p className="text-lg opacity-90 italic mb-4">
-              {species.scientificName}
-            </p>
-          )}
-
-          {!species.vernacularName && (
-            <p className="text-lg opacity-90 mb-4">
-              Scientific Name
-            </p>
-          )}
-
-          <div className="flex flex-wrap gap-2">
-            {species.taxonRank && (
-              <Badge variant="info" size="md">
-                {species.taxonRank}
-              </Badge>
-            )}
-            {species.kingdom && (
-              <Badge variant="info" size="md">
-                {species.kingdom}
-              </Badge>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
+      <SpeciesHeroHeader species={species} onBack={() => router.back()} />
       <div className="max-w-screen-xl mx-auto px-6 -mt-6">
-        {/* Taxonomy Card */}
-        <Card className="mb-6 shadow-lg">
-          <CardTitle>Taxonomy</CardTitle>
-          <CardContent>
-            <div className="space-y-3">
-              {species.kingdom && (
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-balean-gray-500">Kingdom:</span>
-                  <span className="font-semibold">{species.kingdom}</span>
-                </div>
-              )}
-              {species.phylum && (
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-balean-gray-500">Phylum:</span>
-                  <span className="font-semibold">{species.phylum}</span>
-                </div>
-              )}
-              {species.class && (
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-balean-gray-500">Class:</span>
-                  <span className="font-semibold">{species.class}</span>
-                </div>
-              )}
-              {species.order && (
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-balean-gray-500">Order:</span>
-                  <span className="font-semibold">{species.order}</span>
-                </div>
-              )}
-              {species.family && (
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-balean-gray-500">Family:</span>
-                  <span className="font-semibold">{species.family}</span>
-                </div>
-              )}
-              {species.genus && (
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-balean-gray-500">Genus:</span>
-                  <span className="font-semibold italic">{species.genus}</span>
-                </div>
-              )}
-              {species.species && (
-                <div className="flex justify-between">
-                  <span className="text-balean-gray-500">Species:</span>
-                  <span className="font-semibold italic">{species.species}</span>
-                </div>
-              )}
-            </div>
-
-            {taxonomy && (
-              <div className="mt-4 p-3 bg-balean-cyan/10 rounded-lg">
-                <p className="text-sm text-balean-navy">
-                  <strong>Classification:</strong> {taxonomy}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Records Card */}
-        {species.records !== undefined && species.records > 0 && (
-          <Card className="mb-6">
-            <CardTitle>Observation Data</CardTitle>
-            <CardContent>
-              <div className="text-center p-4">
-                <p className="text-4xl font-bold text-balean-cyan mb-2">
-                  {species.records.toLocaleString()}
-                </p>
-                <p className="text-balean-gray-500">
-                  Recorded Observations in OBIS Database
-                </p>
-              </div>
-              <div className="mt-4 p-4 bg-balean-off-white rounded-lg">
-                <p className="text-sm text-balean-gray-600">
-                  This species has been observed and documented {species.records.toLocaleString()} times
-                  by researchers and citizen scientists around the world, contributing to our
-                  understanding of marine biodiversity.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Info Card */}
+        <TaxonomyCard species={species} />
+        {species.records !== undefined && species.records > 0 && <RecordsCard records={species.records} />}
         <Card className="mb-6">
           <CardTitle>About This Species</CardTitle>
           <CardContent>
@@ -212,36 +149,22 @@ export default function SpeciesDetailPage() {
                   for science, conservation and sustainable development.
                 </p>
               </div>
-
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-balean-gray-500">Learn more:</span>
-                <a
-                  href={`https://obis.org/taxon/${species.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-balean-cyan hover:text-balean-cyan-dark underline"
-                >
-                  View on OBIS →
+                <a href={`https://obis.org/taxon/${species.id}`} target="_blank" rel="noopener noreferrer" className="text-balean-cyan hover:text-balean-cyan-dark underline">
+                  View on OBIS &#8594;
                 </a>
               </div>
             </div>
           </CardContent>
         </Card>
-
-        {/* Actions */}
         <Card>
           <CardTitle>Actions</CardTitle>
           <CardContent>
             <div className="space-y-3">
-              <Button fullWidth variant="secondary" disabled>
-                <Icon name="marker" className="mr-2" /> View Distribution Map (Coming Soon)
-              </Button>
-              <Button fullWidth variant="secondary" disabled>
-                <Icon name="chart-line" className="mr-2" /> View Population Trends (Coming Soon)
-              </Button>
-              <Button fullWidth variant="ghost">
-                <Icon name="share" className="mr-2" /> Share Species Info
-              </Button>
+              <Button fullWidth variant="secondary" disabled><Icon name="marker" className="mr-2" /> View Distribution Map (Coming Soon)</Button>
+              <Button fullWidth variant="secondary" disabled><Icon name="chart-line" className="mr-2" /> View Population Trends (Coming Soon)</Button>
+              <Button fullWidth variant="ghost"><Icon name="share" className="mr-2" /> Share Species Info</Button>
             </div>
           </CardContent>
         </Card>

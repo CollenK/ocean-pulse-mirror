@@ -50,6 +50,41 @@ const inputVariants: Record<InputVariant, { base: string; error: string }> = {
   },
 };
 
+const BASE_INPUT_STYLES = `
+  w-full rounded-xl
+  text-balean-navy placeholder:text-balean-gray-400
+  transition-all duration-200
+  focus:outline-none
+  disabled:opacity-50 disabled:cursor-not-allowed
+`;
+
+function getVariantStyles(variant: InputVariant, error?: string): string {
+  return error ? inputVariants[variant].error : inputVariants[variant].base;
+}
+
+function useFieldIds(id?: string, error?: string, helperText?: string) {
+  const generatedId = useId();
+  const fieldId = id || generatedId;
+  const errorId = error ? `${fieldId}-error` : undefined;
+  const helperId = helperText ? `${fieldId}-helper` : undefined;
+  return { fieldId, errorId, helperId };
+}
+
+function FieldFeedback({ error, errorId, helperText, helperId }: { error?: string; errorId?: string; helperText?: string; helperId?: string }) {
+  if (error) {
+    return (
+      <p id={errorId} className="mt-2 text-sm text-critical flex items-center gap-1.5" role="alert">
+        <i className="fi fi-rr-exclamation text-xs" />
+        {error}
+      </p>
+    );
+  }
+  if (helperText) {
+    return <p id={helperId} className="mt-2 text-sm text-balean-gray-400">{helperText}</p>;
+  }
+  return null;
+}
+
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({
     label,
@@ -65,34 +100,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     id,
     ...props
   }, ref) => {
-    const generatedId = useId();
-    const inputId = id || generatedId;
-    const errorId = error ? `${inputId}-error` : undefined;
-    const helperId = helperText ? `${inputId}-helper` : undefined;
-
-    const baseStyles = `
-      w-full rounded-xl
-      text-balean-navy placeholder:text-balean-gray-400
-      transition-all duration-200
-      focus:outline-none
-      disabled:opacity-50 disabled:cursor-not-allowed
-    `;
-
-    const variantStyles = error
-      ? inputVariants[variant].error
-      : inputVariants[variant].base;
-
+    const { fieldId, errorId, helperId } = useFieldIds(id, error, helperText);
+    const variantStyles = getVariantStyles(variant, error);
     const widthStyles = fullWidth ? 'w-full' : '';
-    const paddingLeft = leftIcon ? 'pl-11' : '';
-    const paddingRight = rightIcon ? 'pr-11' : '';
 
     return (
       <div className={`${widthStyles} ${className}`}>
         {label && (
-          <label
-            htmlFor={inputId}
-            className="block mb-2 text-sm font-semibold text-balean-navy"
-          >
+          <label htmlFor={fieldId} className="block mb-2 text-sm font-semibold text-balean-navy">
             {label}
           </label>
         )}
@@ -106,13 +121,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
           <input
             ref={ref}
-            id={inputId}
+            id={fieldId}
             className={`
-              ${baseStyles}
+              ${BASE_INPUT_STYLES}
               ${variantStyles}
               ${inputSizes[size]}
-              ${paddingLeft}
-              ${paddingRight}
+              ${leftIcon ? 'pl-11' : ''}
+              ${rightIcon ? 'pr-11' : ''}
               touch-target
             `}
             aria-invalid={error ? 'true' : 'false'}
@@ -137,22 +152,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
         </div>
 
-        {error && (
-          <p
-            id={errorId}
-            className="mt-2 text-sm text-critical flex items-center gap-1.5"
-            role="alert"
-          >
-            <i className="fi fi-rr-exclamation text-xs" />
-            {error}
-          </p>
-        )}
-
-        {helperText && !error && (
-          <p id={helperId} className="mt-2 text-sm text-balean-gray-400">
-            {helperText}
-          </p>
-        )}
+        <FieldFeedback error={error} errorId={errorId} helperText={helperText} helperId={helperId} />
       </div>
     );
   }
@@ -192,42 +192,24 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     rows = 4,
     ...props
   }, ref) => {
-    const generatedId = useId();
-    const textareaId = id || generatedId;
-    const errorId = error ? `${textareaId}-error` : undefined;
-    const helperId = helperText ? `${textareaId}-helper` : undefined;
-
-    const baseStyles = `
-      w-full rounded-xl
-      text-balean-navy placeholder:text-balean-gray-400
-      transition-all duration-200
-      focus:outline-none
-      disabled:opacity-50 disabled:cursor-not-allowed
-    `;
-
-    const variantStyles = error
-      ? inputVariants[variant].error
-      : inputVariants[variant].base;
-
+    const { fieldId, errorId, helperId } = useFieldIds(id, error, helperText);
+    const variantStyles = getVariantStyles(variant, error);
     const widthStyles = fullWidth ? 'w-full' : '';
 
     return (
       <div className={`${widthStyles} ${className}`}>
         {label && (
-          <label
-            htmlFor={textareaId}
-            className="block mb-2 text-sm font-semibold text-balean-navy"
-          >
+          <label htmlFor={fieldId} className="block mb-2 text-sm font-semibold text-balean-navy">
             {label}
           </label>
         )}
 
         <textarea
           ref={ref}
-          id={textareaId}
+          id={fieldId}
           rows={rows}
           className={`
-            ${baseStyles}
+            ${BASE_INPUT_STYLES}
             ${variantStyles}
             ${inputSizes[size]}
             ${resizeStyles[resize]}
@@ -237,22 +219,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           {...props}
         />
 
-        {error && (
-          <p
-            id={errorId}
-            className="mt-2 text-sm text-critical flex items-center gap-1.5"
-            role="alert"
-          >
-            <i className="fi fi-rr-exclamation text-xs" />
-            {error}
-          </p>
-        )}
-
-        {helperText && !error && (
-          <p id={helperId} className="mt-2 text-sm text-balean-gray-400">
-            {helperText}
-          </p>
-        )}
+        <FieldFeedback error={error} errorId={errorId} helperText={helperText} helperId={helperId} />
       </div>
     );
   }

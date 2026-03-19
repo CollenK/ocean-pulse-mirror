@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import type { User, Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Profile } from '@/types/supabase';
@@ -23,171 +23,131 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const EMPTY_AUTH_STATE: AuthState = {
+  user: null,
+  profile: null,
+  session: null,
+  loading: false,
+  isAuthenticated: false,
+  isDemoUser: false,
+};
+
+function buildAuthState(session: Session): AuthState {
+  return {
+    user: session.user,
+    profile: null,
+    session,
+    loading: false,
+    isAuthenticated: true,
+    isDemoUser: checkIsDemoUser(session.user.id, session.user.email),
+  };
+}
+
+async function fetchProfile(supabase: SupabaseClient<Database>, userId: string): Promise<Profile | null> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error) return null;
+    return data as Profile;
+  } catch {
+    return null;
+  }
+}
+
+function fetchProfileInBackground(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  mounted: { current: boolean },
+  setState: React.Dispatch<React.SetStateAction<AuthState>>
+) {
+  fetchProfile(supabase, userId).then(profile => {
+    if (mounted.current && profile) {
+      setState(prev => ({ ...prev, profile }));
+    }
+  }).catch(() => {});
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
-    user: null,
-    profile: null,
-    session: null,
+    ...EMPTY_AUTH_STATE,
     loading: true,
-    isAuthenticated: false,
-    isDemoUser: false,
   });
 
   const supabaseRef = useRef<SupabaseClient<Database> | null>(null);
 
-  // Initialize Supabase client and auth state
   useEffect(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    // If Supabase isn't configured, don't show loading
     if (!supabaseUrl || !supabaseKey) {
-      setState({
-        user: null,
-        profile: null,
-        session: null,
-        loading: false,
-        isAuthenticated: false,
-        isDemoUser: false,
-      });
+      setState(EMPTY_AUTH_STATE);
       return;
     }
 
-    // Create client if not already created
     if (!supabaseRef.current) {
       supabaseRef.current = createBrowserClient<Database>(supabaseUrl, supabaseKey);
     }
 
     const supabase = supabaseRef.current;
-    let mounted = true;
+    const mounted = { current: true };
 
-    // Fetch profile helper
-    const fetchProfile = async (userId: string): Promise<Profile | null> => {
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
-
-        if (error) return null;
-        return data as Profile;
-      } catch {
-        return null;
-      }
-    };
-
-    // Initialize auth
     const initAuth = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error('getSession error:', error);
-        }
-
-        if (!mounted) return;
+        if (error) console.error('getSession error:', error);
+        if (!mounted.current) return;
 
         if (session?.user) {
-          // Update state immediately with user
-          setState({
-            user: session.user,
-            profile: null,
-            session,
-            loading: false,
-            isAuthenticated: true,
-            isDemoUser: checkIsDemoUser(session.user.id, session.user.email),
-          });
-
-          // Fetch profile in background
-          fetchProfile(session.user.id).then(profile => {
-            if (mounted && profile) {
-              setState(prev => ({ ...prev, profile }));
-            }
-          }).catch(() => {});
+          setState(buildAuthState(session));
+          fetchProfileInBackground(supabase, session.user.id, mounted, setState);
         } else {
-          setState({
-            user: null,
-            profile: null,
-            session: null,
-            loading: false,
-            isAuthenticated: false,
-            isDemoUser: false,
-          });
+          setState(EMPTY_AUTH_STATE);
         }
       } catch (error) {
         console.error('initAuth error:', error);
-        if (mounted) {
-          setState({
-            user: null,
-            profile: null,
-            session: null,
-            loading: false,
-            isAuthenticated: false,
-            isDemoUser: false,
-          });
-        }
+        if (mounted.current) setState(EMPTY_AUTH_STATE);
       }
     };
 
     initAuth();
 
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (!mounted) return;
+        if (!mounted.current) return;
 
-        if (session?.user) {
-          // Update state immediately with user, then fetch profile in background
-          setState({
-            user: session.user,
-            profile: null,
-            session,
-            loading: false,
-            isAuthenticated: true,
-            isDemoUser: checkIsDemoUser(session.user.id, session.user.email),
-          });
-
-          // On fresh sign-in, redirect to the stored path (if any)
-          if (event === 'SIGNED_IN') {
-            const redirectPath = consumeAuthRedirect();
-            if (redirectPath && redirectPath !== window.location.pathname) {
-              window.location.replace(redirectPath);
-            }
-          }
-
-          // Fetch profile in background (don't block auth)
-          fetchProfile(session.user.id).then(profile => {
-            if (mounted && profile) {
-              setState(prev => ({ ...prev, profile }));
-            }
-          }).catch(() => {});
-        } else {
-          setState({
-            user: null,
-            profile: null,
-            session: null,
-            loading: false,
-            isAuthenticated: false,
-            isDemoUser: false,
-          });
+        if (!session?.user) {
+          setState(EMPTY_AUTH_STATE);
+          return;
         }
+
+        setState(buildAuthState(session));
+
+        if (event === 'SIGNED_IN') {
+          const redirectPath = consumeAuthRedirect();
+          if (redirectPath && redirectPath !== window.location.pathname) {
+            window.location.replace(redirectPath);
+          }
+        }
+
+        fetchProfileInBackground(supabase, session.user.id, mounted, setState);
       }
     );
 
     return () => {
-      mounted = false;
+      mounted.current = false;
       subscription.unsubscribe();
     };
   }, []);
 
-  // Sign out
   const signOut = useCallback(async () => {
     if (!supabaseRef.current) return;
     await supabaseRef.current.auth.signOut();
   }, []);
 
-  // Update profile
   const updateProfile = useCallback(async (updates: Partial<Profile>) => {
     if (!supabaseRef.current) return { error: new Error('Supabase not configured') };
     if (!state.user) return { error: new Error('Not authenticated') };

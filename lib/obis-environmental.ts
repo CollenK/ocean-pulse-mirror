@@ -87,6 +87,105 @@ function classifyMeasurement(measurementType: string): keyof typeof PRIORITY_MEA
 }
 
 /**
+ * Extract standard environmental fields (bathymetry, sst, sss, depth) from an OBIS record
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractStandardFields(record: any, recordId: string, eventDate: string): EnvironmentalMeasurement[] {
+  const measurements: EnvironmentalMeasurement[] = [];
+  const base = { occurrenceID: recordId, eventID: record.eventID, measurementDeterminedDate: eventDate };
+
+  if (record.bathymetry != null) {
+    measurements.push({ ...base, measurementID: `${recordId}-bathymetry`, measurementType: 'Depth', measurementValue: record.bathymetry, measurementUnit: 'm', measurementMethod: 'bathymetry' });
+  }
+  if (record.sst != null) {
+    measurements.push({ ...base, measurementID: `${recordId}-sst`, measurementType: 'Sea surface temperature', measurementValue: record.sst, measurementUnit: '°C', measurementMethod: 'satellite' });
+  }
+  if (record.sss != null) {
+    measurements.push({ ...base, measurementID: `${recordId}-sss`, measurementType: 'Sea surface salinity', measurementValue: record.sss, measurementUnit: 'PSU', measurementMethod: 'satellite' });
+  }
+  if (record.depth != null && !record.bathymetry) {
+    measurements.push({ ...base, measurementID: `${recordId}-depth`, measurementType: 'Water depth', measurementValue: record.depth, measurementUnit: 'm', measurementMethod: 'measured' });
+  }
+
+  return measurements;
+}
+
+/**
+ * Extract measurements from the mof (ExtendedMeasurementOrFact) array on an OBIS record
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractMofMeasurements(record: any, recordId: string, eventDate: string): EnvironmentalMeasurement[] {
+  const mofArray = record.mof || record.measurementOrFact || record.measurements || [];
+  if (!Array.isArray(mofArray) || mofArray.length === 0) return [];
+
+  const measurements: EnvironmentalMeasurement[] = [];
+
+  for (const mof of mofArray) {
+    const type = mof.measurementType || mof.measurementTypeID || '';
+    const value = mof.measurementValue;
+    if (!type || value === undefined || value === null) continue;
+
+    measurements.push({
+      measurementID: mof.measurementID || `${recordId}-mof-${mofArray.indexOf(mof)}`,
+      occurrenceID: recordId,
+      eventID: record.eventID,
+      measurementType: type,
+      measurementValue: value,
+      measurementUnit: mof.measurementUnit || mof.measurementUnitID || '',
+      measurementDeterminedDate: eventDate,
+      measurementMethod: mof.measurementMethod,
+      measurementRemarks: mof.measurementRemarks,
+    });
+  }
+
+  return measurements;
+}
+
+/**
+ * Extract all environmental measurements from a single OBIS occurrence record
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractMeasurementsFromRecord(record: any, offset: number, index: number): EnvironmentalMeasurement[] {
+  const recordId = record.id || record.occurrenceID || `record-${offset}-${index}`;
+  const eventDate = record.eventDate || record.date;
+
+  return [
+    ...extractStandardFields(record, recordId, eventDate),
+    ...extractMofMeasurements(record, recordId, eventDate),
+  ];
+}
+
+/**
+ * Fetch a single page of OBIS occurrence data with environmental measurements
+ */
+async function fetchOccurrencePage(
+  params: URLSearchParams,
+  offset: number
+): Promise<{ measurements: EnvironmentalMeasurement[]; resultCount: number } | null> {
+  await rateLimit();
+  params.set('offset', offset.toString());
+  const url = `${OBIS_API_BASE}/occurrence?${params}`;
+
+  const response = await fetchWithTimeout(url, {
+    headers: { 'Accept': 'application/json' },
+  });
+
+  if (!response.ok) {
+    console.error(`[Environmental] OBIS API error: ${response.status}`);
+    return null;
+  }
+
+  const data = await response.json();
+  const results = data.results || [];
+  const measurements = results.flatMap(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (record: any, index: number) => extractMeasurementsFromRecord(record, offset, index)
+  );
+
+  return { measurements, resultCount: results.length };
+}
+
+/**
  * Fetch environmental measurements from OBIS for an MPA
  * Uses the occurrence endpoint with mof=true to get ExtendedMeasurementOrFact data
  */
@@ -98,136 +197,31 @@ export async function fetchEnvironmentalData(
   const bounds = createBoundingBox(center, radiusKm);
   const wkt = createWKTPolygon(bounds);
 
-  const startDate = getDateYearsAgo(10); // 10-year lookback
+  const startDate = getDateYearsAgo(10);
   const endDate = new Date().toISOString().split('T')[0];
-
 
   const params = new URLSearchParams({
     geometry: wkt,
     startdate: startDate,
     enddate: endDate,
-    mof: 'true', // Enable eMoF (ExtendedMeasurementOrFact) extension
+    mof: 'true',
     size: '1000',
   });
 
   const allMeasurements: EnvironmentalMeasurement[] = [];
   let offset = 0;
   let hasMore = true;
-  let maxRequests = 5; // Limit to 5 requests to avoid long waits
+  let maxRequests = 5;
 
   while (hasMore && maxRequests > 0) {
-    await rateLimit();
-
-    params.set('offset', offset.toString());
-    const url = `${OBIS_API_BASE}/occurrence?${params}`;
-
-
     try {
-      const response = await fetchWithTimeout(url, {
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
+      const result = await fetchOccurrencePage(params, offset);
+      if (!result) break;
 
-      if (!response.ok) {
-        console.error(`[Environmental] OBIS API error: ${response.status}`);
-        break;
-      }
-
-      const data = await response.json();
-      const results = data.results || [];
-
-
-      // Extract environmental data from occurrences
-      for (const record of results) {
-        const recordId = record.id || record.occurrenceID || `record-${offset}-${results.indexOf(record)}`;
-        const eventDate = record.eventDate || record.date;
-
-        // OBIS provides environmental data as direct fields on each record
-        // Extract standard environmental fields
-        if (record.bathymetry !== undefined && record.bathymetry !== null) {
-          allMeasurements.push({
-            measurementID: `${recordId}-bathymetry`,
-            occurrenceID: recordId,
-            eventID: record.eventID,
-            measurementType: 'Depth',
-            measurementValue: record.bathymetry,
-            measurementUnit: 'm',
-            measurementDeterminedDate: eventDate,
-            measurementMethod: 'bathymetry',
-          });
-        }
-
-        if (record.sst !== undefined && record.sst !== null) {
-          allMeasurements.push({
-            measurementID: `${recordId}-sst`,
-            occurrenceID: recordId,
-            eventID: record.eventID,
-            measurementType: 'Sea surface temperature',
-            measurementValue: record.sst,
-            measurementUnit: '°C',
-            measurementDeterminedDate: eventDate,
-            measurementMethod: 'satellite',
-          });
-        }
-
-        if (record.sss !== undefined && record.sss !== null) {
-          allMeasurements.push({
-            measurementID: `${recordId}-sss`,
-            occurrenceID: recordId,
-            eventID: record.eventID,
-            measurementType: 'Sea surface salinity',
-            measurementValue: record.sss,
-            measurementUnit: 'PSU',
-            measurementDeterminedDate: eventDate,
-            measurementMethod: 'satellite',
-          });
-        }
-
-        if (record.depth !== undefined && record.depth !== null && !record.bathymetry) {
-          allMeasurements.push({
-            measurementID: `${recordId}-depth`,
-            occurrenceID: recordId,
-            eventID: record.eventID,
-            measurementType: 'Water depth',
-            measurementValue: record.depth,
-            measurementUnit: 'm',
-            measurementDeterminedDate: eventDate,
-            measurementMethod: 'measured',
-          });
-        }
-
-        // Also check for mof array for additional measurements
-        const mofArray = record.mof || record.measurementOrFact || record.measurements || [];
-        if (Array.isArray(mofArray) && mofArray.length > 0) {
-          for (const mof of mofArray) {
-            // Only include measurements that look like environmental parameters
-            const type = mof.measurementType || mof.measurementTypeID || '';
-            const value = mof.measurementValue;
-
-            // Skip non-numeric or non-environmental measurements
-            if (!type || value === undefined || value === null) continue;
-
-            allMeasurements.push({
-              measurementID: mof.measurementID || `${recordId}-mof-${mofArray.indexOf(mof)}`,
-              occurrenceID: recordId,
-              eventID: record.eventID,
-              measurementType: type,
-              measurementValue: value,
-              measurementUnit: mof.measurementUnit || mof.measurementUnitID || '',
-              measurementDeterminedDate: eventDate,
-              measurementMethod: mof.measurementMethod,
-              measurementRemarks: mof.measurementRemarks,
-            });
-          }
-        }
-      }
-
-
-      offset += results.length;
-      hasMore = results.length === 1000;
+      allMeasurements.push(...result.measurements);
+      offset += result.resultCount;
+      hasMore = result.resultCount === 1000;
       maxRequests--;
-
     } catch (error) {
       console.error('[Environmental] Fetch error:', error);
       break;

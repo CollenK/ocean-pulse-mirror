@@ -96,6 +96,131 @@ function calculatePressureScore(avgItemsPer100m: number | null): number {
   return 5;
 }
 
+interface EnrichedEntry extends LitterTallyEntry {
+  source: LitterSource;
+}
+
+interface AggregatedData {
+  totalItems: number;
+  totalWeightKg: number;
+  hasWeight: boolean;
+  surveyCount: number;
+  allEntries: EnrichedEntry[];
+  monthlyMap: Record<string, { totalItems: number; itemsPer100m: number[]; reportCount: number; weight: number; hasWeight: boolean }>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function aggregateObservations(observations: any[]): AggregatedData {
+  let totalItems = 0;
+  let totalWeightKg = 0;
+  let hasWeight = false;
+  let surveyCount = 0;
+  const allEntries: EnrichedEntry[] = [];
+  const monthlyMap: AggregatedData['monthlyMap'] = {};
+
+  for (const obs of observations) {
+    const items: LitterTallyEntry[] = parseLitterItems(obs.litter_items);
+    const obsTotal = items.reduce((sum, e) => sum + e.count, 0);
+    totalItems += obsTotal;
+
+    if (obs.litter_weight_kg != null) {
+      totalWeightKg += Number(obs.litter_weight_kg);
+      hasWeight = true;
+    }
+
+    const isSurvey = obs.survey_length_m != null && obs.survey_length_m > 0;
+    if (isSurvey) surveyCount++;
+
+    for (const entry of items) {
+      allEntries.push({ ...entry, source: getSourceForCode(entry.code) });
+    }
+
+    const month = obs.observed_at.slice(0, 7);
+    if (!monthlyMap[month]) {
+      monthlyMap[month] = { totalItems: 0, itemsPer100m: [], reportCount: 0, weight: 0, hasWeight: false };
+    }
+    monthlyMap[month].totalItems += obsTotal;
+    monthlyMap[month].reportCount += 1;
+    if (isSurvey && obsTotal > 0) {
+      monthlyMap[month].itemsPer100m.push((obsTotal / obs.survey_length_m) * 100);
+    }
+    if (obs.litter_weight_kg != null) {
+      monthlyMap[month].weight += Number(obs.litter_weight_kg);
+      monthlyMap[month].hasWeight = true;
+    }
+  }
+
+  return { totalItems, totalWeightKg, hasWeight, surveyCount, allEntries, monthlyMap };
+}
+
+function buildBreakdowns(allEntries: EnrichedEntry[], totalItems: number) {
+  const sourceCounts: Record<string, number> = {};
+  const materialCounts: Record<string, number> = {};
+  for (const e of allEntries) {
+    sourceCounts[e.source] = (sourceCounts[e.source] || 0) + e.count;
+    materialCounts[e.material] = (materialCounts[e.material] || 0) + e.count;
+  }
+
+  const sourceBreakdown: LitterSourceBreakdown[] = Object.entries(sourceCounts)
+    .map(([source, count]) => ({
+      source: source as LitterSource,
+      count,
+      percentage: totalItems > 0 ? (count / totalItems) * 100 : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const materialBreakdown: LitterMaterialBreakdown[] = Object.entries(materialCounts)
+    .map(([material, count]) => ({
+      material: material as LitterMaterial,
+      count,
+      percentage: totalItems > 0 ? (count / totalItems) * 100 : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  return { sourceBreakdown, materialBreakdown };
+}
+
+function buildTopItems(allEntries: EnrichedEntry[]) {
+  const itemCounts: Record<string, { name: string; count: number; material: LitterMaterial }> = {};
+  for (const e of allEntries) {
+    if (!itemCounts[e.code]) itemCounts[e.code] = { name: e.name, count: 0, material: e.material };
+    itemCounts[e.code].count += e.count;
+  }
+  return Object.entries(itemCounts)
+    .map(([code, data]) => ({ code, ...data }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+}
+
+function buildMonthlyTrend(monthlyMap: AggregatedData['monthlyMap']): LitterMonthlyTrend[] {
+  return Object.entries(monthlyMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, data]) => ({
+      month,
+      totalItems: data.totalItems,
+      itemsPer100m: data.itemsPer100m.length > 0
+        ? Math.round(data.itemsPer100m.reduce((s, v) => s + v, 0) / data.itemsPer100m.length)
+        : null,
+      reportCount: data.reportCount,
+      totalWeightKg: data.hasWeight ? data.weight : null,
+    }));
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function calculateAverageItemsPer100m(observations: any[]): number | null {
+  const surveyDensities: number[] = [];
+  for (const obs of observations) {
+    if (obs.survey_length_m && obs.survey_length_m > 0) {
+      const items = parseLitterItems(obs.litter_items);
+      const obsTotal = items.reduce((sum, e: LitterTallyEntry) => sum + e.count, 0);
+      surveyDensities.push((obsTotal / obs.survey_length_m) * 100);
+    }
+  }
+  return surveyDensities.length > 0
+    ? Math.round(surveyDensities.reduce((s, v) => s + v, 0) / surveyDensities.length)
+    : null;
+}
+
 /**
  * Fetch and aggregate litter analytics for a specific MPA.
  */
@@ -105,7 +230,6 @@ export async function getLitterAnalytics(mpaId: string): Promise<LitterAnalytics
   try {
     const supabase = createClient();
 
-    // Fetch all non-draft marine_litter observations for this MPA
     const { data: observations, error } = await (supabase
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from('observations') as any)
@@ -122,119 +246,19 @@ export async function getLitterAnalytics(mpaId: string): Promise<LitterAnalytics
 
     if (!observations || observations.length === 0) return null;
 
-    // Aggregate all tally entries across observations
-    let totalItems = 0;
-    let totalWeightKg = 0;
-    let hasWeight = false;
-    let surveyCount = 0;
-    const allEntries: (LitterTallyEntry & { source: LitterSource })[] = [];
-    const monthlyMap: Record<string, { totalItems: number; itemsPer100m: number[]; reportCount: number; weight: number; hasWeight: boolean }> = {};
-
-    for (const obs of observations) {
-      const items: LitterTallyEntry[] = parseLitterItems(obs.litter_items);
-      const obsTotal = items.reduce((sum, e) => sum + e.count, 0);
-      totalItems += obsTotal;
-
-      if (obs.litter_weight_kg != null) {
-        totalWeightKg += Number(obs.litter_weight_kg);
-        hasWeight = true;
-      }
-
-      const isSurvey = obs.survey_length_m != null && obs.survey_length_m > 0;
-      if (isSurvey) surveyCount++;
-
-      // Enrich entries with source
-      for (const entry of items) {
-        allEntries.push({ ...entry, source: getSourceForCode(entry.code) });
-      }
-
-      // Monthly aggregation
-      const month = obs.observed_at.slice(0, 7); // YYYY-MM
-      if (!monthlyMap[month]) {
-        monthlyMap[month] = { totalItems: 0, itemsPer100m: [], reportCount: 0, weight: 0, hasWeight: false };
-      }
-      monthlyMap[month].totalItems += obsTotal;
-      monthlyMap[month].reportCount += 1;
-      if (isSurvey && obsTotal > 0) {
-        monthlyMap[month].itemsPer100m.push((obsTotal / obs.survey_length_m) * 100);
-      }
-      if (obs.litter_weight_kg != null) {
-        monthlyMap[month].weight += Number(obs.litter_weight_kg);
-        monthlyMap[month].hasWeight = true;
-      }
-    }
-
-    // Source breakdown
-    const sourceCounts: Record<string, number> = {};
-    for (const e of allEntries) {
-      sourceCounts[e.source] = (sourceCounts[e.source] || 0) + e.count;
-    }
-    const sourceBreakdown: LitterSourceBreakdown[] = Object.entries(sourceCounts)
-      .map(([source, count]) => ({
-        source: source as LitterSource,
-        count,
-        percentage: totalItems > 0 ? (count / totalItems) * 100 : 0,
-      }))
-      .sort((a, b) => b.count - a.count);
-
-    // Material breakdown
-    const materialCounts: Record<string, number> = {};
-    for (const e of allEntries) {
-      materialCounts[e.material] = (materialCounts[e.material] || 0) + e.count;
-    }
-    const materialBreakdown: LitterMaterialBreakdown[] = Object.entries(materialCounts)
-      .map(([material, count]) => ({
-        material: material as LitterMaterial,
-        count,
-        percentage: totalItems > 0 ? (count / totalItems) * 100 : 0,
-      }))
-      .sort((a, b) => b.count - a.count);
-
-    // Monthly trend
-    const monthlyTrend: LitterMonthlyTrend[] = Object.entries(monthlyMap)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, data]) => ({
-        month,
-        totalItems: data.totalItems,
-        itemsPer100m: data.itemsPer100m.length > 0
-          ? Math.round(data.itemsPer100m.reduce((s, v) => s + v, 0) / data.itemsPer100m.length)
-          : null,
-        reportCount: data.reportCount,
-        totalWeightKg: data.hasWeight ? data.weight : null,
-      }));
-
-    // Top items
-    const itemCounts: Record<string, { name: string; count: number; material: LitterMaterial }> = {};
-    for (const e of allEntries) {
-      if (!itemCounts[e.code]) itemCounts[e.code] = { name: e.name, count: 0, material: e.material };
-      itemCounts[e.code].count += e.count;
-    }
-    const topItems = Object.entries(itemCounts)
-      .map(([code, data]) => ({ code, ...data }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-
-    // Average items/100m from OSPAR surveys only
-    const surveyDensities: number[] = [];
-    for (const obs of observations) {
-      if (obs.survey_length_m && obs.survey_length_m > 0) {
-        const items = parseLitterItems(obs.litter_items);
-        const obsTotal = items.reduce((sum, e) => sum + e.count, 0);
-        surveyDensities.push((obsTotal / obs.survey_length_m) * 100);
-      }
-    }
-    const averageItemsPer100m = surveyDensities.length > 0
-      ? Math.round(surveyDensities.reduce((s, v) => s + v, 0) / surveyDensities.length)
-      : null;
-
+    const agg = aggregateObservations(observations);
+    const { sourceBreakdown, materialBreakdown } = buildBreakdowns(agg.allEntries, agg.totalItems);
+    const monthlyTrend = buildMonthlyTrend(agg.monthlyMap);
+    const topItems = buildTopItems(agg.allEntries);
+    const averageItemsPer100m = calculateAverageItemsPer100m(observations);
     const pressureScore = calculatePressureScore(averageItemsPer100m);
 
     return {
       totalReports: observations.length,
-      totalItems,
-      totalWeightKg: hasWeight ? Math.round(totalWeightKg * 100) / 100 : null,
+      totalItems: agg.totalItems,
+      totalWeightKg: agg.hasWeight ? Math.round(agg.totalWeightKg * 100) / 100 : null,
       averageItemsPer100m,
-      surveyCount,
+      surveyCount: agg.surveyCount,
       sourceBreakdown,
       materialBreakdown,
       monthlyTrend,

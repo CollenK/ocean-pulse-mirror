@@ -3,1314 +3,206 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { MPA } from '@/types';
-import { fetchMPAById, formatArea } from '@/lib/mpa-service';
+import { fetchMPAById } from '@/lib/mpa-service';
 import { cacheMPA, getCachedMPA } from '@/lib/offline-storage';
-import { Card, CardTitle, CardContent, CollapsibleCard, Button, Badge, Icon, InfoTip, CircularProgress, getHealthColor } from '@/components/ui';
+import { Card, CardTitle, CardContent, CollapsibleCard, Button, Badge, Icon } from '@/components/ui';
 import { MPACardSkeleton } from '@/components/ui';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useAbundanceData } from '@/hooks/useAbundanceData';
-import { AbundanceTrendCard } from '@/components/AbundanceTrendCard';
 import { useEnvironmentalData } from '@/hooks/useEnvironmentalData';
-import { EnvironmentalDashboard } from '@/components/EnvironmentalDashboard';
 import { useHybridHealthScore } from '@/hooks/useHybridHealthScore';
 import { HealthScoreModal } from '@/components/HealthScoreModal';
-import { SpeciesCard } from '@/components/SpeciesCard';
 import { getIndicatorSpeciesForMPA } from '@/lib/indicator-species';
 import type { IndicatorSpecies } from '@/types/indicator-species';
-import { CATEGORY_INFO } from '@/types/indicator-species';
-import { SaveMPAButton } from '@/components/SaveMPAButton';
 import { LiveReports } from '@/components/LiveReports';
 import { useObservations } from '@/hooks/useObservations';
 import { getCountryName } from '@/lib/country-names';
 import { useFishingData } from '@/hooks/useFishingData';
 import { useHeatwaveAlert } from '@/hooks/useHeatwaveAlert';
-import { FishingTrendChart, FishingByFlagChart, FishingByGearChart } from '@/components/Charts/FishingTrendChart';
-import { VesselActivityFeed } from '@/components/VesselActivity';
 import { IUURiskBadge } from '@/components/ui/IUURiskBadge';
-import { HeatwaveAlert, HeatwaveAlertBadge } from '@/components/HeatwaveAlert';
+import { HeatwaveAlert } from '@/components/HeatwaveAlert';
 import { useWindFarmConflictsForMPA } from '@/hooks/useWindFarmData';
 import { WindFarmConflictCard } from '@/components/WindFarmConflictCard';
 import { useCoastalConditions } from '@/hooks/useCoastalConditions';
-import { BeachConditionsCard, WhatsAroundToday } from '@/components/CoastalConditions';
 import { useLitterAnalytics } from '@/hooks/useLitterAnalytics';
-import { LitterBySourceChart, LitterByMaterialChart, LitterTrendChart } from '@/components/Charts/LitterCharts';
-import { SOURCE_CONFIG, MATERIAL_CONFIG } from '@/types/marine-litter';
-import { getMPAImage } from '@/lib/demo/mpa-images';
+import { MPAHeroHeader } from './MPAHeroHeader';
+import { MPAStatsGrid } from './MPAStatsGrid';
+import { MPAFishingSection } from './MPAFishingSection';
+import { MPALitterSection } from './MPALitterSection';
+import { MPACoastalSection } from './MPACoastalSection';
+import { MPAIndicatorSpeciesSection } from './MPAIndicatorSpeciesSection';
+import { MPAPopulationTrendsSection } from './MPAPopulationTrendsSection';
+import { MPAHabitatQualitySection } from './MPAHabitatQualitySection';
+import type { MarineHeatwaveAlert } from '@/hooks/useHeatwaveAlert';
+import type { LitterAnalytics } from '@/lib/litter-analytics-service';
 
-export default function MPADetailPage() {
-  const params = useParams();
-  const router = useRouter();
+function MPAHeatwaveSection({ alert, loading }: { alert: MarineHeatwaveAlert | null; loading: boolean }) {
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-balean-cyan mb-4" />
+        <p className="text-balean-gray-500 mb-2">Checking thermal conditions...</p>
+      </div>
+    );
+  }
+  if (alert) return <HeatwaveAlert alert={alert} />;
+  return (
+    <div className="text-center py-8">
+      <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center"><Icon name="temperature-half" className="text-balean-gray-300 text-3xl" /></div>
+      <p className="text-balean-gray-500 mb-2 font-medium">Heatwave data unavailable</p>
+      <p className="text-sm text-balean-gray-400">Unable to fetch thermal conditions from Copernicus Marine Service</p>
+    </div>
+  );
+}
+
+function getLitterBadge(analytics: LitterAnalytics | null) {
+  if (!analytics) return null;
+  if (analytics.cleanlinessRating) {
+    const variantMap = { clean: 'healthy' as const, moderate: 'warning' as const, dirty: 'danger' as const, very_dirty: 'danger' as const };
+    const labelMap = { clean: 'Clean', moderate: 'Moderate', dirty: 'Dirty', very_dirty: 'Very Dirty' };
+    return <Badge variant={variantMap[analytics.cleanlinessRating] || 'danger'} size="sm">{labelMap[analytics.cleanlinessRating] || analytics.cleanlinessRating}</Badge>;
+  }
+  return <Badge variant="info" size="sm">{analytics.totalReports} report{analytics.totalReports !== 1 ? 's' : ''}</Badge>;
+}
+
+function getHeatwaveBadge(alert: MarineHeatwaveAlert | null) {
+  if (!alert) return undefined;
+  const variant = alert.category === 'none' ? 'healthy' as const : alert.category === 'moderate' ? 'warning' as const : 'danger' as const;
+  return <Badge variant={variant} size="sm">{alert.active ? alert.category : 'Normal'}</Badge>;
+}
+
+function getFishingBadge(iuuRisk: ReturnType<typeof useFishingData>['data']['iuuRisk'], complianceScore: ReturnType<typeof useFishingData>['data']['compliance']) {
+  const compVariant = complianceScore ? (complianceScore.score >= 80 ? 'healthy' as const : complianceScore.score >= 60 ? 'warning' as const : 'danger' as const) : null;
+  return (
+    <div className="flex items-center gap-2">
+      {iuuRisk && <IUURiskBadge riskData={iuuRisk} size="sm" showTooltip={false} />}
+      {complianceScore && compVariant && <Badge variant={compVariant} size="sm">{complianceScore.score}/100</Badge>}
+    </div>
+  );
+}
+
+function getWindFarmBadge(hasConflicts: boolean, count: number) {
+  if (hasConflicts) return <Badge variant="danger" size="sm">{count} Conflict{count !== 1 ? 's' : ''}</Badge>;
+  return <Badge variant="healthy" size="sm">Clear</Badge>;
+}
+
+function useMPALoader(id: string) {
   const [mpa, setMpa] = useState<MPA | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cached, setCached] = useState(false);
+
+  useEffect(() => {
+    getCachedMPA(id).then((d) => { if (d) { setMpa(d); setCached(true); setLoading(false); } }).catch(() => {});
+    fetchMPAById(id)
+      .then(async (d) => { if (d) { setMpa(d); await cacheMPA(d); setCached(true); } else { setError('MPA not found'); } })
+      .catch(() => setError('Failed to load MPA'))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  return { mpa, loading, error, cached };
+}
+
+function MPADetailContent({ mpa, cached }: { mpa: MPA; cached: boolean }) {
   const [indicatorSpecies, setIndicatorSpecies] = useState<IndicatorSpecies[]>([]);
   const [speciesLoading, setSpeciesLoading] = useState(false);
   const [showAllSpecies, setShowAllSpecies] = useState(false);
   const [showAllTrends, setShowAllTrends] = useState(false);
   const [showHealthModal, setShowHealthModal] = useState(false);
 
-  // Load observations for badge count
-  const { observations: mpaObservations } = useObservations(mpa?.id || '', { enabled: !!mpa });
+  const { observations: mpaObservations } = useObservations(mpa.id, { enabled: true });
+  const abundanceRadius = useMemo(() => Math.min(Math.max(Math.round(Math.sqrt((mpa.area || 0) / Math.PI)), 50), 300), [mpa.area]);
 
-  // Scale search radius to MPA size (min 50km, max 300km)
-  const abundanceRadius = useMemo(() => {
-    if (!mpa?.area) return 50;
-    return Math.min(Math.max(Math.round(Math.sqrt(mpa.area / Math.PI)), 50), 300);
-  }, [mpa?.area]);
-
-  // Load abundance data (filtered by indicator species)
-  const {
-    summary: abundanceSummary,
-    loading: abundanceLoading,
-    progress: abundanceProgress
-  } = useAbundanceData(
-    mpa?.id || '',
-    mpa?.center || [0, 0],
-    abundanceRadius,
-    mpa ? {
-      latitude: mpa.center[0],
-      longitude: mpa.center[1],
-      name: mpa.name,
-      description: mpa.description,
-    } : undefined
+  const { summary: abundanceSummary, loading: abundanceLoading, progress: abundanceProgress } = useAbundanceData(
+    mpa.id, mpa.center, abundanceRadius,
+    { latitude: mpa.center[0], longitude: mpa.center[1], name: mpa.name, description: mpa.description }
   );
-
-  // Load environmental data
-  const {
-    summary: environmentalSummary,
-    loading: environmentalLoading,
-    progress: environmentalProgress
-  } = useEnvironmentalData(
-    mpa?.id || '',
-    mpa?.center || [0, 0],
-    50
-  );
-
-  // Load fishing activity data from Global Fishing Watch
-  const {
-    data: fishingData,
-    loading: fishingLoading,
-    error: fishingError,
-  } = useFishingData({
-    mpaId: mpa?.id || '',
-    geometry: mpa?.geometry || undefined,
-    bounds: mpa?.bounds || undefined,
-    protectionLevel: mpa?.protectionLevel,
-    establishedYear: mpa?.establishedYear,
-    enabled: !!mpa,
+  const { summary: environmentalSummary, loading: environmentalLoading, progress: environmentalProgress } = useEnvironmentalData(mpa.id, mpa.center, 50);
+  const { data: fishingData, loading: fishingLoading, error: fishingError } = useFishingData({
+    mpaId: mpa.id, geometry: mpa.geometry || undefined, bounds: mpa.bounds || undefined,
+    protectionLevel: mpa.protectionLevel, establishedYear: mpa.establishedYear, enabled: true,
   });
+  const { alert: heatwaveAlert, isLoading: heatwaveLoading } = useHeatwaveAlert(mpa.id, mpa.center[0], mpa.center[1], true);
+  const { conflicts: windFarmConflicts, nearbyWindFarms, isLoading: windFarmsLoading, hasConflicts: hasWindFarmConflicts } = useWindFarmConflictsForMPA(mpa.id, [mpa], true);
+  const { conditions: coastalConditions, loading: coastalLoading, error: coastalError, isStale: coastalStale, refetch: refetchCoastal } = useCoastalConditions(mpa.id, mpa.center[0], mpa.center[1], true);
+  const { analytics: litterAnalytics, loading: litterLoading } = useLitterAnalytics(mpa.id, true);
 
-  // Load marine heatwave alert from Copernicus data
-  const {
-    alert: heatwaveAlert,
-    isLoading: heatwaveLoading,
-  } = useHeatwaveAlert(
-    mpa?.id,
-    mpa?.center[0],
-    mpa?.center[1],
-    !!mpa
-  );
-
-  // Load wind farm conflict data for this MPA
-  const {
-    conflicts: windFarmConflicts,
-    nearbyWindFarms,
-    isLoading: windFarmsLoading,
-    hasConflicts: hasWindFarmConflicts,
-  } = useWindFarmConflictsForMPA(
-    mpa?.id || '',
-    mpa ? [mpa] : [],
-    !!mpa
-  );
-
-  // Load beach & coastal conditions
-  const {
-    conditions: coastalConditions,
-    loading: coastalLoading,
-    error: coastalError,
-    isStale: coastalStale,
-    refetch: refetchCoastal,
-  } = useCoastalConditions(
-    mpa?.id || '',
-    mpa?.center[0] || 0,
-    mpa?.center[1] || 0,
-    !!mpa
-  );
-
-  // Load litter analytics for source attribution dashboard
-  const {
-    analytics: litterAnalytics,
-    loading: litterLoading,
-  } = useLitterAnalytics(mpa?.id, !!mpa);
-
-  // Extract fishing data for easier access
-  const fishingEffort = fishingData.fishingEffort;
-  const vesselActivity = fishingData.vesselActivity;
-  const complianceScore = fishingData.compliance;
-  const iuuRisk = fishingData.iuuRisk;
-
-  // Calculate health score - uses backend when available, falls back to client-side
   const compositeHealth = useHybridHealthScore({
-    mpaId: mpa?.id || '',
-    mpaName: mpa?.name || '',
-    lat: mpa?.center[0] || 0,
-    lon: mpa?.center[1] || 0,
-    abundanceSummary,
-    abundanceLoading,
-    environmentalSummary,
-    environmentalLoading,
-    indicatorSpeciesCount: indicatorSpecies.length,
-    preferBackend: true, // Try backend first for Copernicus data
-    fishingCompliance: complianceScore,
-    fishingComplianceLoading: fishingLoading,
-    heatwaveAlert: heatwaveAlert,
-    heatwaveLoading: heatwaveLoading,
-    litterPressureScore: litterAnalytics?.pressureScore ?? null,
-    litterPressureLoading: litterLoading,
+    mpaId: mpa.id, mpaName: mpa.name, lat: mpa.center[0], lon: mpa.center[1],
+    abundanceSummary, abundanceLoading, environmentalSummary, environmentalLoading,
+    indicatorSpeciesCount: indicatorSpecies.length, preferBackend: true,
+    fishingCompliance: fishingData.compliance, fishingComplianceLoading: fishingLoading,
+    heatwaveAlert, heatwaveLoading,
+    litterPressureScore: litterAnalytics?.pressureScore ?? null, litterPressureLoading: litterLoading,
   });
 
   useEffect(() => {
-    const id = params.id as string;
-
-    // Try to load from cache first
-    getCachedMPA(id)
-      .then((cachedData) => {
-        if (cachedData) {
-          setMpa(cachedData);
-          setCached(true);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        // If cache fails, continue to fetch from network
-      });
-
-    // Fetch from network
-    fetchMPAById(id)
-      .then(async (data) => {
-        if (data) {
-          setMpa(data);
-          // Automatically cache the MPA
-          await cacheMPA(data);
-          setCached(true);
-        } else {
-          setError('MPA not found');
-        }
-      })
-      .catch(() => setError('Failed to load MPA'))
-      .finally(() => setLoading(false));
-  }, [params.id]);
-
-  // Load indicator species for MPA
-  useEffect(() => {
-    if (mpa) {
-      setSpeciesLoading(true);
-      getIndicatorSpeciesForMPA({
-        latitude: mpa.center[0],
-        longitude: mpa.center[1],
-        name: mpa.name,
-        description: mpa.description,
-      })
-        .then(setIndicatorSpecies)
-        .finally(() => setSpeciesLoading(false));
-    }
+    setSpeciesLoading(true);
+    getIndicatorSpeciesForMPA({ latitude: mpa.center[0], longitude: mpa.center[1], name: mpa.name, description: mpa.description })
+      .then(setIndicatorSpecies).finally(() => setSpeciesLoading(false));
   }, [mpa]);
-
-  if (loading) {
-    return (
-      <main className="min-h-screen p-6 pb-24 bg-balean-off-white">
-        <div className="max-w-screen-xl mx-auto">
-          <div className="mb-4">
-            <div className="h-10 w-32 bg-balean-gray-200 animate-pulse rounded" />
-          </div>
-          <MPACardSkeleton />
-          <div className="mt-4">
-            <MPACardSkeleton />
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (error || !mpa) {
-    return (
-      <main className="min-h-screen p-6 pb-24 bg-balean-off-white">
-        <div className="max-w-screen-xl mx-auto">
-          <Card>
-            <CardTitle>Error</CardTitle>
-            <CardContent>
-              <p className="text-balean-gray-500 mb-4">
-                {error || 'MPA not found'}
-              </p>
-              <Button onClick={() => router.push('/')} variant="secondary">
-                <Icon name="angle-left" size="sm" /> Back to Home
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="min-h-screen pb-32">
-      {/* Modern Hero Header with Image or Gradient */}
-      <div
-        className="relative bg-gradient-to-br from-balean-cyan via-balean-cyan-light to-balean-coral pt-4 pb-16 px-4 sm:px-6 overflow-hidden"
-      >
-        {/* Hero background image */}
-        {(() => {
-          const heroImage = getMPAImage(mpa.id);
-          if (!heroImage) return null;
-          return (
-            <>
-              <div
-                className="absolute inset-0 bg-cover bg-center"
-                style={{ backgroundImage: `url(${heroImage.url})` }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/70" />
-              <div className="absolute bottom-2 right-3 text-[10px] text-white/50">
-                Photo by{' '}
-                <a
-                  href={`https://unsplash.com/@${heroImage.username}?utm_source=ocean_pulse&utm_medium=referral`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-white/70"
-                >
-                  {heroImage.credit}
-                </a>
-                {' '}on{' '}
-                <a
-                  href="https://unsplash.com?utm_source=ocean_pulse&utm_medium=referral"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-white/70"
-                >
-                  Unsplash
-                </a>
-              </div>
-            </>
-          );
-        })()}
-        <div className="relative max-w-screen-xl mx-auto">
-          {/* Save button */}
-          <div className="flex justify-end mb-4">
-            <SaveMPAButton mpaId={mpa.id} mpaDbId={mpa.dbId} variant="icon" size="md" />
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            {/* Mobile: Stack vertically, Desktop: Side by side */}
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6 mb-6">
-              <div className="flex-1 min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold text-white break-words">{mpa.name}</h1>
-              </div>
-
-              {compositeHealth.loading && compositeHealth.score === 0 ? (
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 self-center sm:self-start">
-                  <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-4 border-white/30 border-t-white" />
-                </div>
-              ) : (
-                <div className="flex-shrink-0 self-center sm:self-start">
-                  <CircularProgress
-                    value={compositeHealth.score}
-                    size="lg"
-                    color={getHealthColor(compositeHealth.score)}
-                  />
-                </div>
-              )}
-            </div>
-
-            <p className="text-white/80 flex items-center justify-center gap-2 text-2xl sm:text-3xl mb-6">
-              <Icon name="marker" size="sm" />
-              {getCountryName(mpa.country)} • Est. {mpa.establishedYear}
-            </p>
-
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="info" size="md" className="bg-white/20 text-white border-none">
-                <Icon name="shield-check" size="sm" />
-                {mpa.protectionLevel}
-              </Badge>
-              {cached && (
-                <Badge variant="healthy" size="md" className="bg-white/20 text-white border-none">
-                  <Icon name="download" size="sm" />
-                  Cached
-                </Badge>
-              )}
-              {heatwaveAlert && heatwaveAlert.active && (
-                <HeatwaveAlertBadge alert={heatwaveAlert} />
-              )}
-            </div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Content */}
+      <MPAHeroHeader mpa={mpa} cached={cached} compositeHealth={compositeHealth} heatwaveAlert={heatwaveAlert} />
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 -mt-10">
-        {/* Stats Grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"
-        >
-          <Card
-            className="text-center shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
-            interactive
-            hover
-            onClick={() => setShowHealthModal(true)}
-          >
-            <CardContent className="py-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-balean-cyan to-balean-cyan-dark mx-auto mb-2 flex items-center justify-center">
-                <Icon name="heart-rate" className="text-white text-xl" />
-              </div>
-              {compositeHealth.loading && compositeHealth.score === 0 ? (
-                <>
-                  <div className="h-9 flex items-center justify-center">
-                    <div className="animate-pulse bg-balean-gray-200 rounded w-12 h-8" />
-                  </div>
-                  <p className="text-xs text-balean-gray-400 mt-1">Calculating...</p>
-                  <p className="text-xs text-balean-cyan mt-1 flex items-center justify-center gap-1">
-                    <Icon name="info" size="sm" />
-                    Tap for details
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-3xl font-bold text-balean-navy">{compositeHealth.score}</p>
-                  <p className="text-xs text-balean-gray-400 mt-1 flex items-center justify-center gap-1">
-                    Estimated Health
-                    <InfoTip text="A composite score (0-100) derived from species population trends, habitat quality, and environmental data. Higher scores indicate healthier ecosystems." />
-                  </p>
-                  <p className={`text-xs mt-0.5 ${
-                    compositeHealth.confidence === 'high' ? 'text-green-500' :
-                    compositeHealth.confidence === 'medium' ? 'text-yellow-500' :
-                    'text-orange-500'
-                  }`}>
-                    {compositeHealth.confidence === 'high' ? 'High' :
-                     compositeHealth.confidence === 'medium' ? 'Medium' : 'Low'} confidence
-                  </p>
-                  <p className="text-xs text-balean-gray-300">
-                    {compositeHealth.dataSourcesAvailable}/{
-                      Object.keys(compositeHealth.breakdown).length
-                    } sources
-                    {compositeHealth.backendAvailable && (
-                      <span className="ml-1 text-healthy" title="Using Copernicus satellite data">*</span>
-                    )}
-                  </p>
-                  <p className="text-xs text-balean-cyan mt-1 flex items-center justify-center gap-1">
-                    <Icon name="info" size="sm" />
-                    Tap for details
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="text-center shadow-lg hover:shadow-xl transition-shadow">
-            <CardContent className="py-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-balean-coral to-balean-coral-dark mx-auto mb-2 flex items-center justify-center">
-                <Icon name="fish" className="text-white text-xl" />
-              </div>
-              <p className="text-3xl font-bold text-balean-navy">
-                {mpa.speciesCount.toLocaleString()}
-              </p>
-              <p className="text-xs text-balean-gray-400 mt-1">Species</p>
-            </CardContent>
-          </Card>
-
-          <Card className="text-center shadow-lg hover:shadow-xl transition-shadow">
-            <CardContent className="py-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-healthy to-healthy-light mx-auto mb-2 flex items-center justify-center">
-                <Icon name="map" className="text-white text-xl" />
-              </div>
-              <p className="text-3xl font-bold text-balean-navy">{formatArea(mpa.area)}</p>
-              <p className="text-xs text-balean-gray-400 mt-1">Area</p>
-            </CardContent>
-          </Card>
-
-          <Card className="text-center shadow-lg hover:shadow-xl transition-shadow">
-            <CardContent className="py-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-balean-yellow to-balean-yellow-dark mx-auto mb-2 flex items-center justify-center">
-                <Icon name="calendar" className="text-balean-navy text-xl" />
-              </div>
-              <p className="text-3xl font-bold text-balean-navy">{mpa.establishedYear}</p>
-              <p className="text-xs text-balean-gray-400 mt-1">Established</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Description */}
-        {mpa.description && (
-          <CollapsibleCard
-            title="About this MPA"
-            icon="info-circle"
-            iconColor="text-balean-cyan"
-            defaultOpen={true}
-            className="mb-4"
-          >
-            <p className="text-balean-gray-500 leading-relaxed">{mpa.description}</p>
-          </CollapsibleCard>
-        )}
-
-        {/* Beach & Coastal Conditions */}
-        <CollapsibleCard
-          title="Beach & Coastal Conditions"
-          icon="sun"
-          iconColor="text-amber-500"
-          defaultOpen={true}
-          badge={
-            coastalConditions && (
-              <Badge
-                variant={
-                  coastalConditions.swimSafety === 'safe' ? 'healthy' :
-                  coastalConditions.swimSafety === 'caution' ? 'warning' : 'danger'
-                }
-                size="sm"
-              >
-                {coastalConditions.weatherDescription}
-              </Badge>
-            )
-          }
-          className="mb-4"
-        >
-          {coastalLoading && !coastalConditions ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-amber-500 mb-4" />
-              <p className="text-balean-gray-500">Loading beach conditions...</p>
-            </div>
-          ) : coastalConditions ? (
-            <div className="space-y-6">
-              <BeachConditionsCard
-                conditions={coastalConditions}
-                isStale={coastalStale}
-                onRefresh={refetchCoastal}
-              />
-              <WhatsAroundToday observations={mpaObservations} />
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
-                <Icon name="sun" className="text-balean-gray-300 text-3xl" />
-              </div>
-              <p className="text-balean-gray-500 mb-2 font-medium">Conditions unavailable</p>
-              <p className="text-sm text-balean-gray-400 mb-4">
-                {coastalError || 'Weather data could not be loaded for this location'}
-              </p>
-              <Button variant="secondary" onClick={refetchCoastal}>
-                <Icon name="refresh" size="sm" />
-                Try Again
-              </Button>
-            </div>
-          )}
-        </CollapsibleCard>
-
-        {/* Regulations */}
-        {mpa.regulations && (
-          <CollapsibleCard
-            title="Protection & Regulations"
-            icon="shield-check"
-            iconColor="text-info"
-            defaultOpen={false}
-            className="mb-4"
-          >
-            <div className="bg-info/10 border-l-4 border-info p-4 rounded">
-              <p className="text-balean-gray-500 leading-relaxed">{mpa.regulations}</p>
-            </div>
-          </CollapsibleCard>
-        )}
-
-        {/* Location Card */}
-        <CollapsibleCard
-          title="Location"
-          icon="map-marker"
-          iconColor="text-healthy"
-          defaultOpen={false}
-          className="mb-4"
-        >
+        <MPAStatsGrid mpa={mpa} compositeHealth={compositeHealth} onHealthClick={() => setShowHealthModal(true)} />
+        {mpa.description && <CollapsibleCard title="About this MPA" icon="info-circle" iconColor="text-balean-cyan" defaultOpen={true} className="mb-4"><p className="text-balean-gray-500 leading-relaxed">{mpa.description}</p></CollapsibleCard>}
+        <MPACoastalSection coastalConditions={coastalConditions} coastalLoading={coastalLoading} coastalError={coastalError} coastalStale={coastalStale} refetchCoastal={refetchCoastal} mpaObservations={mpaObservations} />
+        {mpa.regulations && <CollapsibleCard title="Protection & Regulations" icon="shield-check" iconColor="text-info" defaultOpen={false} className="mb-4"><div className="bg-info/10 border-l-4 border-info p-4 rounded"><p className="text-balean-gray-500 leading-relaxed">{mpa.regulations}</p></div></CollapsibleCard>}
+        <CollapsibleCard title="Location" icon="map-marker" iconColor="text-healthy" defaultOpen={false} className="mb-4">
           <div className="space-y-2">
-            <div>
-              <span className="font-semibold text-balean-gray-500">Center: </span>
-              <span className="text-balean-gray-400">
-                {mpa.center[0].toFixed(4)}°, {mpa.center[1].toFixed(4)}°
-              </span>
-            </div>
-            <div>
-              <span className="font-semibold text-balean-gray-500">Country: </span>
-              <span className="text-balean-gray-400">{getCountryName(mpa.country)}</span>
-            </div>
+            <div><span className="font-semibold text-balean-gray-500">Center: </span><span className="text-balean-gray-400">{mpa.center[0].toFixed(4)}&deg;, {mpa.center[1].toFixed(4)}&deg;</span></div>
+            <div><span className="font-semibold text-balean-gray-500">Country: </span><span className="text-balean-gray-400">{getCountryName(mpa.country)}</span></div>
           </div>
-          <div className="mt-4">
-            <Link href={`/ocean-pulse-app?lat=${mpa.center[0]}&lng=${mpa.center[1]}&zoom=6&mpa=${mpa.id}`}>
-              <Button fullWidth>View on Map</Button>
-            </Link>
-          </div>
+          <div className="mt-4"><Link href={`/ocean-pulse-app?lat=${mpa.center[0]}&lng=${mpa.center[1]}&zoom=6&mpa=${mpa.id}`}><Button fullWidth>View on Map</Button></Link></div>
         </CollapsibleCard>
-
-        {/* Live Reports Section */}
-        <CollapsibleCard
-          title="Live Reports"
-          icon="camera"
-          iconColor="text-balean-cyan"
-          defaultOpen={false}
-          badge={
-            mpaObservations.length > 0 && (
-              <Badge variant="info" size="sm">{mpaObservations.length} reports</Badge>
-            )
-          }
-          className="mb-4"
-        >
-          <LiveReports mpaId={mpa.id} maxHeight={500} />
-        </CollapsibleCard>
-
-        {/* Indicator Species */}
-        <CollapsibleCard
-          title="Indicator Species"
-          icon="leaf"
-          iconColor="text-healthy"
-          defaultOpen={false}
-          badge={
-            indicatorSpecies.length > 0 && (
-              <Badge variant="healthy" size="sm">{indicatorSpecies.length} species</Badge>
-            )
-          }
-          className="mb-4"
-        >
-          {speciesLoading ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-healthy mb-4" />
-              <p className="text-balean-gray-500">Loading indicator species...</p>
-            </div>
-          ) : indicatorSpecies.length > 0 ? (
-            <>
-              <p className="text-balean-gray-500 mb-4">
-                These species serve as key markers for assessing ecosystem health.
-              </p>
-
-              {/* Category breakdown */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {Object.entries(
-                  indicatorSpecies.reduce((acc, sp) => {
-                    acc[sp.category] = (acc[sp.category] || 0) + 1;
-                    return acc;
-                  }, {} as Record<string, number>)
-                ).map(([category, count]) => {
-                  const info = CATEGORY_INFO[category as keyof typeof CATEGORY_INFO];
-                  return (
-                    <Badge
-                      key={category}
-                      variant="info"
-                      size="sm"
-                      className="px-2 py-1"
-                    >
-                      {info.name}: {count}
-                    </Badge>
-                  );
-                })}
-              </div>
-
-              <div className="space-y-2 mb-4">
-                {indicatorSpecies.slice(0, showAllSpecies ? indicatorSpecies.length : 5).map((sp) => (
-                  <Link
-                    key={sp.id}
-                    href={`/ocean-pulse-app/indicator-species/${sp.id}`}
-                    className="block"
-                  >
-                    <SpeciesCard species={sp} compact />
-                  </Link>
-                ))}
-              </div>
-              {indicatorSpecies.length > 5 && (
-                <Button
-                  fullWidth
-                  variant="secondary"
-                  onClick={() => setShowAllSpecies(!showAllSpecies)}
-                >
-                  <Icon name={showAllSpecies ? "angle-up" : "angle-down"} size="sm" />
-                  {showAllSpecies ? 'Show Less' : `View All ${indicatorSpecies.length} Species`}
-                </Button>
-              )}
-            </>
-          ) : (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
-                <Icon name="leaf" className="text-balean-gray-300 text-3xl" />
-              </div>
-              <p className="text-balean-gray-500 mb-2 font-medium">No indicator species identified</p>
-              <p className="text-sm text-balean-gray-400 mb-4">
-                No indicator species match this MPA's ecosystem type
-              </p>
-              <Link href="/ocean-pulse-app/indicator-species">
-                <Button variant="secondary">
-                  <Icon name="leaf" size="sm" />
-                  Browse Indicator Species
-                </Button>
-              </Link>
-            </div>
-          )}
-        </CollapsibleCard>
-
-        {/* Indicator Species Population Trends (10-Year Analysis) */}
-        <CollapsibleCard
-          title="Population Trends"
-          icon="arrow-trend-up"
-          iconColor="text-balean-coral"
-          defaultOpen={false}
-          badge={
-            abundanceSummary && abundanceSummary.speciesTrends.length > 0 && (
-              <Badge
-                variant={abundanceSummary.overallBiodiversity.trendDirection === 'increasing' ? 'healthy' :
-                         abundanceSummary.overallBiodiversity.trendDirection === 'stable' ? 'info' : 'warning'}
-                size="sm"
-              >
-                {abundanceSummary.overallBiodiversity.trendDirection}
-              </Badge>
-            )
-          }
-          className="mb-4"
-        >
-          {abundanceLoading ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-balean-cyan mb-4" />
-              <p className="text-balean-gray-500 mb-2">Analyzing indicator species abundance data...</p>
-              <p className="text-sm text-balean-gray-400 mb-4">
-                Filtering for ecosystem-relevant indicator species
-              </p>
-              <div className="mt-4 w-full bg-balean-gray-200 rounded-full h-2 max-w-md mx-auto">
-                <motion.div
-                  className="bg-gradient-to-r from-balean-cyan to-balean-cyan-light h-2 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${abundanceProgress}%` }}
-                  transition={{ duration: 0.3 }}
-                />
-              </div>
-            </div>
-          ) : abundanceSummary && abundanceSummary.speciesTrends.length > 0 ? (
-            <>
-              {/* Overall indicator species health summary */}
-              <div className="mb-6 p-4 bg-gradient-to-br from-balean-cyan/10 to-balean-cyan-light/10 rounded-xl">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div>
-                    <p className="text-sm text-balean-gray-500 mb-1">Estimated Species Health</p>
-                    <p className="text-3xl font-bold text-balean-navy">
-                      {abundanceSummary.overallBiodiversity.healthScore}
-                      <span className="text-lg text-balean-gray-400">/100</span>
-                    </p>
-                    <p className="text-xs text-balean-gray-400 mt-1">
-                      Based on {abundanceSummary.speciesTrends.length} indicator species from available data
-                    </p>
-                  </div>
-                  <div className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
-                    abundanceSummary.overallBiodiversity.trendDirection === 'increasing'
-                      ? 'bg-healthy/10 text-healthy'
-                      : abundanceSummary.overallBiodiversity.trendDirection === 'stable'
-                      ? 'bg-info/10 text-info'
-                      : 'bg-warning/10 text-warning'
-                  }`}>
-                    <Icon name={
-                      abundanceSummary.overallBiodiversity.trendDirection === 'increasing'
-                        ? 'arrow-trend-up'
-                        : abundanceSummary.overallBiodiversity.trendDirection === 'stable'
-                        ? 'minus'
-                        : 'arrow-trend-down'
-                    } />
-                    <span className="font-medium capitalize">
-                      {abundanceSummary.overallBiodiversity.trendDirection}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Data quality indicator */}
-              <div className="mb-4 p-3 bg-healthy/10 border-l-4 border-healthy rounded">
-                <div className="flex items-start gap-2">
-                  <Icon name="leaf" size="sm" className="text-healthy mt-0.5" />
-                  <div className="text-sm text-balean-gray-500">
-                    <p className="font-medium mb-1">Indicator Species Data</p>
-                    <p className="text-xs text-balean-gray-400">
-                      {abundanceSummary.dataQuality.recordsWithAbundance.toLocaleString()} occurrence records
-                      for indicator species from OBIS (10-year analysis)
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Trend cards grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                {abundanceSummary.speciesTrends
-                  .slice(0, showAllTrends ? undefined : 6)
-                  .map((trend) => (
-                    <AbundanceTrendCard key={trend.scientificName} trend={trend} />
-                  ))}
-              </div>
-
-              {/* View all button */}
-              {abundanceSummary.speciesTrends.length > 6 && (
-                <Button
-                  fullWidth
-                  variant="secondary"
-                  onClick={() => setShowAllTrends(!showAllTrends)}
-                >
-                  <Icon name={showAllTrends ? "angle-up" : "angle-down"} size="sm" />
-                  {showAllTrends ? 'Show Less' : `View All ${abundanceSummary.speciesTrends.length} Trends`}
-                </Button>
-              )}
-            </>
-          ) : (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
-                <Icon name="chart-line" className="text-balean-gray-300 text-3xl" />
-              </div>
-              <p className="text-balean-gray-500 mb-2 font-medium">No indicator species abundance data</p>
-              <p className="text-sm text-balean-gray-400">
-                No abundance records found for indicator species in this MPA
-              </p>
-            </div>
-          )}
-        </CollapsibleCard>
-
-        {/* Habitat Quality (Environmental Data) */}
-        <CollapsibleCard
-          title="Habitat Quality"
-          icon="flask"
-          iconColor="text-balean-cyan"
-          defaultOpen={false}
-          badge={
-            environmentalSummary && environmentalSummary.parameters.length > 0 && (
-              <Badge
-                variant={environmentalSummary.habitatQualityScore >= 80 ? 'healthy' :
-                         environmentalSummary.habitatQualityScore >= 60 ? 'info' : 'warning'}
-                size="sm"
-              >
-                {environmentalSummary.habitatQualityScore}/100
-              </Badge>
-            )
-          }
-          className="mb-4"
-        >
-          {environmentalLoading ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-balean-cyan mb-4" />
-              <p className="text-balean-gray-500 mb-2">Analyzing environmental conditions...</p>
-              <p className="text-sm text-balean-gray-400 mb-4">
-                Temperature, salinity, pH, and more
-              </p>
-              <div className="mt-4 w-full bg-balean-gray-200 rounded-full h-2 max-w-md mx-auto">
-                <motion.div
-                  className="bg-gradient-to-r from-balean-cyan to-balean-cyan-light h-2 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${environmentalProgress}%` }}
-                  transition={{ duration: 0.3 }}
-                />
-              </div>
-            </div>
-          ) : environmentalSummary && environmentalSummary.parameters.length > 0 ? (
-            <>
-              {/* Habitat quality score */}
-              <div className="mb-6 p-4 bg-gradient-to-br from-balean-cyan/10 to-balean-cyan-light/10 rounded-xl border border-balean-cyan/20">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div>
-                    <p className="text-sm text-balean-gray-500 mb-1">Estimated Habitat Quality</p>
-                    <p className="text-3xl font-bold text-balean-navy">
-                      {environmentalSummary.habitatQualityScore}
-                      <span className="text-lg text-balean-gray-400">/100</span>
-                    </p>
-                    <p className="text-xs text-balean-gray-400 mt-1">
-                      Based on {environmentalSummary.parameters.length} environmental parameters
-                    </p>
-                  </div>
-                  <div className="w-16 h-16 rounded-full bg-white shadow-md flex items-center justify-center">
-                    <Icon
-                      name={
-                        environmentalSummary.habitatQualityScore >= 80 ? 'circle-check' :
-                        environmentalSummary.habitatQualityScore >= 60 ? 'circle-exclamation' :
-                        'triangle-exclamation'
-                      }
-                      className={`text-3xl ${
-                        environmentalSummary.habitatQualityScore >= 80 ? 'text-healthy' :
-                        environmentalSummary.habitatQualityScore >= 60 ? 'text-warning' :
-                        'text-critical'
-                      }`}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Data quality indicator */}
-              <div className="mb-4 p-3 bg-info/10 border-l-4 border-info rounded">
-                <div className="flex items-start gap-2">
-                  <Icon name="info" size="sm" className="text-info mt-0.5" />
-                  <div className="text-sm text-balean-gray-500">
-                    <p className="font-medium mb-1">Environmental Monitoring Data</p>
-                    <p className="text-xs text-balean-gray-400">
-                      {environmentalSummary.dataQuality.measurementsCount.toLocaleString()} measurements
-                      across {environmentalSummary.parameters.length} parameters from OBIS-ENV-DATA
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Environmental dashboard */}
-              <EnvironmentalDashboard summary={environmentalSummary} />
-            </>
-          ) : (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
-                <Icon name="flask" className="text-balean-gray-300 text-3xl" />
-              </div>
-              <p className="text-balean-gray-500 mb-2 font-medium">No environmental data available</p>
-              <p className="text-sm text-balean-gray-400">
-                This MPA may not have environmental measurements in the OBIS database yet
-              </p>
-            </div>
-          )}
-        </CollapsibleCard>
-
-        {/* Marine Heatwave Alert */}
-        <CollapsibleCard
-          title="Marine Heatwave Status"
-          icon="temperature-hot"
-          iconColor={heatwaveAlert?.active ? 'text-red-500' : 'text-balean-cyan'}
-          defaultOpen={heatwaveAlert?.active || false}
-          badge={
-            heatwaveAlert && (
-              <Badge
-                variant={
-                  heatwaveAlert.category === 'none' ? 'healthy' :
-                  heatwaveAlert.category === 'moderate' ? 'warning' :
-                  'danger'
-                }
-                size="sm"
-              >
-                {heatwaveAlert.active ? heatwaveAlert.category : 'Normal'}
-              </Badge>
-            )
-          }
-          className="mb-4"
-        >
-          {heatwaveLoading ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-balean-cyan mb-4" />
-              <p className="text-balean-gray-500 mb-2">Checking thermal conditions...</p>
-              <p className="text-sm text-balean-gray-400">
-                Analyzing sea surface temperature data
-              </p>
-            </div>
-          ) : heatwaveAlert ? (
-            <HeatwaveAlert alert={heatwaveAlert} />
-          ) : (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
-                <Icon name="temperature-half" className="text-balean-gray-300 text-3xl" />
-              </div>
-              <p className="text-balean-gray-500 mb-2 font-medium">Heatwave data unavailable</p>
-              <p className="text-sm text-balean-gray-400">
-                Unable to fetch thermal conditions from Copernicus Marine Service
-              </p>
-            </div>
-          )}
-        </CollapsibleCard>
-
-        {/* Marine Litter Pressure - Community Reports */}
-        <CollapsibleCard
-          title="Marine Litter"
-          icon="trash"
-          iconColor="text-teal-600"
-          defaultOpen={!!litterAnalytics && litterAnalytics.totalReports > 0}
-          badge={
-            litterAnalytics?.cleanlinessRating ? (
-              <Badge
-                variant={
-                  litterAnalytics.cleanlinessRating === 'clean' ? 'healthy' :
-                  litterAnalytics.cleanlinessRating === 'moderate' ? 'warning' :
-                  'danger'
-                }
-                size="sm"
-              >
-                {litterAnalytics.cleanlinessRating === 'clean' ? 'Clean' :
-                 litterAnalytics.cleanlinessRating === 'moderate' ? 'Moderate' :
-                 litterAnalytics.cleanlinessRating === 'dirty' ? 'Dirty' : 'Very Dirty'}
-              </Badge>
-            ) : litterAnalytics ? (
-              <Badge variant="info" size="sm">
-                {litterAnalytics.totalReports} report{litterAnalytics.totalReports !== 1 ? 's' : ''}
-              </Badge>
-            ) : null
-          }
-          className="mb-4"
-        >
-          {litterLoading ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-teal-500 mb-4" />
-              <p className="text-balean-gray-500 mb-2">Analyzing litter data...</p>
-              <p className="text-sm text-balean-gray-400">
-                Aggregating community litter reports
-              </p>
-            </div>
-          ) : litterAnalytics && litterAnalytics.totalReports > 0 ? (
-            <>
-              {/* Summary Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                <div className="bg-teal-50 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-bold text-teal-700">{litterAnalytics.totalReports}</p>
-                  <p className="text-xs text-balean-gray-400">
-                    Report{litterAnalytics.totalReports !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                <div className="bg-teal-50 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-bold text-teal-700">
-                    {litterAnalytics.totalItems >= 1000
-                      ? `${(litterAnalytics.totalItems / 1000).toFixed(1)}K`
-                      : litterAnalytics.totalItems}
-                  </p>
-                  <p className="text-xs text-balean-gray-400">Items Found</p>
-                </div>
-                {litterAnalytics.averageItemsPer100m !== null && (
-                  <div className={`rounded-xl p-3 text-center ${
-                    litterAnalytics.averageItemsPer100m <= 20 ? 'bg-green-50' :
-                    litterAnalytics.averageItemsPer100m <= 100 ? 'bg-amber-50' :
-                    'bg-red-50'
-                  }`}>
-                    <p className={`text-2xl font-bold ${
-                      litterAnalytics.averageItemsPer100m <= 20 ? 'text-green-700' :
-                      litterAnalytics.averageItemsPer100m <= 100 ? 'text-amber-700' :
-                      'text-red-700'
-                    }`}>
-                      {litterAnalytics.averageItemsPer100m}
-                    </p>
-                    <p className="text-xs text-balean-gray-400 flex items-center justify-center gap-1">
-                      Items/100m
-                      <InfoTip text="Average litter density per 100 metres of beach, calculated from OSPAR-standard surveys. The EU MSFD Descriptor 10 considers fewer than 20 items/100m as 'clean'." />
-                    </p>
-                  </div>
-                )}
-                {litterAnalytics.totalWeightKg !== null && (
-                  <div className="bg-teal-50 rounded-xl p-3 text-center">
-                    <p className="text-2xl font-bold text-teal-700">{litterAnalytics.totalWeightKg} kg</p>
-                    <p className="text-xs text-balean-gray-400">Weight Collected</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Source Attribution + Material Breakdown */}
-              {(litterAnalytics.sourceBreakdown.length > 0 || litterAnalytics.materialBreakdown.length > 0) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  {litterAnalytics.sourceBreakdown.length > 0 && (
-                    <div className="bg-white rounded-xl p-4 shadow-sm">
-                      <h4 className="font-semibold text-balean-navy mb-1 flex items-center gap-2">
-                        <i className="fi fi-rr-chart-pie text-teal-500" />
-                        Source Attribution
-                      </h4>
-                      <p className="text-xs text-balean-gray-400 mb-3">
-                        Where the litter likely comes from
-                      </p>
-                      <LitterBySourceChart data={litterAnalytics.sourceBreakdown} />
-                      {/* Legend */}
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 justify-center">
-                        {litterAnalytics.sourceBreakdown.slice(0, 5).map(s => (
-                          <div key={s.source} className="flex items-center gap-1.5 text-xs text-gray-600">
-                            <i className={`fi fi-rr-${SOURCE_CONFIG[s.source]?.icon || 'question'} text-[10px]`} />
-                            <span>{SOURCE_CONFIG[s.source]?.label || s.source}</span>
-                            <span className="text-gray-400">({Math.round(s.percentage)}%)</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {litterAnalytics.materialBreakdown.length > 0 && (
-                    <div className="bg-white rounded-xl p-4 shadow-sm">
-                      <h4 className="font-semibold text-balean-navy mb-1 flex items-center gap-2">
-                        <i className="fi fi-rr-layers text-teal-500" />
-                        Material Breakdown
-                      </h4>
-                      <p className="text-xs text-balean-gray-400 mb-3">
-                        Composition by material type
-                      </p>
-                      <LitterByMaterialChart data={litterAnalytics.materialBreakdown} />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Monthly Trend */}
-              {litterAnalytics.monthlyTrend.length >= 2 && (
-                <div className="bg-white rounded-xl p-4 shadow-sm mb-6">
-                  <h4 className="font-semibold text-balean-navy mb-3 flex items-center gap-2">
-                    <i className="fi fi-rr-chart-line-up text-teal-500" />
-                    Litter Trend Over Time
-                  </h4>
-                  <LitterTrendChart data={litterAnalytics.monthlyTrend} />
-                </div>
-              )}
-
-              {/* Top Items */}
-              {litterAnalytics.topItems.length > 0 && (
-                <div className="bg-white rounded-xl p-4 shadow-sm mb-6">
-                  <h4 className="font-semibold text-balean-navy mb-3 flex items-center gap-2">
-                    <i className="fi fi-rr-list text-teal-500" />
-                    Most Common Items
-                  </h4>
-                  <div className="space-y-1.5">
-                    {litterAnalytics.topItems.slice(0, 5).map((item, i) => {
-                      const config = MATERIAL_CONFIG[item.material];
-                      const pct = litterAnalytics.totalItems > 0
-                        ? (item.count / litterAnalytics.totalItems) * 100
-                        : 0;
-                      return (
-                        <div key={item.code} className="flex items-center gap-3">
-                          <span className="text-xs text-gray-400 w-4 text-right">{i + 1}</span>
-                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${config?.bg || 'bg-gray-200'}`} />
-                          <span className="text-sm text-gray-800 flex-1 truncate">{item.name}</span>
-                          <span className="text-sm font-semibold text-gray-900">{item.count}</span>
-                          <span className="text-xs text-gray-400 w-10 text-right">{Math.round(pct)}%</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Data attribution */}
-              <div className="p-3 bg-balean-gray-50 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <Icon name="info" size="sm" className="text-balean-gray-400 mt-0.5" />
-                  <div className="text-xs text-balean-gray-400">
-                    <p>Data from <strong>community litter reports</strong> submitted through Ocean PULSE</p>
-                    <p className="mt-1">
-                      Survey methodology aligned with OSPAR Beach Litter Monitoring Guidelines
-                      and EU Marine Strategy Framework Directive (MSFD) Descriptor 10.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-teal-50 mx-auto mb-4 flex items-center justify-center">
-                <i className="fi fi-rr-trash text-teal-300 text-3xl" />
-              </div>
-              <p className="text-balean-gray-500 mb-2 font-medium">No litter data yet</p>
-              <p className="text-sm text-balean-gray-400 max-w-md mx-auto">
-                Be the first to submit a marine litter report for this MPA.
-                Your data helps track pollution and inform policy.
-              </p>
-            </div>
-          )}
-        </CollapsibleCard>
-
-        {/* Fishing Activity - Global Fishing Watch Data */}
-        <CollapsibleCard
-          title="Fishing Activity"
-          icon="ship"
-          iconColor="text-balean-cyan"
-          defaultOpen={false}
-          badge={
-            <div className="flex items-center gap-2">
-              {iuuRisk && <IUURiskBadge riskData={iuuRisk} size="sm" showTooltip={false} />}
-              {complianceScore && (
-                <Badge
-                  variant={complianceScore.score >= 80 ? 'healthy' : complianceScore.score >= 60 ? 'warning' : 'danger'}
-                  size="sm"
-                >
-                  {complianceScore.score}/100
-                </Badge>
-              )}
-            </div>
-          }
-          className="mb-4"
-        >
-          {fishingLoading ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-balean-gray-200 border-t-balean-cyan mb-4" />
-              <p className="text-balean-gray-500 mb-2">Analyzing fishing activity...</p>
-              <p className="text-sm text-balean-gray-400">
-                Data from Global Fishing Watch
-              </p>
-            </div>
-          ) : fishingError ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-amber-50 mx-auto mb-4 flex items-center justify-center">
-                <Icon name="info" className="text-amber-500 text-3xl" />
-              </div>
-              <p className="text-balean-gray-500 mb-2 font-medium">Fishing data unavailable</p>
-              <p className="text-sm text-balean-gray-400 max-w-md mx-auto">
-                {fishingError.message.includes('not configured')
-                  ? 'Global Fishing Watch API is not configured. Contact the administrator to enable this feature.'
-                  : fishingError.message.includes('authentication') || fishingError.message.includes('401')
-                    ? 'Global Fishing Watch API token may be expired or invalid.'
-                    : 'Unable to fetch fishing data. The API may be temporarily unavailable.'}
-              </p>
-              <p className="text-xs text-balean-gray-300 mt-2">
-                Error: {fishingError.message}
-              </p>
-            </div>
-          ) : fishingEffort || vesselActivity?.length || complianceScore || iuuRisk ? (
-            <>
-              {/* Summary Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                {fishingEffort && (
-                  <>
-                    <div className="bg-balean-gray-50 rounded-xl p-3 text-center">
-                      <p className="text-2xl font-bold text-balean-navy">
-                        {fishingEffort.totalFishingHours >= 1000
-                          ? `${(fishingEffort.totalFishingHours / 1000).toFixed(1)}K`
-                          : Math.round(fishingEffort.totalFishingHours)}
-                      </p>
-                      <p className="text-xs text-balean-gray-400 flex items-center justify-center gap-1">
-                        Fishing Hours
-                        <InfoTip text="Total hours of detected fishing activity within this MPA over the past 12 months. Data from Global Fishing Watch using AIS (Automatic Identification System) vessel tracking. AIS coverage may vary; some vessels disable transponders or operate without AIS." />
-                      </p>
-                    </div>
-                    <div className="bg-balean-gray-50 rounded-xl p-3 text-center">
-                      <p className="text-2xl font-bold text-balean-navy">
-                        {fishingEffort.totalVessels}
-                      </p>
-                      <p className="text-xs text-balean-gray-400 flex items-center justify-center gap-1">
-                        Vessels
-                        <InfoTip text="Unique fishing vessels detected in this MPA over the past 12 months. Identified by their AIS transponders via Global Fishing Watch satellite tracking. Small-scale or artisanal vessels without AIS may not be counted." />
-                      </p>
-                    </div>
-                  </>
-                )}
-                {complianceScore && (
-                  <div className={`rounded-xl p-3 text-center ${
-                    complianceScore.score >= 80 ? 'bg-green-50' :
-                    complianceScore.score >= 60 ? 'bg-amber-50' : 'bg-red-50'
-                  }`}>
-                    <p className={`text-2xl font-bold ${
-                      complianceScore.score >= 80 ? 'text-green-700' :
-                      complianceScore.score >= 60 ? 'text-amber-700' : 'text-red-700'
-                    }`}>
-                      {complianceScore.score}
-                    </p>
-                    <p className="text-xs text-balean-gray-400 flex items-center justify-center gap-1">
-                      Compliance
-                      <InfoTip text={`Estimated compliance score (0-100) based on fishing activity relative to this MPA's protection level (${mpa.protectionLevel}). Higher scores indicate less fishing activity. For no-take zones, any fishing reduces the score. This is a simplified estimate; actual compliance depends on specific regulations and permitted activities.`} />
-                    </p>
-                  </div>
-                )}
-                {iuuRisk && (
-                  <div className={`rounded-xl p-3 text-center ${
-                    iuuRisk.riskLevel === 'low' ? 'bg-green-50' :
-                    iuuRisk.riskLevel === 'moderate' ? 'bg-amber-50' :
-                    iuuRisk.riskLevel === 'high' ? 'bg-orange-50' : 'bg-red-50'
-                  }`}>
-                    <p className={`text-2xl font-bold capitalize ${
-                      iuuRisk.riskLevel === 'low' ? 'text-green-700' :
-                      iuuRisk.riskLevel === 'moderate' ? 'text-amber-700' :
-                      iuuRisk.riskLevel === 'high' ? 'text-orange-700' : 'text-red-700'
-                    }`}>
-                      {iuuRisk.riskLevel}
-                    </p>
-                    <p className="text-xs text-balean-gray-400 flex items-center justify-center gap-1">
-                      IUU Risk
-                      <InfoTip text="Illegal, Unreported, and Unregulated (IUU) fishing risk estimate based on fishing intensity and vessel diversity patterns. Factors include: total fishing hours, number of flag states present, and vessel count. This is an indicative assessment; confirmed IUU activity requires investigation by authorities." />
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Fishing Trends Chart */}
-              {fishingEffort && (
-                <div className="mb-6">
-                  <FishingTrendChart data={fishingEffort} />
-                </div>
-              )}
-
-              {/* Breakdown Charts */}
-              {fishingEffort && (fishingEffort.byFlag?.length > 0 || fishingEffort.byGearType?.length > 0) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  {fishingEffort.byFlag && fishingEffort.byFlag.length > 0 && (
-                    <div className="bg-white rounded-xl p-4 shadow-sm">
-                      <h4 className="font-semibold text-balean-navy mb-3 flex items-center gap-2">
-                        <Icon name="flag" size="sm" className="text-balean-cyan" />
-                        By Flag State
-                      </h4>
-                      <FishingByFlagChart data={fishingEffort.byFlag} />
-                    </div>
-                  )}
-                  {fishingEffort.byGearType && fishingEffort.byGearType.length > 0 && (
-                    <div className="bg-white rounded-xl p-4 shadow-sm">
-                      <h4 className="font-semibold text-balean-navy mb-3 flex items-center gap-2">
-                        <Icon name="anchor" size="sm" className="text-balean-coral" />
-                        By Gear Type
-                      </h4>
-                      <FishingByGearChart data={fishingEffort.byGearType} />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Vessel Activity Feed */}
-              {vesselActivity && vesselActivity.length > 0 && (
-                <div className="mb-4">
-                  <VesselActivityFeed events={vesselActivity} maxItems={10} />
-                </div>
-              )}
-
-              {/* Data attribution */}
-              <div className="p-3 bg-balean-gray-50 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <Icon name="info" size="sm" className="text-balean-gray-400 mt-0.5" />
-                  <div className="text-xs text-balean-gray-400">
-                    <p>Data from <strong>Global Fishing Watch</strong> (globalfishingwatch.org)</p>
-                    <p className="mt-1">
-                      Global Fishing Watch uses satellite data to track commercial fishing activity worldwide.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-balean-gray-100 mx-auto mb-4 flex items-center justify-center">
-                <Icon name="ship" className="text-balean-gray-300 text-3xl" />
-              </div>
-              <p className="text-balean-gray-500 mb-2 font-medium">No fishing activity data</p>
-              <p className="text-sm text-balean-gray-400">
-                Global Fishing Watch data is not available for this MPA
-              </p>
-            </div>
-          )}
-        </CollapsibleCard>
-
-        {/* Wind Farm Conflicts */}
-        <CollapsibleCard
-          title="Offshore Wind Farms"
-          icon="wind"
-          iconColor="text-orange-500"
-          defaultOpen={hasWindFarmConflicts}
-          badge={
-            hasWindFarmConflicts ? (
-              <Badge variant="danger" size="sm">
-                {windFarmConflicts.length} Conflict{windFarmConflicts.length !== 1 ? 's' : ''}
-              </Badge>
-            ) : (
-              <Badge variant="healthy" size="sm">
-                Clear
-              </Badge>
-            )
-          }
-          className="mb-4"
-        >
-          <WindFarmConflictCard
-            conflicts={windFarmConflicts}
-            nearbyWindFarms={nearbyWindFarms}
-            isLoading={windFarmsLoading}
-          />
-        </CollapsibleCard>
+        <CollapsibleCard title="Live Reports" icon="camera" iconColor="text-balean-cyan" defaultOpen={false} badge={mpaObservations.length > 0 && <Badge variant="info" size="sm">{mpaObservations.length} reports</Badge>} className="mb-4"><LiveReports mpaId={mpa.id} maxHeight={500} /></CollapsibleCard>
+        <MPAIndicatorSpeciesSection speciesLoading={speciesLoading} indicatorSpecies={indicatorSpecies} showAllSpecies={showAllSpecies} onToggleShowAll={() => setShowAllSpecies(!showAllSpecies)} />
+        <MPAPopulationTrendsSection abundanceLoading={abundanceLoading} abundanceProgress={abundanceProgress} abundanceSummary={abundanceSummary} showAllTrends={showAllTrends} onToggleShowAll={() => setShowAllTrends(!showAllTrends)} />
+        <MPAHabitatQualitySection environmentalLoading={environmentalLoading} environmentalProgress={environmentalProgress} environmentalSummary={environmentalSummary} />
+        <CollapsibleCard title="Marine Heatwave Status" icon="temperature-hot" iconColor={heatwaveAlert?.active ? 'text-red-500' : 'text-balean-cyan'} defaultOpen={heatwaveAlert?.active || false} badge={getHeatwaveBadge(heatwaveAlert)} className="mb-4"><MPAHeatwaveSection alert={heatwaveAlert} loading={heatwaveLoading} /></CollapsibleCard>
+        <CollapsibleCard title="Marine Litter" icon="trash" iconColor="text-teal-600" defaultOpen={!!litterAnalytics && litterAnalytics.totalReports > 0} badge={getLitterBadge(litterAnalytics)} className="mb-4"><MPALitterSection litterLoading={litterLoading} litterAnalytics={litterAnalytics} /></CollapsibleCard>
+        <CollapsibleCard title="Fishing Activity" icon="ship" iconColor="text-balean-cyan" defaultOpen={false} badge={getFishingBadge(fishingData.iuuRisk, fishingData.compliance)} className="mb-4"><MPAFishingSection fishingLoading={fishingLoading} fishingError={fishingError} fishingEffort={fishingData.fishingEffort} vesselActivity={fishingData.vesselActivity} complianceScore={fishingData.compliance} iuuRisk={fishingData.iuuRisk} protectionLevel={mpa.protectionLevel} /></CollapsibleCard>
+        <CollapsibleCard title="Offshore Wind Farms" icon="wind" iconColor="text-orange-500" defaultOpen={hasWindFarmConflicts} badge={getWindFarmBadge(hasWindFarmConflicts, windFarmConflicts.length)} className="mb-4"><WindFarmConflictCard conflicts={windFarmConflicts} nearbyWindFarms={nearbyWindFarms} isLoading={windFarmsLoading} /></CollapsibleCard>
       </div>
-
-      {/* Health Score Modal */}
-      <HealthScoreModal
-        isOpen={showHealthModal}
-        onClose={() => setShowHealthModal(false)}
-        healthData={compositeHealth}
-      />
+      <HealthScoreModal isOpen={showHealthModal} onClose={() => setShowHealthModal(false)} healthData={compositeHealth} />
     </main>
   );
+}
+
+function MPALoadingSkeleton() {
+  return (
+    <main className="min-h-screen p-6 pb-24 bg-balean-off-white">
+      <div className="max-w-screen-xl mx-auto">
+        <div className="mb-4"><div className="h-10 w-32 bg-balean-gray-200 animate-pulse rounded" /></div>
+        <MPACardSkeleton /><div className="mt-4"><MPACardSkeleton /></div>
+      </div>
+    </main>
+  );
+}
+
+function MPAErrorView({ error, onBack }: { error: string; onBack: () => void }) {
+  return (
+    <main className="min-h-screen p-6 pb-24 bg-balean-off-white">
+      <div className="max-w-screen-xl mx-auto">
+        <Card><CardTitle>Error</CardTitle>
+          <CardContent>
+            <p className="text-balean-gray-500 mb-4">{error}</p>
+            <Button onClick={onBack} variant="secondary"><Icon name="angle-left" size="sm" /> Back to Home</Button>
+          </CardContent>
+        </Card>
+      </div>
+    </main>
+  );
+}
+
+export default function MPADetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { mpa, loading, error, cached } = useMPALoader(params.id as string);
+
+  if (loading) return <MPALoadingSkeleton />;
+  if (error || !mpa) return <MPAErrorView error={error || 'MPA not found'} onBack={() => router.push('/')} />;
+  return <MPADetailContent mpa={mpa} cached={cached} />;
 }

@@ -58,6 +58,118 @@ const boundaryLineLayer: LayerProps = {
   },
 };
 
+function useBoundariesGeoJSON(mpas: MPA[]) {
+  return useMemo(() => {
+    const features = mpas
+      .filter((mpa) => mpa.geometry)
+      .map((mpa) => {
+        const geom = mpa.geometry!;
+        const rawGeometry = geom.type === 'Polygon'
+          ? { type: 'Polygon' as const, coordinates: geom.coordinates as number[][][] }
+          : { type: 'MultiPolygon' as const, coordinates: geom.coordinates as number[][][][] };
+        const geometry = normalizeAntimeridianGeometry(rawGeometry);
+        return {
+          type: 'Feature' as const,
+          properties: { id: mpa.id, color: getHealthColor(mpa.healthScore) },
+          geometry,
+        };
+      });
+    return { type: 'FeatureCollection' as const, features };
+  }, [mpas]);
+}
+
+function useHoverHandlers(onMPAClick?: (mpa: MPA) => void) {
+  const [hoveredMPA, setHoveredMPA] = useState<MPA | null>(null);
+  const [selectedMPA, setSelectedMPA] = useState<MPA | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isHoveringPopupRef = useRef(false);
+
+  const handleMarkerMouseEnter = useCallback((mpa: MPA) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setHoveredMPA(mpa);
+  }, []);
+
+  const handleMarkerMouseLeave = useCallback(() => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      if (!isHoveringPopupRef.current) setHoveredMPA(null);
+    }, 150);
+  }, []);
+
+  const handleMarkerClick = useCallback((mpa: MPA) => {
+    onMPAClick?.(mpa);
+    setSelectedMPA((prev) => (prev?.id === mpa.id ? null : mpa));
+  }, [onMPAClick]);
+
+  const handlePopupClose = useCallback(() => {
+    setHoveredMPA(null);
+    setSelectedMPA(null);
+    isHoveringPopupRef.current = false;
+  }, []);
+
+  const handlePopupMouseEnter = useCallback(() => {
+    isHoveringPopupRef.current = true;
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+  }, []);
+
+  const handlePopupMouseLeave = useCallback(() => {
+    isHoveringPopupRef.current = false;
+    hoverTimeoutRef.current = setTimeout(() => {
+      if (!isHoveringPopupRef.current) setHoveredMPA(null);
+    }, 150);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    };
+  }, []);
+
+  return {
+    activePopupMPA: hoveredMPA || selectedMPA,
+    handleMarkerMouseEnter,
+    handleMarkerMouseLeave,
+    handleMarkerClick,
+    handlePopupClose,
+    handlePopupMouseEnter,
+    handlePopupMouseLeave,
+  };
+}
+
+function MapLegends({ showSST, showWindFarms, showLitterHotspots, windFarmSummary, litterSurveyCount }: {
+  showSST: boolean;
+  showWindFarms: boolean;
+  showLitterHotspots: boolean;
+  windFarmSummary?: WindFarmSummary | null;
+  litterSurveyCount?: number;
+}) {
+  return (
+    <>
+      {showSST && <SSTLegend className="absolute bottom-20 left-4 z-10" />}
+      {showWindFarms && !showSST && (
+        <WindFarmLegend visible={showWindFarms} summary={windFarmSummary} />
+      )}
+      {showWindFarms && showSST && (
+        <div className="absolute bottom-44 left-4 z-10">
+          <WindFarmLegend visible={showWindFarms} summary={windFarmSummary} />
+        </div>
+      )}
+      {showLitterHotspots && (
+        <LitterHotspotLegend
+          visible={showLitterHotspots}
+          surveyCount={litterSurveyCount}
+          className={`absolute ${showSST || showWindFarms ? 'bottom-44' : 'bottom-20'} left-4 z-10`}
+        />
+      )}
+    </>
+  );
+}
+
 export function MobileMap({
   mpas,
   center,
@@ -75,137 +187,28 @@ export function MobileMap({
   highlightedMpaIds,
 }: MobileMapProps) {
   const mapRef = useRef<MapRef>(null);
-  const [hoveredMPA, setHoveredMPA] = useState<MPA | null>(null);
-  const [selectedMPA, setSelectedMPA] = useState<MPA | null>(null);
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isHoveringPopupRef = useRef(false);
-
   const hasFlownToUser = useRef(false);
 
-  // Calculate initial view state
   const initialViewState = useMemo(() => {
     if (center && zoom !== undefined) {
       const [lng, lat] = toMapLibreCoords(center);
       return { longitude: lng, latitude: lat, zoom };
     }
-    // Default world view
     return { longitude: 0, latitude: 20, zoom: 2 };
   }, [center, zoom]);
 
-  // Fly to user location when it becomes available (only once, and only if no nav params)
   useEffect(() => {
     if (userLocation && !hasFlownToUser.current && !center) {
       hasFlownToUser.current = true;
-      mapRef.current?.flyTo({
-        center: [userLocation.longitude, userLocation.latitude],
-        zoom: 6,
-        duration: 1500,
-      });
+      mapRef.current?.flyTo({ center: [userLocation.longitude, userLocation.latitude], zoom: 6, duration: 1500 });
     }
   }, [userLocation, center]);
 
-  // Convert MPA geometries to GeoJSON FeatureCollection
-  // Supports both Polygon and MultiPolygon types
-  const boundariesGeoJSON = useMemo(() => {
-    const withGeometry = mpas.filter((mpa) => mpa.geometry);
-
-    const features = withGeometry.map((mpa) => {
-      const geom = mpa.geometry!;
-      // Cast to GeoJSON.Geometry type for MapLibre compatibility
-      const rawGeometry = geom.type === 'Polygon'
-        ? { type: 'Polygon' as const, coordinates: geom.coordinates as number[][][] }
-        : { type: 'MultiPolygon' as const, coordinates: geom.coordinates as number[][][][] };
-
-      // Normalize geometries that cross the anti-meridian (e.g., New Zealand)
-      const geometry = normalizeAntimeridianGeometry(rawGeometry);
-
-      return {
-        type: 'Feature' as const,
-        properties: {
-          id: mpa.id,
-          color: getHealthColor(mpa.healthScore),
-        },
-        geometry,
-      };
-    });
-
-    return {
-      type: 'FeatureCollection' as const,
-      features,
-    };
-  }, [mpas]);
-
-  // Hover handlers - show popup on hover (desktop) or persist on click
-  const handleMarkerMouseEnter = useCallback((mpa: MPA) => {
-    // Clear any pending close timeout
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-    setHoveredMPA(mpa);
-  }, []);
-
-  const handleMarkerMouseLeave = useCallback(() => {
-    // Delay closing to allow mouse to move to popup
-    hoverTimeoutRef.current = setTimeout(() => {
-      if (!isHoveringPopupRef.current) {
-        setHoveredMPA(null);
-      }
-    }, 150);
-  }, []);
-
-  // Click handler for mobile and general interaction
-  const handleMarkerClick = useCallback((mpa: MPA) => {
-    onMPAClick?.(mpa);
-    // Always toggle on click (works for both touch and mouse click)
-    setSelectedMPA((prev) => (prev?.id === mpa.id ? null : mpa));
-  }, [onMPAClick]);
-
-  // Close popup handler
-  const handlePopupClose = useCallback(() => {
-    setHoveredMPA(null);
-    setSelectedMPA(null);
-    isHoveringPopupRef.current = false;
-  }, []);
-
-  // Handle popup mouse events to prevent closing when hovering popup
-  const handlePopupMouseEnter = useCallback(() => {
-    isHoveringPopupRef.current = true;
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-  }, []);
-
-  const handlePopupMouseLeave = useCallback(() => {
-    isHoveringPopupRef.current = false;
-    // Only auto-close hover popup on desktop, not clicked selection
-    hoverTimeoutRef.current = setTimeout(() => {
-      if (!isHoveringPopupRef.current) {
-        setHoveredMPA(null);
-      }
-    }, 150);
-  }, []);
-
-  // Determine which MPA to show popup for
-  // Hover takes precedence on desktop, selected is used on mobile or when clicked
-  const activePopupMPA = hoveredMPA || selectedMPA;
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-    };
-  }, []);
-
+  const boundariesGeoJSON = useBoundariesGeoJSON(mpas);
+  const hover = useHoverHandlers(onMPAClick);
 
   return (
-    <div
-      className="relative bg-[#a3d5e8]"
-      style={{ width: '100%', height: '100%' }}
-    >
+    <div className="relative bg-[#a3d5e8]" style={{ width: '100%', height: '100%' }}>
       <Map
         ref={mapRef}
         initialViewState={initialViewState}
@@ -215,86 +218,24 @@ export function MobileMap({
         maxZoom={18}
         renderWorldCopies={true}
       >
-        {/* SST Layer - rendered first so it appears below other layers */}
         <SSTLayer visible={showSST} opacity={0.7} />
-
-        {/* Wind Farm Layer - rendered above SST but below MPA boundaries */}
-        {windFarmGeoJSON && (
-          <WindFarmLayer
-            geojson={windFarmGeoJSON}
-            visible={showWindFarms}
-            opacity={0.35}
-          />
-        )}
-
-        {/* Litter Hotspot Layer - rendered above wind farms but below MPA boundaries */}
-        {litterGeoJSON && (
-          <LitterHotspotLayer
-            geojson={litterGeoJSON}
-            visible={showLitterHotspots}
-            opacity={0.8}
-          />
-        )}
-
-        {/* MPA Boundaries as GeoJSON layers */}
-        <Source
-          id="mpa-boundaries"
-          type="geojson"
-          data={boundariesGeoJSON}
-        >
+        {windFarmGeoJSON && <WindFarmLayer geojson={windFarmGeoJSON} visible={showWindFarms} opacity={0.35} />}
+        {litterGeoJSON && <LitterHotspotLayer geojson={litterGeoJSON} visible={showLitterHotspots} opacity={0.8} />}
+        <Source id="mpa-boundaries" type="geojson" data={boundariesGeoJSON}>
           <Layer {...boundaryFillLayer} />
           <Layer {...boundaryLineLayer} />
         </Source>
-
-        {/* MPA Markers */}
         {mpas.map((mpa) => (
-          <MPAMarker
-            key={mpa.id}
-            mpa={mpa}
-            onClick={handleMarkerClick}
-            onMouseEnter={handleMarkerMouseEnter}
-            onMouseLeave={handleMarkerMouseLeave}
-            highlighted={highlightedMpaIds?.has(mpa.id)}
-          />
+          <MPAMarker key={mpa.id} mpa={mpa} onClick={hover.handleMarkerClick} onMouseEnter={hover.handleMarkerMouseEnter} onMouseLeave={hover.handleMarkerMouseLeave} highlighted={highlightedMpaIds?.has(mpa.id)} />
         ))}
-
-        {/* Popup */}
-        {activePopupMPA && (
-          <div
-            onMouseEnter={handlePopupMouseEnter}
-            onMouseLeave={handlePopupMouseLeave}
-          >
-            <MPAPopup mpa={activePopupMPA} onClose={handlePopupClose} mapRef={mapRef} />
+        {hover.activePopupMPA && (
+          <div onMouseEnter={hover.handlePopupMouseEnter} onMouseLeave={hover.handlePopupMouseLeave}>
+            <MPAPopup mpa={hover.activePopupMPA} onClose={hover.handlePopupClose} mapRef={mapRef} />
           </div>
         )}
       </Map>
-
-      {/* Custom Controls Overlay */}
       <MapControls mapRef={mapRef} />
-
-      {/* SST Legend - shown when SST layer is visible */}
-      {showSST && (
-        <SSTLegend className="absolute bottom-20 left-4 z-10" />
-      )}
-
-      {/* Wind Farm Legend - shown when wind farm layer is visible */}
-      {showWindFarms && !showSST && (
-        <WindFarmLegend visible={showWindFarms} summary={windFarmSummary} />
-      )}
-      {showWindFarms && showSST && (
-        <div className="absolute bottom-44 left-4 z-10">
-          <WindFarmLegend visible={showWindFarms} summary={windFarmSummary} />
-        </div>
-      )}
-
-      {/* Litter Hotspot Legend */}
-      {showLitterHotspots && (
-        <LitterHotspotLegend
-          visible={showLitterHotspots}
-          surveyCount={litterSurveyCount}
-          className={`absolute ${showSST || showWindFarms ? 'bottom-44' : 'bottom-20'} left-4 z-10`}
-        />
-      )}
+      <MapLegends showSST={showSST} showWindFarms={showWindFarms} showLitterHotspots={showLitterHotspots} windFarmSummary={windFarmSummary} litterSurveyCount={litterSurveyCount} />
     </div>
   );
 }

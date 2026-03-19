@@ -94,6 +94,51 @@ function SignInPrompt() {
   );
 }
 
+function SpeciesDetailsSection({ data, setData }: { data: ObservationData; setData: React.Dispatch<React.SetStateAction<ObservationData>> }) {
+  return (
+    <section className="space-y-4 p-4 bg-balean-cyan/10 rounded-xl border border-balean-cyan/20">
+      <h3 className="font-semibold text-balean-navy flex items-center gap-2"><Icon name="fish" /> Species Details</h3>
+      <div>
+        <label className="block text-sm font-medium text-balean-gray-600 mb-2">Species Name</label>
+        <Input value={data.speciesName} onChange={(e) => setData(prev => ({ ...prev, speciesName: e.target.value }))} placeholder="e.g., Green Sea Turtle, Clownfish" />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-balean-gray-600 mb-2">Species Type</label>
+          <select value={data.speciesType} onChange={(e) => setData(prev => ({ ...prev, speciesType: e.target.value }))} className="w-full px-4 py-2 border border-balean-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-balean-cyan bg-white">
+            <option value="fish">Fish</option><option value="mammal">Mammal</option><option value="reptile">Reptile</option>
+            <option value="invertebrate">Invertebrate</option><option value="bird">Seabird</option><option value="plant">Marine Plant</option><option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-balean-gray-600 mb-2">Quantity</label>
+          <Input type="number" min="1" value={data.quantity} onChange={(e) => setData(prev => ({ ...prev, quantity: Number(e.target.value) }))} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function buildObservationPayload(data: ObservationData, mpas: MPA[], photoUrl: string | undefined) {
+  const selectedMPA = mpas.find(m => m.id === data.mpaId);
+  const latitude = selectedMPA ? selectedMPA.center[0] : 0;
+  const longitude = selectedMPA ? selectedMPA.center[1] : 0;
+  const litterFields = data.reportType === 'marine_litter' && data.litter ? {
+    litterItems: data.litter.items.length > 0 ? JSON.parse(JSON.stringify(data.litter.items)) : undefined,
+    litterWeightKg: data.litter.totalWeight,
+    surveyLengthM: data.litter.surveyLengthM,
+  } : {};
+  return {
+    payload: {
+      mpaId: data.mpaId || '', reportType: data.reportType!, speciesName: data.speciesName || undefined,
+      speciesType: data.speciesType || undefined, quantity: data.quantity || undefined, notes: data.notes || undefined,
+      latitude, longitude, photoUrl: photoUrl || data.photo, healthScoreAssessment: data.healthScoreAssessment,
+      ...litterFields,
+    },
+    selectedMPA,
+  };
+}
+
 // Main form content
 function ObservePageContent() {
   const router = useRouter();
@@ -106,407 +151,110 @@ function ObservePageContent() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftId, setDraftId] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [data, setData] = useState<ObservationData>({ speciesName: '', speciesType: 'fish', quantity: 1, notes: '' });
 
-  const [data, setData] = useState<ObservationData>({
-    speciesName: '',
-    speciesType: 'fish',
-    quantity: 1,
-    notes: '',
-  });
+  useEffect(() => { fetchAllMPAs().then(setMpas).catch(() => setMpas([])).finally(() => setMpasLoading(false)); }, []);
 
-  // Load MPAs
-  useEffect(() => {
-    fetchAllMPAs().then(setMpas).catch(() => setMpas([])).finally(() => setMpasLoading(false));
-  }, []);
-
-  // Load draft if provided in URL
   useEffect(() => {
     const draftParam = searchParams.get('draft');
-    if (draftParam) {
-      const id = parseInt(draftParam, 10);
-      if (!isNaN(id)) {
-        loadDraft(id);
-      }
-    }
+    if (draftParam) { const id = parseInt(draftParam, 10); if (!isNaN(id)) loadDraft(id); }
   }, [searchParams]);
 
-  // Pre-select MPA if provided in URL
   useEffect(() => {
     const mpaParam = searchParams.get('mpa');
-    if (mpaParam && !data.mpaId) {
-      setData(prev => ({ ...prev, mpaId: mpaParam }));
-    }
+    if (mpaParam && !data.mpaId) setData(prev => ({ ...prev, mpaId: mpaParam }));
   }, [searchParams, data.mpaId]);
 
   const loadDraft = async (id: number) => {
     try {
       const draft = await getDraft(id);
-      if (draft) {
-        setDraftId(id);
-        setData({
-          reportType: draft.reportType,
-          photo: draft.photo as string,
-          speciesName: draft.speciesName || '',
-          speciesType: 'fish',
-          quantity: draft.quantity || 1,
-          mpaId: draft.mpaId,
-          notes: draft.notes,
-          healthScoreAssessment: draft.healthScoreAssessment,
-        });
-      }
-    } catch (error) {
-      console.error('Failed to load draft:', error);
-    }
+      if (draft) { setDraftId(id); setData({ reportType: draft.reportType, photo: draft.photo as string, speciesName: draft.speciesName || '', speciesType: 'fish', quantity: draft.quantity || 1, mpaId: draft.mpaId, notes: draft.notes, healthScoreAssessment: draft.healthScoreAssessment }); }
+    } catch (error) { console.error('Failed to load draft:', error); }
   };
 
   const handleReportTypeChange = (type: ReportType) => {
     setData(prev => ({ ...prev, reportType: type }));
-    if (errors.reportType) {
-      setErrors(prev => ({ ...prev, reportType: '' }));
-    }
-  };
-
-  const handlePhotoChange = (photo: string | null, metadata: PhotoMetadata | null) => {
-    setData(prev => ({
-      ...prev,
-      photo: photo || undefined,
-      photoMetadata: metadata || undefined,
-    }));
-  };
-
-  const handleHealthScoreChange = (score: number) => {
-    setData(prev => ({ ...prev, healthScoreAssessment: score }));
+    if (errors.reportType) setErrors(prev => ({ ...prev, reportType: '' }));
   };
 
   const handleMpaChange = (mpaId: string) => {
     setData(prev => ({ ...prev, mpaId }));
-    if (errors.mpaId) {
-      setErrors(prev => ({ ...prev, mpaId: '' }));
-    }
+    if (errors.mpaId) setErrors(prev => ({ ...prev, mpaId: '' }));
   };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-
-    if (!data.reportType) {
-      newErrors.reportType = 'Please select a report type';
-    }
-
-    if (!data.mpaId) {
-      newErrors.mpaId = 'Please select a Marine Protected Area';
-    }
-
+    if (!data.reportType) newErrors.reportType = 'Please select a report type';
+    if (!data.mpaId) newErrors.mpaId = 'Please select a Marine Protected Area';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSaveDraft = async () => {
-    if (!data.reportType) {
-      setErrors({ reportType: 'Please select a report type before saving a draft' });
-      return;
-    }
-
+    if (!data.reportType) { setErrors({ reportType: 'Please select a report type before saving a draft' }); return; }
     setSavingDraft(true);
-
     try {
-      const draftData = {
-        reportType: data.reportType,
-        photo: data.photo || '',
-        mpaId: data.mpaId || '',
-        notes: data.notes,
-        location: { lat: 0, lng: 0 },
-        speciesName: data.speciesName,
-        quantity: data.quantity,
-        healthScoreAssessment: data.healthScoreAssessment,
-        timestamp: Date.now(),
-        userId: user?.id,
-      };
-
-      if (draftId) {
-        const { updateDraft } = await import('@/lib/offline-storage');
-        await updateDraft(draftId, draftData);
-      } else {
-        const newId = await saveDraft(draftData);
-        setDraftId(newId);
-      }
-
-      // Show success feedback
+      const draftData = { reportType: data.reportType, photo: data.photo || '', mpaId: data.mpaId || '', notes: data.notes, location: { lat: 0, lng: 0 }, speciesName: data.speciesName, quantity: data.quantity, healthScoreAssessment: data.healthScoreAssessment, timestamp: Date.now(), userId: user?.id };
+      if (draftId) { const { updateDraft } = await import('@/lib/offline-storage'); await updateDraft(draftId, draftData); } else { const newId = await saveDraft(draftData); setDraftId(newId); }
       alert('Draft saved successfully!');
-    } catch (error) {
-      console.error('Failed to save draft:', error);
-      alert('Failed to save draft. Please try again.');
-    } finally {
-      setSavingDraft(false);
-    }
+    } catch (error) { console.error('Failed to save draft:', error); alert('Failed to save draft. Please try again.'); } finally { setSavingDraft(false); }
   };
 
   const handleSubmit = async () => {
-    if (!validate()) {
-      // Scroll to first error
-      const firstError = document.querySelector('[data-error="true"]');
-      firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
-
+    if (!validate()) { document.querySelector('[data-error="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
     setSubmitting(true);
-
     try {
-      // Use MPA center as location
-      const selectedMPA = mpas.find(m => m.id === data.mpaId);
-      const latitude = selectedMPA ? selectedMPA.center[0] : 0;
-      const longitude = selectedMPA ? selectedMPA.center[1] : 0;
-
-      // Upload photo to Supabase Storage if present
       let photoUrl: string | undefined;
-      if (data.photo && user?.id) {
-        const uploadedUrl = await uploadObservationPhoto(data.photo, user.id);
-        if (uploadedUrl) {
-          photoUrl = uploadedUrl;
-        }
-      }
-
-      // Create observation using Supabase service (falls back to IndexedDB if offline)
-      const result = await createObservation({
-        mpaId: data.mpaId || '',
-        reportType: data.reportType!,
-        speciesName: data.speciesName || undefined,
-        speciesType: data.speciesType || undefined,
-        quantity: data.quantity || undefined,
-        notes: data.notes || undefined,
-        latitude,
-        longitude,
-        photoUrl: photoUrl || data.photo, // Use uploaded URL or base64 fallback
-        healthScoreAssessment: data.healthScoreAssessment,
-        userId: user?.id,
-        ...(data.reportType === 'marine_litter' && data.litter ? {
-          litterItems: data.litter.items.length > 0 ? JSON.parse(JSON.stringify(data.litter.items)) : undefined,
-          litterWeightKg: data.litter.totalWeight,
-          surveyLengthM: data.litter.surveyLengthM,
-        } : {}),
-      });
-
+      if (data.photo && user?.id) { const uploaded = await uploadObservationPhoto(data.photo, user.id); if (uploaded) photoUrl = uploaded; }
+      const { payload, selectedMPA } = buildObservationPayload(data, mpas, photoUrl);
+      const result = await createObservation({ ...payload, userId: user?.id });
       console.log('Observation saved:', result.synced ? 'to Supabase' : 'locally');
-
-      // Delete draft if exists
-      if (draftId) {
-        await deleteDraft(draftId);
-      }
-
-      // Redirect back to the MPA detail page the user was observing
-      if (selectedMPA) {
-        router.push(`/ocean-pulse-app/mpa/${selectedMPA.id}?observation=success`);
-      } else {
-        router.push('/ocean-pulse-app?observation=success');
-      }
-    } catch (error) {
-      console.error('Failed to save observation:', error);
-      alert('Failed to save observation. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
+      if (draftId) await deleteDraft(draftId);
+      router.push(selectedMPA ? `/ocean-pulse-app/mpa/${selectedMPA.id}?observation=success` : '/ocean-pulse-app?observation=success');
+    } catch (error) { console.error('Failed to save observation:', error); alert('Failed to save observation. Please try again.'); } finally { setSubmitting(false); }
   };
 
-  // Loading state
-  if (authLoading) {
-    return (
-      <main className="min-h-screen pb-24 bg-balean-off-white">
-        <div className="max-w-2xl mx-auto p-6">
-          <Card>
-            <CardContent>
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-balean-cyan border-t-transparent" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-    );
-  }
-
-  // Auth required
-  if (!user) {
-    return <SignInPrompt />;
-  }
+  if (authLoading) return <ObservePageFallback />;
+  if (!user) return <SignInPrompt />;
 
   return (
     <main className="min-h-screen pb-24 bg-balean-off-white">
       <div className="max-w-2xl mx-auto p-6 space-y-6">
-        {/* Page Title */}
         <div>
           <h1 className="text-xl font-bold text-balean-navy">Submit New Report</h1>
           <p className="text-sm text-balean-gray-400">Help us monitor ocean health by sharing your observations</p>
         </div>
-
-        {/* Impact Callout */}
         <div className="flex items-start gap-3 p-4 bg-balean-cyan/10 border border-balean-cyan/20 rounded-xl">
           <Icon name="info" className="text-balean-cyan text-lg flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-balean-gray-600">
-            Your observations directly contribute to MPA health scores. Each health assessment
-            you provide is combined with scientific data to create a more complete picture of
-            ocean health.
-          </p>
+          <p className="text-sm text-balean-gray-600">Your observations directly contribute to MPA health scores. Each health assessment you provide is combined with scientific data to create a more complete picture of ocean health.</p>
         </div>
-
-        {/* Report Type */}
         <section data-error={!!errors.reportType}>
-          <label className="block text-sm font-semibold text-balean-navy mb-3">
-            Report Type <span className="text-red-500">*</span>
-          </label>
-          <ReportTypeSelector
-            value={data.reportType}
-            onChange={handleReportTypeChange}
-          />
-          {errors.reportType && (
-            <p className="mt-2 text-sm text-red-600">{errors.reportType}</p>
-          )}
+          <label className="block text-sm font-semibold text-balean-navy mb-3">Report Type <span className="text-red-500">*</span></label>
+          <ReportTypeSelector value={data.reportType} onChange={handleReportTypeChange} />
+          {errors.reportType && <p className="mt-2 text-sm text-red-600">{errors.reportType}</p>}
         </section>
-
-        {/* Location (MPA Selection) */}
         <section data-error={!!errors.mpaId}>
-          <label className="block text-sm font-semibold text-balean-navy mb-2">
-            Location <span className="text-red-500">*</span>
-          </label>
-          <MPASearchSelect
-            mpas={mpas}
-            value={data.mpaId}
-            onChange={handleMpaChange}
-            error={!!errors.mpaId}
-            loading={mpasLoading}
-          />
-          {errors.mpaId ? (
-            <p className="mt-2 text-sm text-red-600">{errors.mpaId}</p>
-          ) : (
-            <p className="mt-2 text-xs text-balean-gray-400">
-              Search or select the MPA where you made your observation
-            </p>
-          )}
+          <label className="block text-sm font-semibold text-balean-navy mb-2">Location <span className="text-red-500">*</span></label>
+          <MPASearchSelect mpas={mpas} value={data.mpaId} onChange={handleMpaChange} error={!!errors.mpaId} loading={mpasLoading} />
+          {errors.mpaId ? <p className="mt-2 text-sm text-red-600">{errors.mpaId}</p> : <p className="mt-2 text-xs text-balean-gray-400">Search or select the MPA where you made your observation</p>}
         </section>
-
-        {/* Species Info - Only show for species sighting */}
-        {data.reportType === 'species_sighting' && (
-          <section className="space-y-4 p-4 bg-balean-cyan/10 rounded-xl border border-balean-cyan/20">
-            <h3 className="font-semibold text-balean-navy flex items-center gap-2">
-              <Icon name="fish" /> Species Details
-            </h3>
-
-            <div>
-              <label className="block text-sm font-medium text-balean-gray-600 mb-2">
-                Species Name
-              </label>
-              <Input
-                value={data.speciesName}
-                onChange={(e) => setData(prev => ({ ...prev, speciesName: e.target.value }))}
-                placeholder="e.g., Green Sea Turtle, Clownfish"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-balean-gray-600 mb-2">
-                  Species Type
-                </label>
-                <select
-                  value={data.speciesType}
-                  onChange={(e) => setData(prev => ({ ...prev, speciesType: e.target.value }))}
-                  className="w-full px-4 py-2 border border-balean-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-balean-cyan bg-white"
-                >
-                  <option value="fish">Fish</option>
-                  <option value="mammal">Mammal</option>
-                  <option value="reptile">Reptile</option>
-                  <option value="invertebrate">Invertebrate</option>
-                  <option value="bird">Seabird</option>
-                  <option value="plant">Marine Plant</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-balean-gray-600 mb-2">
-                  Quantity
-                </label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={data.quantity}
-                  onChange={(e) => setData(prev => ({ ...prev, quantity: Number(e.target.value) }))}
-                />
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Litter Details - Only show for marine litter */}
-        {data.reportType === 'marine_litter' && (
-          <LitterDetails
-            value={data.litter || { items: [], isSurvey: false }}
-            onChange={(litter) => setData(prev => ({ ...prev, litter }))}
-          />
-        )}
-
-        {/* Description */}
+        {data.reportType === 'species_sighting' && <SpeciesDetailsSection data={data} setData={setData} />}
+        {data.reportType === 'marine_litter' && <LitterDetails value={data.litter || { items: [], isSurvey: false }} onChange={(litter) => setData(prev => ({ ...prev, litter }))} />}
         <section>
-          <label className="block text-sm font-semibold text-balean-navy mb-2">
-            Description
-          </label>
-          <Textarea
-            value={data.notes}
-            onChange={(e) => setData(prev => ({ ...prev, notes: e.target.value }))}
-            placeholder="Describe your observation in detail..."
-            rows={4}
-            className="resize-y"
-          />
+          <label className="block text-sm font-semibold text-balean-navy mb-2">Description</label>
+          <Textarea value={data.notes} onChange={(e) => setData(prev => ({ ...prev, notes: e.target.value }))} placeholder="Describe your observation in detail..." rows={4} className="resize-y" />
         </section>
-
-        {/* Photo Evidence */}
         <section>
-          <label className="block text-sm font-semibold text-balean-navy mb-3">
-            Photo Evidence
-          </label>
-          <PhotoUploader
-            value={data.photo}
-            metadata={data.photoMetadata}
-            onChange={handlePhotoChange}
-          />
+          <label className="block text-sm font-semibold text-balean-navy mb-3">Photo Evidence</label>
+          <PhotoUploader value={data.photo} metadata={data.photoMetadata} onChange={(photo, metadata) => setData(prev => ({ ...prev, photo: photo || undefined, photoMetadata: metadata || undefined }))} />
         </section>
-
-        {/* Health Score Assessment */}
-        <section>
-          <HealthScoreSlider
-            value={data.healthScoreAssessment}
-            onChange={handleHealthScoreChange}
-          />
-        </section>
-
-        {/* Sync Notice */}
+        <section><HealthScoreSlider value={data.healthScoreAssessment} onChange={(score) => setData(prev => ({ ...prev, healthScoreAssessment: score }))} /></section>
         <div className="p-4 bg-balean-cyan/10 border border-balean-cyan/20 rounded-xl">
-          <p className="text-sm text-balean-navy">
-            Your observation will be saved to our database. If you&apos;re offline, it will be stored locally and synced when you reconnect.
-            {data.healthScoreAssessment && data.mpaId && (
-              <> Your health score will contribute to the MPA&apos;s community rating.</>
-            )}
-          </p>
+          <p className="text-sm text-balean-navy">Your observation will be saved to our database. If you&apos;re offline, it will be stored locally and synced when you reconnect.{data.healthScoreAssessment && data.mpaId && <> Your health score will contribute to the MPA&apos;s community rating.</>}</p>
         </div>
-
-        {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 pt-4">
-          <Button
-            onClick={handleSubmit}
-            loading={submitting}
-            disabled={submitting || savingDraft}
-            fullWidth
-            size="lg"
-          >
-            Submit Report
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={handleSaveDraft}
-            loading={savingDraft}
-            disabled={submitting || savingDraft}
-            fullWidth
-          >
-            Save Draft
-          </Button>
+          <Button onClick={handleSubmit} loading={submitting} disabled={submitting || savingDraft} fullWidth size="lg">Submit Report</Button>
+          <Button variant="secondary" onClick={handleSaveDraft} loading={savingDraft} disabled={submitting || savingDraft} fullWidth>Save Draft</Button>
         </div>
       </div>
     </main>

@@ -1,39 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { DEMO_USER_ID } from '@/lib/demo/demo-config';
 import { DEMO_OBSERVATIONS, DEMO_HEALTH_ASSESSMENTS } from '@/lib/demo/demo-seed-data';
 
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/demo/seed
- *
- * Restores demo account observations and health assessments.
- * Protected by CRON_SECRET. Uses service role key to bypass RLS.
- * Idempotent: deletes existing demo data before re-inserting.
- */
-export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+function errorResponse(message: string, details?: unknown, status = 500) {
+  return NextResponse.json({ error: message, ...(details ? { details } : {}) }, { status });
+}
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceKey) {
-    return NextResponse.json({ error: 'Missing Supabase config' }, { status: 500 });
-  }
-
-  if (!DEMO_USER_ID) {
-    return NextResponse.json({ error: 'DEMO_USER_ID not configured' }, { status: 500 });
-  }
-
-  const supabase = createClient(supabaseUrl, serviceKey);
-  const now = new Date();
-
-  // 1. Delete existing demo data
+async function clearDemoData(supabase: SupabaseClient) {
   const { error: delObsErr } = await supabase
     .from('observations')
     .delete()
@@ -45,14 +22,15 @@ export async function POST(request: NextRequest) {
     .eq('user_id', DEMO_USER_ID);
 
   if (delObsErr || delAssessErr) {
-    return NextResponse.json({
-      error: 'Failed to clear demo data',
-      details: { observations: delObsErr?.message, assessments: delAssessErr?.message },
-    }, { status: 500 });
+    return errorResponse('Failed to clear demo data', {
+      observations: delObsErr?.message,
+      assessments: delAssessErr?.message,
+    });
   }
+  return null;
+}
 
-  // 2. Verify which MPAs exist in the database
-  // Note: observations.mpa_id stores the external_id (WDPA ID), not the internal UUID
+async function resolveValidMPAs(supabase: SupabaseClient) {
   const externalIds = [
     ...new Set([
       ...DEMO_OBSERVATIONS.map((o) => o.mpaExternalId),
@@ -66,82 +44,89 @@ export async function POST(request: NextRequest) {
     .in('external_id', externalIds);
 
   if (mpaErr) {
-    return NextResponse.json({ error: 'Failed to look up MPAs', details: mpaErr.message }, { status: 500 });
+    return { ids: null, total: externalIds.length, error: errorResponse('Failed to look up MPAs', mpaErr.message) };
   }
 
-  const validExternalIds = new Set<string>(
+  const ids = new Set<string>(
     (mpas ?? []).map((m) => m.external_id).filter(Boolean) as string[]
   );
+  return { ids, total: externalIds.length, error: null };
+}
 
-  // 3. Insert observations (skip those whose MPA was not found)
-  const obsRows = DEMO_OBSERVATIONS
-    .filter((o) => validExternalIds.has(o.mpaExternalId))
+function buildObservationRows(validIds: Set<string>, now: Date) {
+  return DEMO_OBSERVATIONS
+    .filter((o) => validIds.has(o.mpaExternalId))
     .map((o) => {
       const observedAt = new Date(now.getTime() - o.daysAgo * 86400000);
       return {
-        user_id: DEMO_USER_ID,
-        mpa_id: o.mpaExternalId,
-        report_type: o.reportType,
-        species_name: o.speciesName ?? null,
-        quantity: o.quantity ?? null,
-        notes: o.notes,
-        latitude: o.latitude,
-        longitude: o.longitude,
-        location_accuracy_m: 10,
-        location_manually_entered: false,
+        user_id: DEMO_USER_ID, mpa_id: o.mpaExternalId, report_type: o.reportType,
+        species_name: o.speciesName ?? null, quantity: o.quantity ?? null,
+        notes: o.notes, latitude: o.latitude, longitude: o.longitude,
+        location_accuracy_m: 10, location_manually_entered: false,
         health_score_assessment: o.healthScoreAssessment ?? null,
-        is_draft: false,
-        quality_tier: o.qualityTier,
-        observed_at: observedAt.toISOString(),
-        synced_at: now.toISOString(),
-        litter_items: o.litterItems ?? null,
-        litter_weight_kg: o.litterWeightKg ?? null,
+        is_draft: false, quality_tier: o.qualityTier,
+        observed_at: observedAt.toISOString(), synced_at: now.toISOString(),
+        litter_items: o.litterItems ?? null, litter_weight_kg: o.litterWeightKg ?? null,
         survey_length_m: o.surveyLengthM ?? null,
       };
     });
+}
 
-  let insertedObs = 0;
-  if (obsRows.length > 0) {
-    const { data, error } = await supabase.from('observations').insert(obsRows).select('id');
-    if (error) {
-      return NextResponse.json({ error: 'Failed to insert observations', details: error.message }, { status: 500 });
-    }
-    insertedObs = data?.length ?? 0;
+async function insertRows(supabase: SupabaseClient, table: string, rows: Record<string, unknown>[], errorMsg: string) {
+  if (rows.length === 0) return { count: 0, error: null };
+  const { data, error } = await supabase.from(table).insert(rows).select('id');
+  if (error) return { count: 0, error: errorResponse(errorMsg, error.message) };
+  return { count: data?.length ?? 0, error: null };
+}
+
+function buildAssessmentRows(validIds: Set<string>, now: Date) {
+  return DEMO_HEALTH_ASSESSMENTS
+    .filter((a) => validIds.has(a.mpaExternalId))
+    .map((a) => ({
+      user_id: DEMO_USER_ID, mpa_id: a.mpaExternalId, score: a.score,
+      assessed_at: new Date(now.getTime() - a.daysAgo * 86400000).toISOString(),
+    }));
+}
+
+/**
+ * POST /api/demo/seed
+ *
+ * Restores demo account observations and health assessments.
+ * Protected by CRON_SECRET. Uses service role key to bypass RLS.
+ * Idempotent: deletes existing demo data before re-inserting.
+ */
+export async function POST(request: NextRequest) {
+  const authHeader = request.headers.get('authorization');
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return errorResponse('Unauthorized', undefined, 401);
   }
 
-  // 4. Insert health assessments
-  const assessRows = DEMO_HEALTH_ASSESSMENTS
-    .filter((a) => validExternalIds.has(a.mpaExternalId))
-    .map((a) => {
-      const assessedAt = new Date(now.getTime() - a.daysAgo * 86400000);
-      return {
-        user_id: DEMO_USER_ID,
-        mpa_id: a.mpaExternalId,
-        score: a.score,
-        assessed_at: assessedAt.toISOString(),
-      };
-    });
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) return errorResponse('Missing Supabase config');
+  if (!DEMO_USER_ID) return errorResponse('DEMO_USER_ID not configured');
 
-  let insertedAssess = 0;
-  if (assessRows.length > 0) {
-    const { data, error } = await supabase.from('user_health_assessments').insert(assessRows).select('id');
-    if (error) {
-      return NextResponse.json({ error: 'Failed to insert assessments', details: error.message }, { status: 500 });
-    }
-    insertedAssess = data?.length ?? 0;
-  }
+  const supabase = createClient(supabaseUrl, serviceKey);
+  const now = new Date();
 
-  // 5. Upsert demo profile
+  const clearErr = await clearDemoData(supabase);
+  if (clearErr) return clearErr;
+
+  const { ids: validExternalIds, total: mpasTotal, error: mpaErr } = await resolveValidMPAs(supabase);
+  if (mpaErr || !validExternalIds) return mpaErr!;
+
+  const obsResult = await insertRows(supabase, 'observations', buildObservationRows(validExternalIds, now), 'Failed to insert observations');
+  if (obsResult.error) return obsResult.error;
+
+  const assessResult = await insertRows(supabase, 'user_health_assessments', buildAssessmentRows(validExternalIds, now), 'Failed to insert assessments');
+  if (assessResult.error) return assessResult.error;
+
   await supabase.from('profiles').upsert({
-    id: DEMO_USER_ID,
-    display_name: 'Demo Explorer',
+    id: DEMO_USER_ID, display_name: 'Demo Explorer',
   }, { onConflict: 'id' });
 
   return NextResponse.json({
-    success: true,
-    mpasFound: validExternalIds.size,
-    mpasTotal: externalIds.length,
-    observations: insertedObs,
-    healthAssessments: insertedAssess,
+    success: true, mpasFound: validExternalIds.size, mpasTotal,
+    observations: obsResult.count, healthAssessments: assessResult.count,
   });
 }
